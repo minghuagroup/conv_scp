@@ -2068,8 +2068,7 @@ subroutine cal_mse_up( &
 
                 call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
                 tv_up = t_up(i,k)*( 1+0.61*q_up_test )
-!                tv = t(i,k)*(1+0.61*q(i,k) ) ! use the mid env temperature as upper level env value
-                tv = tint(i,k)*(1+0.61*qint(i,k) ) ! use the mid env temperature as upper level env value
+                tv = tint(i,k)*(1+0.61*qint(i,k) )
                 buoy(i,k) = gravit*(tv_up-tv)/tv
                 if ( buoy(i,k)<=0 ) then
                     ent_rate_up_h = 0._r8
