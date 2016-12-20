@@ -108,7 +108,8 @@ module jp_conv
 
     real(r8), parameter :: evapke = 0.2e-5_r8
 
-    real(r8), parameter :: w_up_param = 1.5_r8
+!    real(r8), parameter :: w_up_param = 1.5_r8
+    real(r8), parameter :: w_up_param = 0.3_r8
 
 
 
@@ -2044,15 +2045,14 @@ subroutine cal_mse_up( &
 
             !tv = 0.5*( t(i,kuplcl_tmp)*(1+0.61*q(i,kuplcl_tmp) ) &
                       !+t(i,kuplcl_tmp-1)*(1+0.61*q(i,kuplcl_tmp-1) ) )
-            tv = tvint(i,kuplcl_tmp+1)
+            tv = tvint(i,kuplcl_tmp+1) ! use the lower interface T as launching property
             tv_up = t_up(i,kuplcl_tmp )*(1+0.61*q_up(i,kuplcl_tmp ) )
             buoy(i,kuplcl_tmp ) = gravit*(tv_up-tv)/tv
-            ent_rate_up_l = greg_ce*greg_a*buoy(i,kuplcl_tmp)/w2_up(i,kuplcl_tmp )
-
             if ( buoy(i,kuplcl_tmp)<0. ) then
                 trig(i) = -1
                 cycle
             end if
+            ent_rate_up_l = greg_ce*greg_a*buoy(i,kuplcl_tmp)/w2_up(i,kuplcl_tmp )
 
             do k=kuplcl_tmp-1, 1, -1
 !precalculate k+1/2
