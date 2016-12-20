@@ -1,6 +1,6 @@
 
-#FC  = gfortran
-FC  = ifort
+FC  = gfortran
+#FC  = ifort
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -g -fbacktrace -fcheck=all -DSCMDIAG 
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -fcheck=all -fbacktrace
 FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG
@@ -15,13 +15,13 @@ OBJ = $(addsuffix .o, $(basename $(SRC)))
 all: main
 
 main: $(OBJ) main.o
-	$(FC) $(FFLAGS) $(OBJ) main.o -o $@
+	$(FC) $(OBJ) main.o -o $@ $(FFLAGS)
 
 %.o : %.F90
-	$(FC) $(FFLAGS) -c $<
+	$(FC) -c $< $(FFLAGS)
 
 %.o : %.f90
-	$(FC) $(FFLAGS) -c $<
+	$(FC) -c $< $(FFLAGS)
 
 clean:
 	rm *.o *.mod

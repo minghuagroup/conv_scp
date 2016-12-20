@@ -189,8 +189,6 @@ program test
     call subcol_netcdf_init( "scmdiag-output.nc" )
     call subcol_netcdf_addfld( "mse", "J/kg", "mlev")
     call subcol_netcdf_addfld( "msesat", "J/kg", "mlev")
-    call subcol_netcdf_addfld( "mse_up", "J/kg", "mlev")
-    call subcol_netcdf_addfld( "mse_up_plume", "J/kg", "mlev")
     call subcol_netcdf_addfld( "z", "m", "mlev")
     call subcol_netcdf_addfld( "p", "Pa", "mlev")
     call subcol_netcdf_addfld( "rho", "kg/kg", "mlev")
@@ -200,23 +198,35 @@ program test
     call subcol_netcdf_addfld( "t", "K", "mlev")
     call subcol_netcdf_addfld( "q", "kg/kg", "mlev")
     call subcol_netcdf_addfld( "qsat", "kg/kg", "mlev")
-    call subcol_netcdf_addfld( "q_up", "kg/kg", "mlev")
-    call subcol_netcdf_addfld( "t_up", "kg/kg", "mlev")
 
     call subcol_netcdf_addfld( "dse", "J/kg", "mlev")
     call subcol_netcdf_addfld( "dse_up", "J/kg", "mlev")
 
     call subcol_netcdf_addfld( "ent_rate", "1", "mlev")
     call subcol_netcdf_addfld( "det_rate", "1", "mlev")
-    call subcol_netcdf_addfld( "w_up", "m/s", "mlev")
-    call subcol_netcdf_addfld( "buoy", "m/s2", "mlev")
     call subcol_netcdf_addfld( "buoy_closure", "m/s2", "mlev")
 
     call subcol_netcdf_addfld( "diffdse_up", "J/kg", "mlev")
     call subcol_netcdf_addfld( "diffq_up", "kg/kg", "mlev")
     call subcol_netcdf_addfld( "qcheck", "kg/kg", "slev")
 
-    call subcol_netcdf_addfld( "normassflx_up", "1", "mlev")
+    call subcol_netcdf_addfld( "w_up_mid", "m/s", "mlev")
+    call subcol_netcdf_addfld( "buoy_mid", "m/s2", "mlev")
+    call subcol_netcdf_addfld( "mse_up_mid", "m/s", "mlev")
+    call subcol_netcdf_addfld( "t_up_mid", "kg/kg", "mlev")
+    call subcol_netcdf_addfld( "q_up_mid", "kg/kg", "mlev")
+    call subcol_netcdf_addfld( "normassflx_up_mid", "1", "mlev")
+
+    call subcol_netcdf_addfld( "zint", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "pint", "m/s", "mlevp")
+
+    call subcol_netcdf_addfld( "w_up", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "buoy", "m/s2", "mlevp")
+    call subcol_netcdf_addfld( "mse_up", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "t_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "q_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "normassflx_up", "1", "mlevp")
+    call subcol_netcdf_addfld( "mse_up_plume", "J/kg", "mlevp")
 
     call subcol_netcdf_addfld( "camstend", "K/s", "mlev")
     call subcol_netcdf_addfld( "camqtend", "kg/kg/s", "mlev")
@@ -385,14 +395,14 @@ program test
 
 !scmdiag output
 #ifdef SCMDIAG
-       call subcol_netcdf_putclm( "camstend", camstend(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtend", camqtend(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camstendcond", camstendcond(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtendcond", camqtendcond(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camstendtranup", camstendtranup(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtendtranup", camqtendtranup(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camstendtrandn", camstendtrandn(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtendtrandn", camqtendtrandn(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camstend", nlev, camstend(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camqtend", nlev, camqtend(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camstendcond", nlev, camstendcond(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camqtendcond", nlev, camqtendcond(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camstendtranup", nlev, camstendtranup(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camqtendtranup", nlev, camqtendtranup(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camstendtrandn", nlev, camstendtrandn(1,1,:), 1 )
+       call subcol_netcdf_putclm( "camqtendtrandn", nlev, camqtendtrandn(1,1,:), 1 )
 #endif
 
 

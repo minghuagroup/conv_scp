@@ -291,6 +291,7 @@ subroutine scp_conv_tend( &
     real(r8), dimension(inncol, nlevp) :: pint ! [1] height at the interface
     real(r8), dimension(inncol, nlevp) :: tint ! [1] height at the interface
     real(r8), dimension(inncol, nlevp) :: qint ! [1] height at the interface
+!    real(r8), dimension(inncol, nlevp) :: esatint, qsatint ! [Pa] ; [kg/kg]
     real(r8), dimension(inncol, nlevp) :: normassflx_up ! [1]  bulk normalized updraft mass flux
     real(r8), dimension(inncol, nlevp) :: normassflx_up_tmp ! [1]  bulk normalized updraft mass flux
     real(r8), dimension(inncol, nlev)  :: ent_rate_bulk_up_mid ! [1] solved PARCEL fractional entrainment rates
@@ -301,6 +302,7 @@ subroutine scp_conv_tend( &
 
     real(r8), dimension(inncol, nlevp) :: mse_up ! [J/kg]  bulk in-cloud MSE given en/detrainment rate.
     real(r8), dimension(inncol, nlevp) :: dse_up ! [J/kg]  bulk in-cloud DSE given en/detrainment rate.
+    real(r8), dimension(inncol, nlevp) :: buoy ! [J/kg]  bulk in-cloud MSE given en/detrainment rate.
     real(r8), dimension(inncol, nlevp) :: t_up   ! [K]  bulk in-cloud temperatur given en/detrainment rate.
     real(r8), dimension(inncol, nlevp) :: tv_up  ! [K]  bulk in-cloud temperatur given en/detrainment rate.
     real(r8), dimension(inncol, nlevp) :: q_up   ! [kg/kg]  bulk in-cloud sat water vapor given en/detrainment rate.
@@ -392,6 +394,8 @@ subroutine scp_conv_tend( &
     real(r8), dimension(inncol, nlev) :: qcheck ! [1]  used to check negative q
     real(r8), dimension(inncol) :: qcheckout    ! [1]  used to check negative q
     real(r8) :: qcheckf, minqcheckf             ! [1]
+
+    real(r8), dimension(inncol) :: tmp2d    ! [1]  used to check negative q
 
 
 !for diag
@@ -666,6 +670,9 @@ subroutine scp_conv_tend( &
         qint(:,k) = 0.5*( q(:,k)+q(:,k-1) )
     end do
 
+    !esatint = 611.2*exp(5417*(1/273.16-1/tint))
+    !qsatint = 0.622*esatint/pint
+
 !------------------------------------------------------
 !Different methods to calculate entrainment rate
 !------------------------------------------------------
@@ -678,6 +685,7 @@ subroutine scp_conv_tend( &
     q_up = 0._r8
     w_up = 0._r8
     w_up_mid = 0._r8
+    buoy = 0._r8
     buoy_mid = 0._r8
     normassflx_up = 0._r8
     ent_rate_bulk_up_mid = 0._r8
@@ -803,7 +811,7 @@ subroutine scp_conv_tend( &
         ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, mse, msesat, &
         kuplaunch, kuplcl, &
         ent_rate_bulk_up, det_rate_bulk_up, w_up_init, &
-        mse_up, t_up, q_up, normassflx_up, w_up, w_up_mid, buoy_mid, kuptop, zuptop, &
+        mse_up, t_up, q_up, normassflx_up, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
         trigdp)
     do i=1, inncol
         do k=nlev, 1, -1
@@ -1464,10 +1472,10 @@ subroutine scp_conv_tend( &
 #ifdef SCMDIAG 
     write(*,"(a20,f20.10)") "dtime:", dtime
     write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "zsrf:", zsrf, "psrf:", psrf
-    write(*,"(a20,i3,a20,i3)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
-    write(*,"(a20,i2)") "uptopmax:", kuptopmax
-    write(*,"(a20,i2,a20,i2)") "uptop:", kuptop,    "knbtop:", knbtop
-    write(*,"(a20,i2,a20,i2)") "trigdp:", trigdp,    "trigsh:   ", trigsh
+    write(*,"(a20,i4,a20,i4)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
+    write(*,"(a20,i4)") "uptopmax:", kuptopmax
+    write(*,"(a20,i4,a20,i4)") "uptop:", kuptop,    "knbtop:", knbtop
+    write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp,    "trigsh:   ", trigsh
     write(*,"(a20,f20.10)") "ht:", ht
     write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
     write(*,"(a20,f20.10)") "dilucape:", dilucape
@@ -1487,22 +1495,30 @@ subroutine scp_conv_tend( &
     write(*,"(a20,f20.10)") "minqcheckf:", minqcheckf
 
 !netcdf output
-    call subcol_netcdf_putclm( "mse", mse(1,:), 1 )
-    !call subcol_netcdf_putclm( "mse_closure", mse_closure(1,:), 1 )
-    call subcol_netcdf_putclm( "msesat", msesat(1,:), 1 )
-    call subcol_netcdf_putclm( "z", z(1,:), 1 )
-    call subcol_netcdf_putclm( "p", p(1,:), 1 )
-    call subcol_netcdf_putclm( "rho", rho(1,:), 1 )
+    call subcol_netcdf_putclm( "mse", nlev, mse(1,:), 1 )
+    call subcol_netcdf_putclm( "msesat", nlev, msesat(1,:), 1 )
+    call subcol_netcdf_putclm( "z", nlev, z(1,:), 1 )
+    call subcol_netcdf_putclm( "p", nlev, p(1,:), 1 )
+    call subcol_netcdf_putclm( "rho", nlev, rho(1,:), 1 )
 
-    call subcol_netcdf_putclm( "ent_rate", ent_rate_bulk_up(1,:), 1 )
-    !call subcol_netcdf_putclm( "det_rate", det_rate_bulk_up(1,:), 1 )
-    call subcol_netcdf_putclm( "w_up", w_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "buoy", buoy_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "mse_up", mse_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "t_up", t_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "q_up", q_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "normassflx_up", normassflx_up_mid(1,:), 1 )
-    !call subcol_netcdf_putclm( "buoy_closure", buoy_closure(1,:), 1 )
+    call subcol_netcdf_putclm( "ent_rate", nlev, ent_rate_bulk_up(1,:), 1 )
+
+    call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), 1 )
+    call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), 1 )
+    call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), 1 )
+    call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), 1 )
+    call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), 1 )
+    call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), 1 )
+
+    call subcol_netcdf_putclm( "zint", nlevp, zint(1,:), 1 )
+    call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
+
+    call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), 1 )
+    call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), 1 )
+    call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), 1 )
+    call subcol_netcdf_putclm( "t_up", nlevp, t_up_mid(1,:), 1 )
+    call subcol_netcdf_putclm( "q_up", nlevp, q_up_mid(1,:), 1 )
+    call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up_mid(1,:), 1 )
 
     !do i=1, inncol
         !if ( trigdp(i)<1 ) cycle
@@ -1516,9 +1532,9 @@ subroutine scp_conv_tend( &
     !call subcol_netcdf_putclm( "diffq_up", diffq_up(1,:), 1 )
     !call subcol_netcdf_putclm( "qcheck", qcheck(1,:), 1 )
 
-    call subcol_netcdf_putclm( "t", t(1,:), 1 )
-    call subcol_netcdf_putclm( "q", q(1,:), 1 )
-    call subcol_netcdf_putclm( "qsat", qsat(1,:), 1 )
+    call subcol_netcdf_putclm( "t", nlev, t(1,:), 1 )
+    call subcol_netcdf_putclm( "q", nlev, q(1,:), 1 )
+    call subcol_netcdf_putclm( "qsat", nlev, qsat(1,:), 1 )
 
     !call subcol_netcdf_putclm( "dse", dse(1,:), 1 )
     !call subcol_netcdf_putclm( "dse_up", dse_up(1,:), 1 )
@@ -1552,18 +1568,19 @@ subroutine scp_conv_tend( &
     !call subcol_netcdf_putclm( "massflxbase_cape", massflxbase_cape(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_w", massflxbase_w(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_mconv", massflxbase_mconv(1), 1 )
-    call subcol_netcdf_putclm( "qcheck", qcheckout(1), 1 )
+    call subcol_netcdf_putclm( "qcheck", 1, qcheckout(1), 1 )
 
-    call subcol_netcdf_putclm( "trigdp", 1._r8*trigdp(1), 1 )
+    tmp2d = trigdp
+    call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), 1 )
 
     tmp = kupbase-kuptop+1
-    call subcol_netcdf_putclm( "nconvlev", tmp(1), 1 )
+    call subcol_netcdf_putclm( "nconvlev", 1, tmp(1), 1 )
     tmp = kuplaunch
-    call subcol_netcdf_putclm( "kuplaunch", tmp(1), 1 )
+    call subcol_netcdf_putclm( "kuplaunch", 1, tmp(1), 1 )
     tmp = kupbase
-    call subcol_netcdf_putclm( "kupbase", tmp(1), 1 )
+    call subcol_netcdf_putclm( "kupbase", 1, tmp(1), 1 )
     tmp = kuplcl
-    call subcol_netcdf_putclm( "kuplcl", tmp(1), 1 )
+    call subcol_netcdf_putclm( "kuplcl", 1, tmp(1), 1 )
 
 
 
@@ -1958,7 +1975,7 @@ subroutine cal_mse_up( &
         ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, mse, msesat, kuplaunch, kuplcl, &
         ent_rate_up, det_rate_up, w_up_init, &
 !output
-        mse_up, t_up, q_up, normassflx_up, w_up, w_up_mid, buoy_mid, kuptop, zuptop, &
+        mse_up, t_up, q_up, normassflx_up, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
 !in/out
         trig)
 
@@ -1985,6 +2002,7 @@ subroutine cal_mse_up( &
 !output
     real(r8), dimension(ncol, nlevp), intent(out) :: w_up ! [J/kg]
     real(r8), dimension(ncol, nlev), intent(out)  :: w_up_mid ! [J/kg]
+    real(r8), dimension(ncol, nlevp), intent(out) :: buoy ! [J/kg]
     real(r8), dimension(ncol, nlev), intent(out)  :: buoy_mid  ! [J/kg]
 
     integer , dimension(ncol), intent(out) :: kuptop
@@ -1997,7 +2015,6 @@ subroutine cal_mse_up( &
     integer , dimension(ncol), intent(inout) :: trig     ! [1]
 !local
     real(r8), dimension(ncol, nlev)  :: w2_up    ! [1]
-    real(r8), dimension(ncol, nlevp) :: buoy     ! [J/kg]
     real(r8), dimension(ncol, nlevp) :: tvint    ! [J/kg]
 
     real(r8) :: dt   ! [m]
@@ -2006,6 +2023,7 @@ subroutine cal_mse_up( &
     real(r8) :: intsum, inttest
     real(r8) :: intsummassflux
     real(r8) :: tv, tv_up, msesat_lcl, ent_rate_up_l, ent_rate_up_h
+    real(r8) :: esat_tmp, qsat_tmp
     real(r8) :: q_up_test
 
     integer :: i,j,k
@@ -2019,6 +2037,7 @@ subroutine cal_mse_up( &
 
     w_up = 0._r8
     w_up_mid = 0._r8
+    buoy = 0._r8
     buoy_mid = 0._r8
     w2_up = 0._r8
     kuptop = nlev
@@ -2039,17 +2058,20 @@ subroutine cal_mse_up( &
             w2_up(i,kuplcl_tmp) = w_up_init(i)**2
             w_up_mid(i,kuplcl_tmp) = w_up_init(i)
 
-            t_up(i,kuplcl_tmp) = t(i,kuplcl_tmp)
-            q_up(i,kuplcl_tmp) = qsat(i,kuplcl_tmp)
+            t_up(i,kuplcl_tmp) = tint(i,kuplcl_tmp)
+            esat_tmp = 611.2*exp(5417*(1/273.16-1/t_up(i,kuplcl_tmp)))
+            qsat_tmp = 0.622*esat_tmp/t_up(i,kuplcl_tmp)
+            q_up(i,kuplcl_tmp) = qsat_tmp
+
             mse_up(i,kuplcl_tmp) = msesat(i,kuplcl_tmp)
 
             !tv = 0.5*( t(i,kuplcl_tmp)*(1+0.61*q(i,kuplcl_tmp) ) &
                       !+t(i,kuplcl_tmp-1)*(1+0.61*q(i,kuplcl_tmp-1) ) )
-            tv = tvint(i,kuplcl_tmp+1) ! use the lower interface T as launching property
+            tv = tvint(i,kuplcl_tmp)
             tv_up = t_up(i,kuplcl_tmp )*(1+0.61*q_up(i,kuplcl_tmp ) )
             buoy(i,kuplcl_tmp ) = gravit*(tv_up-tv)/tv
             if ( buoy(i,kuplcl_tmp)<0. ) then
-                trig(i) = -1
+                trig(i) = -11
                 cycle
             end if
             ent_rate_up_l = greg_ce*greg_a*buoy(i,kuplcl_tmp)/w2_up(i,kuplcl_tmp )
@@ -2058,6 +2080,7 @@ subroutine cal_mse_up( &
 !precalculate k+1/2
                 w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*greg_a*(1-greg_ce)*buoy(i,k+1)
                 if ( w2_up(i,k)<=0._r8 ) then
+                    trig(i) = -12
                     exit
                 end if
                 w_up(i,k)  = sqrt( w2_up(i,k) )
@@ -2082,6 +2105,7 @@ subroutine cal_mse_up( &
 !recalculate k+1/2
                 w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*greg_a*(1-greg_ce)*buoy_mid(i,k)
                 if ( w2_up(i,k)<=0._r8 ) then
+                    trig(i) = -13
                     exit
                 end if
                 w_up(i,k)  = sqrt( w2_up(i,k) )
