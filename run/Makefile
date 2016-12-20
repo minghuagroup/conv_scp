@@ -7,7 +7,7 @@ FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG
 
 VPATH = ../src
 
-SRC = scp_conv.F90 scmdiag.f90 jp_conv.F90
+SRC = scmdiag.f90 jp_conv.F90
 
 
 OBJ = $(addsuffix .o, $(basename $(SRC)))
@@ -28,7 +28,5 @@ clean:
 
 #dependence
 
-scp_conv.o : scmdiag.o
-
-scp_conv_intr.o: shr_const_mod.o
+jp_conv.o : scmdiag.o
 
