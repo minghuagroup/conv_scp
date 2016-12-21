@@ -200,7 +200,6 @@ program test
     call subcol_netcdf_addfld( "qsat", "kg/kg", "mlev")
 
     call subcol_netcdf_addfld( "dse", "J/kg", "mlev")
-    call subcol_netcdf_addfld( "dse_up", "J/kg", "mlev")
 
     call subcol_netcdf_addfld( "ent_rate", "1", "mlev")
     call subcol_netcdf_addfld( "det_rate", "1", "mlev")
@@ -222,6 +221,7 @@ program test
 
     call subcol_netcdf_addfld( "w_up", "m/s", "mlevp")
     call subcol_netcdf_addfld( "buoy", "m/s2", "mlevp")
+    call subcol_netcdf_addfld( "dse_up", "J/kg", "mlevp")
     call subcol_netcdf_addfld( "mse_up", "m/s", "mlevp")
     call subcol_netcdf_addfld( "t_up", "kg/kg", "mlevp")
     call subcol_netcdf_addfld( "q_up", "kg/kg", "mlevp")
