@@ -89,9 +89,17 @@ module jp_conv
 
 !parameter for bulk TOTAL fractional en/detrainment rate depending on vertical velocity
 !old
-!    real(r8), parameter :: greg_a=0.2_r8, greg_ce=0.4_r8
-!    real(r8), parameter :: greg_a=0.08_r8, greg_ce=0.15_r8
-    real(r8), parameter :: greg_a=0.1_r8, greg_ce=0.2_r8
+!    real(r8), parameter :: ent_a=0.2_r8, greg_ce=0.4_r8
+!    real(r8), parameter :: ent_a=0.08_r8, greg_ce=0.15_r8
+!    real(r8), parameter :: ent_a=0.1_r8, greg_ce=0.2_r8 !previous values
+!    real(r8), parameter :: ent_a=0.1_r8
+
+    !real(r8), parameter :: ent_a=0.1_r8
+    !real(r8), parameter :: greg_ce=0.2_r8
+
+    real(r8), parameter :: ent_a=0.15_r8 !paper default
+    real(r8), parameter :: greg_ce=0.6_r8 !paper default
+    real(r8), parameter :: nsj_a=2.4e-3_r8!paper default
 
 !parameter for prognostics mass flux calculation
     real(r8), parameter :: pmf_inc =3.e-10_r8, pmf_dec=2.e-10_r8
@@ -109,7 +117,7 @@ module jp_conv
     real(r8), parameter :: evapke = 0.2e-5_r8
 
 !    real(r8), parameter :: w_up_param = 1.5_r8
-    real(r8), parameter :: w_up_param = 0.8_r8
+    real(r8), parameter :: w_up_param = 3._r8
 
 
 
@@ -773,72 +781,74 @@ subroutine scp_conv_tend( &
 !#endif
 
 
-    !do j = 1, nplume
-        !w_up_init = j*0.2
-        !normassflx_up_tmp = normassflx_up
-        !trigdp = 1
-        !call cal_mse_up( &
-            !ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, mse, msesat, &
-            !kuplaunch, kuplcl, &
-            !ent_rate_bulk_up, det_rate_bulk_up, w_up_init, &
-            !mse_up, t_up, q_up, normassflx_up_tmp, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
-            !trigdp)
+    do j = 1, nplume
+#ifdef SCMDIAG 
+        write(*,"(a10,i3)") "plume:", j
+#endif
+        w_up_init = j*0.1
+        normassflx_up_tmp = normassflx_up
+        trigdp = 1
+        call cal_mse_up( &
+            ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, mse, msesat, &
+            kuplaunch, kuplcl, &
+            ent_rate_bulk_up, det_rate_bulk_up, w_up_init, &
+            mse_up, t_up, q_up, normassflx_up_tmp, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
+            trigdp)
 
-        !dse_up = cpair*t_up+gravit*zint
+        dse_up = cpair*t_up+gravit*zint
 
-        !mse_up_mid = 0._r8
-        !t_up_mid = 0._r8
-        !q_up_mid = 0._r8
-        !normassflx_up_mid = 0._r8
+        mse_up_mid = 0._r8
+        t_up_mid = 0._r8
+        q_up_mid = 0._r8
+        normassflx_up_mid = 0._r8
 
-        !do i=1, inncol
-            !do k=nlev, 1, -1
-                !if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
-                    !mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
-                    !t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
-                    !q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
-                !end if
-                !normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
-            !end do
-        !end do
-
-        !call subcol_netcdf_putclm( "ent_rate", nlev, ent_rate_bulk_up(1,:), j )
-
-        !call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), j )
-        !call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), j )
-        !call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), j )
-        !call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), j )
-        !call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), j )
-        !call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), j )
-
-        !call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
-        !call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), j )
-        !call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), j )
-        !call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), j )
-        !call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), j )
-        !call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), j )
-        !call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up(1,:), j )
-
-    !end do
-
-    w_up_init = w_up_param
-    call cal_mse_up( &
-        ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, mse, msesat, &
-        kuplaunch, kuplcl, &
-        ent_rate_bulk_up, det_rate_bulk_up, w_up_init, &
-        mse_up, t_up, q_up, normassflx_up, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
-        trigdp)
-    dse_up = cpair*t_up+gravit*zint
-    do i=1, inncol
-        do k=nlev, 1, -1
-            if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
-                mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
-                t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
-                q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
-            end if
-            normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
+        do i=1, inncol
+            do k=nlev, 1, -1
+                if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
+                    mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
+                    t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
+                    q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
+                end if
+                normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
+            end do
         end do
+
+        call subcol_netcdf_putclm( "ent_rate", nlev, ent_rate_bulk_up(1,:), j )
+
+        call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), j )
+        call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), j )
+        call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), j )
+        call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), j )
+        call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), j )
+        call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), j )
+
+        call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
+        call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), j )
+        call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), j )
+        call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), j )
+        call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), j )
+        call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), j )
+        call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up_tmp(1,:), j )
     end do
+
+    !w_up_init = w_up_param
+    !call cal_mse_up( &
+        !ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, mse, msesat, &
+        !kuplaunch, kuplcl, &
+        !ent_rate_bulk_up, det_rate_bulk_up, w_up_init, &
+        !mse_up, t_up, q_up, normassflx_up, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
+        !trigdp)
+    !dse_up = cpair*t_up+gravit*zint
+    !do i=1, inncol
+        !do k=nlev, 1, -1
+            !if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
+                !mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
+                !t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
+                !q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
+            !end if
+            !normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
+        !end do
+    !end do
 
 
 !!------------------------------------------------------
@@ -1523,23 +1533,23 @@ subroutine scp_conv_tend( &
     call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
 
 
+    !call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), 1 )
+    !call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), 1 )
+    !call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), 1 )
+    !call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), 1 )
+    !call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), 1 )
+    !call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), 1 )
 
-    call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), 1 )
-    call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), 1 )
+    !call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), 1 )
+    !call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up(1,:), 1 )
 
-    call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), 1 )
-    call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), 1 )
-    call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), 1 )
-    call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), 1 )
-    call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), 1 )
-    call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), 1 )
-    call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "ent_rate", nlev, ent_rate_bulk_up(1,:), 1 )
 
-    call subcol_netcdf_putclm( "ent_rate", nlev, ent_rate_bulk_up(1,:), 1 )
 
     !do i=1, inncol
         !if ( trigdp(i)<1 ) cycle
@@ -1618,10 +1628,11 @@ subroutine scp_conv_tend( &
 !   call stdout3d( z, w_up, buoy, ent_rate_bulk_up, normassflx_up )
 !   call stdout3d( z, dz, buoy)
 !   call stdout3d( z, q, q_up, mse_up, condrate_up)
-!    call stdout3dmix( z, zint, dp, pint )
-!    call stdout3dmix( ent_rate_bulk_up, mse_up, buoy_mid, normassflx_up )
+!    call stdout3dmix( dz, zint, dp, pint )
+!    call stdout3dmix( mse, mse_up, buoy_mid, buoy )
+    call stdout3dmix( ent_rate_bulk_up, buoy, dz, normassflx_up )
 !    call stdout3dmix( w_up_mid, mse_up, msesat, w_up )
-    call stdout3dmix( q, qint, t, tint )
+!    call stdout3dmix( q, qint, t, tint )
 
 !   call stdout3d( z, q_up, normassflx_up, qliq_up, condrate_up )
 !   call stdout3d( z, normassflx_up, q, qsat, q_up)
@@ -1989,6 +2000,7 @@ end subroutine triggercond
 
 
 subroutine cal_mse_up( &
+
 !input
         ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, mse, msesat, kuplaunch, kuplcl, &
         ent_rate_up, det_rate_up, w_up_init, &
@@ -2063,101 +2075,136 @@ subroutine cal_mse_up( &
 
     tvint = tint*(1+0.61*qint)
 
-    if ( ent_opt == 0 ) then
-    else if (ent_opt == 1) then
-        ent_rate_up = 0._r8
-        det_rate_up = 0._r8
-        do i=1, ncol
-            if ( trig(i) < 1 ) cycle
 
-            kuplcl_tmp = kuplcl(i)
+    ent_rate_up = 0._r8
+    det_rate_up = 0._r8
+    do i=1, ncol
+        if ( trig(i) < 1 ) cycle
 
-            w_up(i,kuplcl_tmp)  = w_up_init(i)
-            w2_up(i,kuplcl_tmp) = w_up_init(i)**2
-            w_up_mid(i,kuplcl_tmp) = w_up_init(i)
+        k = kuplcl(i)
 
-            t_up(i,kuplcl_tmp) = tint(i,kuplcl_tmp)
-            esat_tmp = 611.2*exp(5417*(1/273.16-1./t_up(i,kuplcl_tmp)))
-            qsat_tmp = 0.622*esat_tmp/pint(i,kuplcl_tmp)
-            q_up(i,kuplcl_tmp) = qsat_tmp
-            tv_up = t_up(i,kuplcl_tmp )*(1+0.61*q_up(i,kuplcl_tmp ) )
+        w_up(i,k)  = w_up_init(i)
+        w2_up(i,k) = w_up_init(i)**2
+        w_up_mid(i,k) = w_up_init(i)
 
-            mse_up(i,kuplcl_tmp) = cpair*t_up(i,kuplcl_tmp) &
-                +gravit*zint(i,kuplcl_tmp)+latvap*q_up(i,kuplcl_tmp)
+        t_up(i,k) = tint(i,k)
+        esat_tmp = 611.2*exp(5417*(1/273.16-1./t_up(i,k)))
+        qsat_tmp = 0.622*esat_tmp/pint(i,k)
+        q_up(i,k) = qsat_tmp
+        tv_up = t_up(i,k)*(1+0.61*q_up(i,k) )
 
-            !tv = 0.5*( t(i,kuplcl_tmp)*(1+0.61*q(i,kuplcl_tmp) ) &
-                      !+t(i,kuplcl_tmp-1)*(1+0.61*q(i,kuplcl_tmp-1) ) )
-            tv = tvint(i,kuplcl_tmp)
-            buoy(i,kuplcl_tmp ) = gravit*(tv_up-tv)/tv
-            if ( buoy(i,kuplcl_tmp)<0. ) then
-                trig(i) = -11
-                cycle
-            end if
-            ent_rate_up_l = greg_ce*greg_a*buoy(i,kuplcl_tmp)/w2_up(i,kuplcl_tmp )
+        mse_up(i,k) = cpair*t_up(i,k) &
+            +gravit*zint(i,k)+latvap*q_up(i,k)
 
-            do k=kuplcl_tmp-1, 1, -1
+        tv = tvint(i,k)
+        buoy(i,k) = gravit*(tv_up-tv)/tv
+        if ( buoy(i,k)<0. ) then
+            trig(i) = -10
+            cycle
+        end if
+
+        ent_rate_up_l = greg_ce*ent_a*buoy(i,k)/w2_up(i,k)
+!        ent_rate_up_l = nsj_a/w_up(i,k)
+
+        write(*,"(i3,10f15.6)") k, mse_up(i,k), ent_rate_up_l, buoy(i,k)
+        write(*,"(a3,10a15)") 'L', 'normassflx_up', 'normassflx_up' &
+            , 'mse_up(L)', 'mse_up(H)', 'mse', 'ent_rate_up_l', 'dz', 'buoy' &
+            , 'ent_rate_up'
+
+        do k=kuplcl(i)-1, 1, -1
+
+            tv = tint(i,k)*(1+0.61*qint(i,k) ) ! tv on level top
+
 !precalculate k+1/2
-                w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*greg_a*(1-greg_ce)*buoy(i,k+1)
-                if ( w2_up(i,k)<=0._r8 ) then
-                    trig(i) = -12
-                    exit
-                end if
-                w_up(i,k)  = sqrt( w2_up(i,k) )
-                normassflx_up(i,k) = normassflx_up(i,k+1)*exp(ent_rate_up_l*dz(i,k) )
-                mse_up(i,k) = (normassflx_up(i,k+1)*mse_up(i,k+1) &
-                    +dz(i,k)*ent_rate_up_l*normassflx_up(i,k+1)*mse(i,k) ) &
-                    /normassflx_up(i,k)
+            w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*ent_a*(1-greg_ce)*buoy(i,k+1)
+!            w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*( ent_a*buoy(i,k+1)-nsj_a*w_up(i,k) )
 
-                call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
-                tv_up = t_up(i,k)*( 1+0.61*q_up_test )
-                tv = tint(i,k)*(1+0.61*qint(i,k) ) ! tv on level top
-                buoy(i,k) = gravit*(tv_up-tv)/tv
-                if ( buoy(i,k)<=0 ) then
-                    ent_rate_up_h = 0._r8
-                else
-                    ent_rate_up_h = greg_ce*greg_a*buoy(i,k)/w2_up(i,k)
-                end if
+            if ( w2_up(i,k)<=0._r8 ) then
+                exit
+            end if
+            w2_up(i,k) = max( w_up_init(i)**2, w2_up(i,k) )
+            w_up(i,k)  = sqrt( w2_up(i,k) )
+            normassflx_up(i,k) = normassflx_up(i,k+1)*exp(ent_rate_up_l*dz(i,k) )
+
+            !mse_up(i,k) = (normassflx_up(i,k+1)*mse_up(i,k+1) &
+                !+dz(i,k)*ent_rate_up_l*normassflx_up(i,k+1)*mse(i,k) ) &
+                !/normassflx_up(i,k)
+            mse_up(i,k) = ( normassflx_up(i,k+1)*mse_up(i,k+1) &
+                +( normassflx_up(i,k)-normassflx_up(i,k+1) )*mse(i,k) ) &
+                /normassflx_up(i,k)
+
+            call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
+            q_up(i,k) = q_up_test
+            tv_up = t_up(i,k)*( 1+0.61*q_up(i,k) )
+            buoy(i,k) = gravit*(tv_up-tv)/tv
+
+            ent_rate_up_h = max(0._r8, greg_ce*ent_a*buoy(i,k)/w2_up(i,k) )
+!            ent_rate_up_h = nsj_a/w_up(i,k)
+
+            write(*,"(10f15.6)") ent_rate_up_h, buoy(i,k), w2_up(i,k)
+            write(*,"(i3,10f15.6)") k, normassflx_up(i,k+1), normassflx_up(i,k) &
+                , mse_up(i,k+1), mse_up(i,k), mse(i,k), ent_rate_up_l, dz(i,k), buoy(i,k) &
+                , ent_rate_up(i,k)
 !calculate mid
-                w_up_mid(i,k) = 0.5*( w_up(i,k)+w_up(i,k+1) )
-                buoy_mid(i,k) = 0.5*( buoy(i,k)+buoy(i,k+1) )
-                ent_rate_up(i,k) = 0.5*( ent_rate_up_l+ent_rate_up_h )
+            w_up_mid(i,k) = 0.5*( w_up(i,k)+w_up(i,k+1) )
+            buoy_mid(i,k) = 0.5*( buoy(i,k)+buoy(i,k+1) )
+            ent_rate_up(i,k) = 0.5*( ent_rate_up_l+ent_rate_up_h )
 !recalculate k+1/2
-                w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*greg_a*(1-greg_ce)*buoy_mid(i,k)
-                if ( w2_up(i,k)<=0._r8 ) then
-                    trig(i) = -13
-                    exit
-                end if
-                w_up(i,k)  = sqrt( w2_up(i,k) )
-                normassflx_up(i,k) = normassflx_up(i,k+1)*exp(ent_rate_up(i,k)*dz(i,k) )
 
-                mse_up(i,k) = ( normassflx_up(i,k+1)*mse_up(i,k+1) &
-                    +( normassflx_up(i,k)-normassflx_up(i,k+1) )*mse(i,k) ) &
-                    /normassflx_up(i,k)
-                !mse_up(i,k) = exp(-ent_rate_up(i,k)*dz(i,k))*mse_up(i,k+1) &
-                    !+ ( 1 - exp(-ent_rate_up(i,k)*dz(i,k)) )*mse(i,k)
+            w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*ent_a*(1-greg_ce)*buoy_mid(i,k)
+!            w2_up(i,k) = w2_up(i,k+1)+2*dz(i,k)*( ent_a*buoy_mid(i,k)-nsj_a*w_up_mid(i,k) )
 
-                call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
+            if ( w2_up(i,k)<=0._r8 ) then
+                exit
+            end if
+            w2_up(i,k) = max( w_up_init(i)**2, w2_up(i,k) )
+            w_up(i,k)  = sqrt( w2_up(i,k) )
+            normassflx_up(i,k) = normassflx_up(i,k+1)*exp(ent_rate_up(i,k)*dz(i,k) )
 
-                q_up(i,k) = q_up_test
+            mse_up(i,k) = ( normassflx_up(i,k+1)*mse_up(i,k+1) &
+                +( normassflx_up(i,k)-normassflx_up(i,k+1) )*mse(i,k) ) &
+                /normassflx_up(i,k)
 
-                tv_up = t_up(i,k)*( 1+0.61*q_up_test )
-                buoy(i,k) = gravit*(tv_up-tv)/tv
+            write(*,"(i3,10f15.6)") k, normassflx_up(i,k+1), normassflx_up(i,k) &
+                , mse_up(i,k+1), mse_up(i,k), mse(i,k), ent_rate_up_l, dz(i,k), buoy(i,k) &
+                , ent_rate_up(i,k)
 
-                if ( buoy(i,k)<=0 ) then
-                    ent_rate_up_l = 0._r8
-                else
-                    ent_rate_up_l = ent_rate_up_h
-                end if
+            call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
+            q_up(i,k) = q_up_test
+            tv_up = t_up(i,k)*( 1+0.61*q_up(i,k))
+            buoy(i,k) = gravit*(tv_up-tv)/tv
 
-            end do
+            ent_rate_up_l = max(0._r8, greg_ce*ent_a*buoy(i,k)/w2_up(i,k) )
+!            ent_rate_up_l = nsj_a/w_up(i,k)
 
-            !buoy(i,kupbase(i) ) = 0._r8
-            !ent_rate_up(i,kupbase(i)) = greg_ce*&
-                !greg_a*buoy(i,kupbase(i))/w2_up(i,kupbase(i))
-            !ent_rate_up(i,kupbase(i)-1) = ent_rate_up(i,kupbase(i))
+
+            !if ( buoy(i,k)<=0 ) then
+                !ent_rate_up_l = 0._r8
+            !else
+                !ent_rate_up_l = ent_rate_up_h
+            !end if
 
         end do
-    end if
+
+        mse_up(i,k) = 0._r8
+        t_up(i,k) = 0._r8
+        q_up(i,k) = 0._r8
+        w_up(i,k) = 0._r8
+        w2_up(i,k) = 0._r8
+        buoy(i,k) = 0._r8
+        ent_rate_up(i,k) = 0._r8
+        normassflx_up(i,k) = 0._r8
+
+!the last level is the top
+        write(*,*) 'end'
+        kuptop(i) = k+1
+!not penetrating more than one level
+        if ( k == kuplcl(i)-1 ) then
+            trig(i) = -11
+        end if
+
+    end do
+
 
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
@@ -2274,9 +2321,9 @@ subroutine cal_mse_up( &
             !!q_up(i,k) = qsat(i,k) + dq
 
             !if ( ent_opt == 1 ) then
-                !w2_up(i,k) = w2_up(i,k+1)+2*dz*greg_a*(1-greg_ce)*buoy(i,k)
+                !w2_up(i,k) = w2_up(i,k+1)+2*dz*ent_a*(1-greg_ce)*buoy(i,k)
                 !w_up(i,k)  = sqrt( w2_up(i,k) )
-                !ent_rate_up(i,k) = greg_ce*greg_a*buoy(i,k)/w2_up(i,k)
+                !ent_rate_up(i,k) = greg_ce*ent_a*buoy(i,k)/w2_up(i,k)
 !!                ent_rate_up(i,k) = 0._r8
             !end if
 
