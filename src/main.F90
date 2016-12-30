@@ -94,6 +94,7 @@ program test
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
    call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
+!   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
     call netcdf_check( nf90_inq_varid(inncid, "u", uvarid) )
@@ -219,6 +220,7 @@ program test
     call subcol_netcdf_addfld( "zint", "m/s", "mlevp")
     call subcol_netcdf_addfld( "pint", "m/s", "mlevp")
 
+    call subcol_netcdf_addfld( "w_up_init", "m/s", "slev")
     call subcol_netcdf_addfld( "w_up", "m/s", "mlevp")
     call subcol_netcdf_addfld( "buoy", "m/s2", "mlevp")
     call subcol_netcdf_addfld( "dse_up", "J/kg", "mlevp")
@@ -282,7 +284,7 @@ program test
    massflxbase = 0._r8
    lat = lat/180._r8*3.141592653_r8
 
-   nrun = 40
+   nrun = 1
 !   nrun = ntime
 !simulation begins
    do itime=1,nrun
@@ -347,7 +349,7 @@ program test
 
        do j = 1, nlat
            call scp_conv_tend( nlon &
-              ,1, nplume, dtime &
+              ,3, nplume, dtime &
               ,lat(j), ht(:,j), landfrac(:,j), lhflx(:,j) &
               ,psrf(:,j), p(:,j,:), dp(:,j,:), zsrf(:,j), z(:,j,:), dz(:,j,:) &
               ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
