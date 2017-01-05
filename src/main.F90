@@ -93,7 +93,8 @@ program test
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
-   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
+   call netcdf_check( nf90_open("inputscm_core_select.nc", NF90_NOWRITE, inncid) )
+!   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
@@ -206,8 +207,8 @@ program test
     call subcol_netcdf_addfld( "det_rate", "1", "mlev")
     call subcol_netcdf_addfld( "buoy_closure", "m/s2", "mlev")
 
-    call subcol_netcdf_addfld( "diffdse_up", "J/kg", "mlev")
-    call subcol_netcdf_addfld( "diffq_up", "kg/kg", "mlev")
+    call subcol_netcdf_addfld( "diffdse_up", "J/kg", "mlevp")
+    call subcol_netcdf_addfld( "diffq_up", "kg/kg", "mlevp")
     call subcol_netcdf_addfld( "qcheck", "kg/kg", "slev")
 
     call subcol_netcdf_addfld( "w_up_mid", "m/s", "mlev")
@@ -349,7 +350,7 @@ program test
 
        do j = 1, nlat
            call scp_conv_tend( nlon &
-              ,3, nplume, dtime &
+              ,2, nplume, dtime &
               ,lat(j), ht(:,j), landfrac(:,j), lhflx(:,j) &
               ,psrf(:,j), p(:,j,:), dp(:,j,:), zsrf(:,j), z(:,j,:), dz(:,j,:) &
               ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &

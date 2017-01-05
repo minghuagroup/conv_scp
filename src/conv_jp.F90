@@ -431,8 +431,8 @@ subroutine scp_conv_tend( &
 
 
 !for diag
-    real(r8), dimension(inncol, nlev) :: diffdse_up ! [1]  Delta DSE
-    real(r8), dimension(inncol, nlev) :: diffq_up   ! [1]  Delta Q
+    real(r8), dimension(inncol, nlevp) :: diffdse_up ! [1]  Delta DSE
+    real(r8), dimension(inncol, nlevp) :: diffq_up   ! [1]  Delta Q
     real(r8), dimension(inncol, nlev) :: condstend  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: condqtend  ! [K/s] Q tendency
     real(r8), dimension(inncol, nlev) :: transtend_up  ! [K/s] DSE tendency
@@ -504,8 +504,6 @@ subroutine scp_conv_tend( &
     bfls_dilucape = 0._r8
     dilucape_closure = 0._r8
 
-    diffdse_up = 0._r8
-    diffq_up = 0._r8
     condstend = 0._r8
     condqtend = 0._r8
     transtend_up = 0._r8
@@ -806,9 +804,10 @@ subroutine scp_conv_tend( &
     !end if
 !#endif
 
-    massflxbase = 0.001_r8
+    massflxbase = 0.01_r8
 
     do j = 1, nplume
+        kuplcl = 40
 #ifdef SCMDIAG 
         write(*,"(a10,i3)") "plume:", j
 #endif
@@ -861,23 +860,33 @@ subroutine scp_conv_tend( &
         call cal_tendtransport( &
             dz, kuplcl, kuptop, &
             rho, dseint, qint, dse_up, q_up, &
-            normassflx_up,  &
+            normassflx_up_tmp,  &
             transtend_up, tranqtend_up, &
             trigdp)
+
         condstend = latvap*condrate_up
         condqtend = -condrate_up
-
 
         do i=1, inncol
             condrate_up(i,:) = condrate_up(i,:)*massflxbase(i)
             rainrate_up(i,:) = rainrate_up(i,:)*massflxbase(i)
 
-            condstend(i,:) = condstend(i,:)*massflxbase(i)
-            condqtend(i,:) = condqtend(i,:)*massflxbase(i)
             transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
             tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
+
+            condstend(i,:) = condstend(i,:)*massflxbase(i)
+            condqtend(i,:) = condqtend(i,:)*massflxbase(i)
         end do
 
+        diffdse_up = 0._r8
+        diffq_up = 0._r8
+        do i=1, inncol
+            if ( trigdp(i)<1 ) cycle
+            do k=kuplcl(i)-1, kuptop(i), -1
+                diffdse_up(i,k) = normassflx_up_tmp(i,k)*( dse_up(i,k)-dseint(i,k) )
+                diffq_up(i,k)   = normassflx_up_tmp(i,k)*( q_up(i,k)-qint(i,k) )
+            end do
+        end do
 
         call subcol_netcdf_putclm( "ent_rate", nlev, ent_rate_bulk_up(1,:), j )
 
@@ -905,6 +914,11 @@ subroutine scp_conv_tend( &
         call subcol_netcdf_putclm( "qtendcond", nlev, condqtend(1,:), j )
         call subcol_netcdf_putclm( "stendtran", nlev, transtend_up(1,:), j )
         call subcol_netcdf_putclm( "qtendtran", nlev, tranqtend_up(1,:), j )
+
+        call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
+        call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
+
+        call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
     end do
 
     !w_up_init = w_up_param
@@ -1666,7 +1680,6 @@ subroutine scp_conv_tend( &
 
     !call subcol_netcdf_putclm( "prec", prec(1), 1 )
     !call subcol_netcdf_putclm( "pmassflxbase", massflxbase_p(1), 1 )
-    !call subcol_netcdf_putclm( "massflxbase", massflxbase(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_cape", massflxbase_cape(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_w", massflxbase_w(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_mconv", massflxbase_mconv(1), 1 )
