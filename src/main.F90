@@ -3,7 +3,7 @@ program test
 
     use netcdf
 !    use scp_conv
-    use jp_conv
+    use conv_jp
 #ifdef SCMDIAG
     use scmdiag, only: subcol_netcdf_init, subcol_netcdf_setdim, subcol_netcdf_end
     use scmdiag, only: subcol_netcdf_addfld
@@ -93,7 +93,9 @@ program test
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
-   call netcdf_check( nf90_open("inputscm_core_select.nc", NF90_NOWRITE, inncid) )
+    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
+!    call netcdf_check( nf90_open("inputscm_core_select_new.nc", NF90_NOWRITE, inncid) )
+!   call netcdf_check( nf90_open("inputscm_core_all.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
@@ -220,6 +222,9 @@ program test
 
     call subcol_netcdf_addfld( "zint", "m/s", "mlevp")
     call subcol_netcdf_addfld( "pint", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "qint", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "qsatint", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "tint", "K", "mlevp")
 
     call subcol_netcdf_addfld( "w_up_init", "m/s", "slev")
     call subcol_netcdf_addfld( "w_up", "m/s", "mlevp")
@@ -280,7 +285,11 @@ program test
     call subcol_netcdf_addfld( "trigdp" , "1", "slev")
 #endif
 
-   dtime = (time(2)-time(1))*24*3600
+    if ( ntime == 1 ) then
+        dtime = 0.25*24*3600
+    else
+        dtime = (time(2)-time(1))*24*3600
+    end if
 
    massflxbase = 0._r8
    lat = lat/180._r8*3.141592653_r8

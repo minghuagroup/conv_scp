@@ -3,7 +3,7 @@ FC  = gfortran
 #FC  = ifort
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -g -fbacktrace -fcheck=all -DSCMDIAG 
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -fcheck=all -fbacktrace
-FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG
+FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG -fbounds-check
 
 VPATH = ../src
 
