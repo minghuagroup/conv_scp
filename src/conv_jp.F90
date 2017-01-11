@@ -99,9 +99,9 @@ module conv_jp
 
     real(r8), parameter :: greg_z0=1.e4_r8 !paper default
 
-    real(r8), parameter :: greg_ent_a=0.015_r8
+    real(r8), parameter :: greg_ent_a=0.15_r8
     real(r8), parameter :: greg_ce=0.6_r8   
-    !real(r8), parameter :: nsj_ent_a=0.9_r8 
+    !real(r8), parameter :: nsj_ent_a=0.09_r8 
     !real(r8), parameter :: nsj_coef=2.4e-3_r8
 
 !    real(r8), parameter :: greg_ent_a=0.15_r8 !paper default
@@ -832,7 +832,7 @@ subroutine scp_conv_tend( &
         write(*,"(a10,i3)") "plume:", j
 #endif
         if ( ent_opt == 2 ) then
-            w_up_init = j*0.1
+            w_up_init = j*0.3
         else if ( ent_opt == 3 ) then
             w_up_init = j*0.2
         end if
@@ -951,6 +951,11 @@ subroutine scp_conv_tend( &
         call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), j )
         call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), j )
         call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up_tmp(1,:), j )
+
+
+        call subcol_netcdf_putclm( "mse_dn", nlevp, mse_dn(1,:), j )
+        call subcol_netcdf_putclm( "normassflx_dn", nlevp, normassflx_dn_tmp(1,:), j )
+
 
         call subcol_netcdf_putclm( "dilucape", 1, dilucape(1), j )
         call subcol_netcdf_putclm( "condrate", nlev, condrate_up(1,:), j )

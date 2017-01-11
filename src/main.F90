@@ -236,6 +236,9 @@ program test
     call subcol_netcdf_addfld( "normassflx_up", "1", "mlevp")
     call subcol_netcdf_addfld( "mse_up_plume", "J/kg", "mlevp")
 
+    call subcol_netcdf_addfld( "mse_dn", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "normassflx_dn", "1", "mlevp")
+
     call subcol_netcdf_addfld( "camstend", "K/s", "mlev")
     call subcol_netcdf_addfld( "camqtend", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "camstendcond", "K/s", "mlev")
