@@ -254,16 +254,16 @@ program test
     call subcol_netcdf_addfld( "qtendcond", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "stendtran", "K/s", "mlev")
     call subcol_netcdf_addfld( "qtendtran", "kg/kg/s", "mlev")
-    call subcol_netcdf_addfld( "compstend", "K/s", "mlev")
-    call subcol_netcdf_addfld( "compqtend", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendcomp", "K/s", "mlev")
+    call subcol_netcdf_addfld( "qtendcomp", "kg/kg/s", "mlev")
 
     call subcol_netcdf_addfld( "tmp1stend", "K/s", "mlev")
     call subcol_netcdf_addfld( "tmp1qtend", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "tmp2stend", "K/s", "mlev")
     call subcol_netcdf_addfld( "tmp2qtend", "kg/kg/s", "mlev")
 
-    call subcol_netcdf_addfld( "evapstend", "K/s", "mlev")
-    call subcol_netcdf_addfld( "evapqtend", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendevap", "K/s", "mlev")
+    call subcol_netcdf_addfld( "qtendevap", "kg/kg/s", "mlev")
 
     call subcol_netcdf_addfld( "qliq", "kg/kg", "mlev")
     call subcol_netcdf_addfld( "rainrate", "kg/kg/s", "mlev")

@@ -61,7 +61,7 @@ module conv_jp
     integer :: ncol=0, nlev=0, nlevp=0
 
 !physical parameter
-    real(r8), parameter :: gravit = 9.80616    ! gravitational acceleration (m/s**2)
+    real(r8), parameter :: gravit = 9.80616     ! gravitational acceleration (m/s**2)
     real(r8), parameter :: pi     = 3.141592653 ! Pi
     real(r8), parameter :: cpair  = 1004.64     ! specific heat of dry air (J/K/kg)
     real(r8), parameter :: cpliq  = 4188.       ! specific heat of fresh h2o (J/K/kg)
@@ -238,17 +238,17 @@ subroutine scp_conv_tend( &
 !in/output
         massflxbase_p, &
 !output
-        stend, qtend, qliqtend, prec, qliq, rainrate, &
-        compstend, compqtend, &
+        stend, qtend, qliqtend, prec, qliq, rainrate_out, &
+        stendcomp, qtendcomp, &
 !diagnostics
         dilucape, bfls_dilucape, &
         outtmp2d, outtmp3d, &
         outmb, outmse, outmsesat, outmseup, &
         outstend, outqtend, &
-        outcondstend, outcondqtend, &
-        outtranupstend, outtranupqtend, &
-        outtrandnstend, outtrandnqtend, &
-        outevapstend, outevapqtend  )
+        outstendcond, outqtendcond, &
+        outstendtranup, outqtendtranup, &
+        outstendtrandn, outqtendtrandn, &
+        outstendevap, outqtendevap  )
 !------------------------------------------------------
 !Calculate convective tendency
 !------------------------------------------------------
@@ -275,9 +275,9 @@ subroutine scp_conv_tend( &
     real(r8), dimension(inncol), intent(out) :: prec !output convective precip[m/s]
     real(r8), dimension(inncol, nlev), intent(out) :: stend, qtend, qliqtend
     ! [K/s] ; [kg/kg/s] output tendencies calculated by adding (condensate rate+transport)
-    real(r8), dimension(inncol, nlev), intent(out) :: qliq, rainrate ! [K/s] ; [kg/kg/s]
+    real(r8), dimension(inncol, nlev), intent(out) :: qliq, rainrate_out ! [K/s] ; [kg/kg/s]
 
-    real(r8), dimension(inncol, nlev), intent(out) :: compstend, compqtend
+    real(r8), dimension(inncol, nlev), intent(out) :: stendcomp, qtendcomp
     ! [K/s] ; [kg/kg/s] tendencies but calculated using the compensating way
     ! should be same as stend and qtend
 
@@ -287,16 +287,18 @@ subroutine scp_conv_tend( &
     real(r8), dimension(inncol, nlev), intent(out) :: outmse, outmsesat, outmseup
 
     real(r8), dimension(inncol, nlev), intent(out) :: outstend, outqtend
-    real(r8), dimension(inncol, nlev), intent(out) :: outcondstend, outcondqtend
-    real(r8), dimension(inncol, nlev), intent(out) :: outtranupstend, outtranupqtend
-    real(r8), dimension(inncol, nlev), intent(out) :: outtrandnstend, outtrandnqtend
-    real(r8), dimension(inncol, nlev), intent(out) :: outevapstend, outevapqtend
+    real(r8), dimension(inncol, nlev), intent(out) :: outstendcond, outqtendcond
+    real(r8), dimension(inncol, nlev), intent(out) :: outstendtranup, outqtendtranup
+    real(r8), dimension(inncol, nlev), intent(out) :: outstendtrandn, outqtendtrandn
+    real(r8), dimension(inncol, nlev), intent(out) :: outstendevap, outqtendevap
 
 
 !local
     integer i, j, k, begk, endk
     real(r8), dimension(inncol, nlev) :: dse !environment [J/kg]
     real(r8), dimension(inncol, nlev) :: mse, msesat ! [J/kg] ; [J/kg]
+
+    real(r8), dimension(inncol, nlev) :: twet !environment [J/kg]
 
     real(r8), dimension(inncol, nlev) :: esat, qsat ! [Pa] ; [kg/kg]
     real(r8), dimension(inncol, nlev) :: rh  ! [1] relative humidity
@@ -349,8 +351,8 @@ subroutine scp_conv_tend( &
     real(r8), dimension(inncol, nlev) :: buoy_mid ! [m/s-2] bulk in-cloud buoyancy
     real(r8), dimension(inncol, nlev) :: normassflx_up_mid ! [1]  bulk normalized updraft mass flux
 
-    real(r8), dimension(inncol, nlev) :: condrate_up   ! [kg/kg]  condensation rate.
-    real(r8), dimension(inncol, nlev) :: rainrate_up   ! [1]  bulk precipitation production
+    real(r8), dimension(inncol, nlev) :: condrate   ! [kg/kg]  condensation rate.
+    real(r8), dimension(inncol, nlev) :: rainrate   ! [1]  bulk precipitation production
 
 
     real(r8), dimension(inncol, nlev)  :: normassflx_dn ! [1]  bulk normalized updraft mass flux
@@ -445,14 +447,12 @@ subroutine scp_conv_tend( &
 !for diag
     real(r8), dimension(inncol, nlevp) :: diffdse_up ! [1]  Delta DSE
     real(r8), dimension(inncol, nlevp) :: diffq_up   ! [1]  Delta Q
-    real(r8), dimension(inncol, nlev) :: condstend  ! [K/s] DSE tendency
-    real(r8), dimension(inncol, nlev) :: condqtend  ! [K/s] Q tendency
+    real(r8), dimension(inncol, nlev) :: stendcond  ! [K/s] DSE tendency
+    real(r8), dimension(inncol, nlev) :: qtendcond  ! [K/s] Q tendency
     real(r8), dimension(inncol, nlev) :: transtend_up  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: tranqtend_up  ! [K/s] Q tendency
-    real(r8), dimension(inncol, nlev) :: evapstend  ! [K/s] DSE tendency
-    real(r8), dimension(inncol, nlev) :: evapqtend  ! [K/s] Q tendency
-
-    real(r8), dimension(inncol, nlev) :: condrate  ! [K/s] Total condensation rate
+    real(r8), dimension(inncol, nlev) :: stendevap  ! [K/s] DSE tendency
+    real(r8), dimension(inncol, nlev) :: qtendevap  ! [K/s] Q tendency
 
     real(r8), dimension(inncol, nlev) :: tmp1stend, tmp1qtend
     real(r8), dimension(inncol, nlev) :: tmp2stend, tmp2qtend
@@ -474,7 +474,7 @@ subroutine scp_conv_tend( &
     qtend = 0._r8
     qliqtend = 0._r8
     qliq  = 0._r8
-    rainrate = 0._r8
+    rainrate_out = 0._r8
 
     !outmb = 0._r8
     !outtmp2d = 0._r8
@@ -484,14 +484,14 @@ subroutine scp_conv_tend( &
     !outmseup = 0._r8
     !outstend = 0._r8
     !outqtend = 0._r8
-    !outcondstend = 0._r8
-    !outcondqtend = 0._r8
-    !outtranupstend = 0._r8
-    !outtranupqtend = 0._r8
-    !outtrandnstend = 0._r8
-    !outtrandnqtend = 0._r8
-    !outevapstend = 0._r8
-    !outevapqtend = 0._r8
+    !outstendcond = 0._r8
+    !outqtendcond = 0._r8
+    !outstendtranup = 0._r8
+    !outqtendtranup = 0._r8
+    !outstendtrandn = 0._r8
+    !outqtendtrandn = 0._r8
+    !outstendevap = 0._r8
+    !outqtendevap = 0._r8
 
 
 !zero local variables
@@ -500,8 +500,7 @@ subroutine scp_conv_tend( &
 
     qliq_up = 0._r8
     condrate = 0._r8
-    rainrate_up = 0._r8
-    condrate_up = 0._r8
+    rainrate = 0._r8
 
     evaprate = 0._r8
     evaprateflx = 0._r8
@@ -516,14 +515,14 @@ subroutine scp_conv_tend( &
     bfls_dilucape = 0._r8
     dilucape_closure = 0._r8
 
-    condstend = 0._r8
-    condqtend = 0._r8
+    stendcond = 0._r8
+    qtendcond = 0._r8
     transtend_up = 0._r8
     tranqtend_up = 0._r8
-    evapstend = 0._r8
-    evapqtend = 0._r8
-    compstend  = 0._r8
-    compqtend  = 0._r8
+    stendevap = 0._r8
+    qtendevap = 0._r8
+    stendcomp  = 0._r8
+    qtendcomp  = 0._r8
 
     knbtop = nlev
 
@@ -688,6 +687,10 @@ subroutine scp_conv_tend( &
     rho = p/t/rair
     w = -omega/rho/gravit
 
+    twet = (t-273.16)*atan( 0.151977*(rh*100.+8.313659)**0.5 ) + atan(t-273.16+rh*100.) &
+        - atan(rh*100.-1.676331) + 0.00391838*((rh*100.)**1.5)*atan(0.023101*rh*100.) - 4.686035 &
+        + 273.16
+
 !estimate z at the interface from z and dz
     zint(:,nlevp) = ht(:)
     do k=nlev,1,-1
@@ -717,6 +720,7 @@ subroutine scp_conv_tend( &
     esatint = 611.2*exp(5417*(1/273.16-1/tint))
     qsatint = 0.622*esatint/pint
     msesatint = cpair*tint+gravit*zint+latvap*qsatint
+
 
 !------------------------------------------------------
 !Different methods to calculate entrainment rate
@@ -881,16 +885,24 @@ subroutine scp_conv_tend( &
             rho, q, qsat, q_up, &
             ent_rate_bulk_up, det_rate_bulk_up, &
             normassflx_up_tmp, landfrac, &
-            qliq_up, condrate_up, rainrate_up, &
+            qliq_up, condrate, rainrate, &
             trigdp)
 
-        call cal_mse_dn( &
-            ent_opt, z, zint, dz, p, pint, rho, rh, t, tint, q, qint, qsat, &
-            mse, mseint, msesat, msesatint, rainrate_up, &
-            kuplaunch, kuplcl, kuptop, &
-            ent_rate_bulk_dn, det_rate_bulk_dn, &
-            mse_dn, dse_dn, t_dn, q_dn, normassflx_dn_tmp, &
+        call cal_evap( &
+            ent_opt, z, zint, dz, p, pint, rho, rh, t, tint, twet, q, qint, qsat, &
+            mse, mseint, msesat, msesatint, rainrate, &
+            kuplcl, kuptop, &
+            evaprate, netprec, &
             trigdp)
+        netprec = netprec/rhofw
+
+        !call cal_mse_dn( &
+            !ent_opt, z, zint, dz, p, pint, rho, rh, t, tint, q, qint, qsat, &
+            !mse, mseint, msesat, msesatint, rainrate, &
+            !kuplaunch, kuplcl, kuptop, &
+            !ent_rate_bulk_dn, det_rate_bulk_dn, &
+            !mse_dn, dse_dn, t_dn, q_dn, normassflx_dn_tmp, &
+            !trigdp)
 
         call cal_tendtransport( &
             dz, kuplcl, kuptop, &
@@ -899,22 +911,29 @@ subroutine scp_conv_tend( &
             transtend_up, tranqtend_up, &
             trigdp)
 
-        condstend = latvap*condrate_up
-        condqtend = -condrate_up
+        stendcond =  latvap*condrate
+        qtendcond = -condrate
+        stendevap = -latvap*evaprate
+        qtendevap =  evaprate
 
         massflxbase = 0.01_r8
         do i=1, inncol
-            condrate_up(i,:) = condrate_up(i,:)*massflxbase(i)
-            rainrate_up(i,:) = rainrate_up(i,:)*massflxbase(i)
+            condrate(i,:) = condrate(i,:)*massflxbase(i)
+            rainrate(i,:) = rainrate(i,:)*massflxbase(i)
 
             transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
             tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
 
-            condstend(i,:) = condstend(i,:)*massflxbase(i)
-            condqtend(i,:) = condqtend(i,:)*massflxbase(i)
+            stendcond(i,:) = stendcond(i,:)*massflxbase(i)
+            qtendcond(i,:) = qtendcond(i,:)*massflxbase(i)
 
-            stend(i,:) = condstend(i,:)+transtend_up(i,:)
-            qtend(i,:) = condqtend(i,:)+tranqtend_up(i,:)
+            stendevap(i,:) = stendevap(i,:)*massflxbase(i)
+            qtendevap(i,:) = qtendevap(i,:)*massflxbase(i)
+
+            stend(i,:) = stendcond(i,:)+stendevap(i,:)+transtend_up(i,:)
+            qtend(i,:) = qtendcond(i,:)+qtendevap(i,:)+tranqtend_up(i,:)
+
+            netprec(i) = netprec(i)*massflxbase(i)
         end do
 
         diffdse_up = 0._r8
@@ -958,13 +977,16 @@ subroutine scp_conv_tend( &
 
 
         call subcol_netcdf_putclm( "dilucape", 1, dilucape(1), j )
-        call subcol_netcdf_putclm( "condrate", nlev, condrate_up(1,:), j )
-        call subcol_netcdf_putclm( "rainrate", nlev, rainrate_up(1,:), j )
+        call subcol_netcdf_putclm( "condrate", nlev, condrate(1,:), j )
+        call subcol_netcdf_putclm( "rainrate", nlev, rainrate(1,:), j )
+        call subcol_netcdf_putclm( "evaprate", nlev, evaprate(1,:), j )
 
         call subcol_netcdf_putclm( "stend", nlev, stend(1,:), j )
         call subcol_netcdf_putclm( "qtend", nlev, qtend(1,:), j )
-        call subcol_netcdf_putclm( "stendcond", nlev, condstend(1,:), j )
-        call subcol_netcdf_putclm( "qtendcond", nlev, condqtend(1,:), j )
+        call subcol_netcdf_putclm( "stendcond", nlev, stendcond(1,:), j )
+        call subcol_netcdf_putclm( "qtendcond", nlev, qtendcond(1,:), j )
+        call subcol_netcdf_putclm( "stendevap", nlev, stendevap(1,:), j )
+        call subcol_netcdf_putclm( "qtendevap", nlev, qtendevap(1,:), j )
         call subcol_netcdf_putclm( "stendtran", nlev, transtend_up(1,:), j )
         call subcol_netcdf_putclm( "qtendtran", nlev, tranqtend_up(1,:), j )
 
@@ -1042,7 +1064,7 @@ subroutine scp_conv_tend( &
         !rho, q, qsat, q_up, &
         !ent_rate_bulk_subcld_up, ent_rate_bulk_up, det_rate_bulk_up, &
         !normassflx_up, landfrac, &
-        !qliq_up, condrate_up, rainrate_up, &
+        !qliq_up, condrate, rainrate, &
         !trigdp)
 
     !dse_up = (cpair*t_up+gravit*z)*convallmask_up
@@ -1056,10 +1078,10 @@ subroutine scp_conv_tend( &
         !normassflx_up,  &
         !transtend_up, tranqtend_up, &
         !trigdp)
-    !!condstend = latvap*condrate_up/rho
-    !!condqtend = -condrate_up/rho
-    !condstend = latvap*condrate_up
-    !condqtend = -condrate_up
+    !!stendcond = latvap*condrate/rho
+    !!qtendcond = -condrate/rho
+    !stendcond = latvap*condrate
+    !qtendcond = -condrate
 
 
 
@@ -1094,8 +1116,8 @@ subroutine scp_conv_tend( &
 
     !dilucape_closure = 0._r8
 
-    !q_closure = q + adjdt*( condqtend+tranqtend_up )
-    !t_closure = t + adjdt*( condstend+transtend_up )/cpair
+    !q_closure = q + adjdt*( qtendcond+tranqtend_up )
+    !t_closure = t + adjdt*( stendcond+transtend_up )/cpair
     !tv_closure = t_closure*( 1+0.61*q_closure )
 
 !!------------------------------------------------------
@@ -1396,22 +1418,21 @@ subroutine scp_conv_tend( &
 !!------------------------------------------------------
     !do i=1, inncol
 !! Apply Base Mass Flux to Normalized Tendencies
-        !condrate_up(i,:) = condrate_up(i,:)*massflxbase(i)
-        !rainrate_up(i,:) = rainrate_up(i,:)*massflxbase(i)
+        !condrate(i,:) = condrate(i,:)*massflxbase(i)
+        !rainrate(i,:) = rainrate(i,:)*massflxbase(i)
 
-        !condstend(i,:) = condstend(i,:)*massflxbase(i)
-        !condqtend(i,:) = condqtend(i,:)*massflxbase(i)
+        !stendcond(i,:) = stendcond(i,:)*massflxbase(i)
+        !qtendcond(i,:) = qtendcond(i,:)*massflxbase(i)
         !transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
         !tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
 
         !if ( trigdp(i)<1 ) cycle
 
 !! Final Tendencies
-        !stend(i,:) = condstend(i,:)+transtend_up(i,:)
-        !qtend(i,:) = condqtend(i,:)+tranqtend_up(i,:)
+        !stend(i,:) = stendcond(i,:)+transtend_up(i,:)
+        !qtend(i,:) = qtendcond(i,:)+tranqtend_up(i,:)
         !qliq(i,:)  = qliq_up(i,:)
-        !rainrate(i,:) = rainrate_up(i,:)
-        !condrate(i,:) = condrate_up(i,:)
+        !rainrate_out(i,:) = rainrate(i,:)
 
 !! Accumulate surface precipitation
         !do k=kuplcl(i), kuptop(i), -1
@@ -1446,8 +1467,8 @@ subroutine scp_conv_tend( &
 !!            evaplimit = min(evaplimit, (prec(i) - evaprateflx(i))/(rho(i,k)*dz(i,k))  )
             !evaprate(i,k) = min( evaplimit, evaprate(i,k) )
 
-            !evapstend(i,k) = -evaprate(i,k)*latvap
-            !evapqtend(i,k) = evaprate(i,k)
+            !stendevap(i,k) = -evaprate(i,k)*latvap
+            !qtendevap(i,k) = evaprate(i,k)
 
             !netprec(i) = netprec(i) + rho(i,k)*( rainrate(i,k)-evaprate(i,k) )*dz(i,k)
 
@@ -1461,11 +1482,11 @@ subroutine scp_conv_tend( &
 
         !end do
 
-        !evapstend = 0._r8
-        !evapqtend = 0._r8
+        !stendevap = 0._r8
+        !qtendevap = 0._r8
 
-        !stend(i,:) = stend(i,:)+evapstend(i,:)
-        !qtend(i,:) = qtend(i,:)+evapqtend(i,:)
+        !stend(i,:) = stend(i,:)+stendevap(i,:)
+        !qtend(i,:) = qtend(i,:)+qtendevap(i,:)
 
     !end do
     !netprec = netprec/rhofw
@@ -1484,8 +1505,8 @@ subroutine scp_conv_tend( &
 !! a gradient term (he called it compensating warming and drying)
 !! + detrainment related terms + evaporation terms.
 !! Ideally, we should have
-!! stend = condstend+transtend = compstend
-!! qtend = condqtend+tranqtend = compqtend
+!! stend = stendcond+transtend = stendcomp
+!! qtend = qtendcond+tranqtend = qtendcomp
 !! (outputs are very similar)
 !!------------------------------------------------------
     !tmp1stend = 0._r8
@@ -1498,11 +1519,11 @@ subroutine scp_conv_tend( &
 !!        do k=kuplcl(i)-1, kuptop(i), -1
         !do k=kuplaunch(i)-1, kuptop(i), -1
             !diffz = z(i,k)-z(i,k+1)
-            !compstend(i,k) = &
+            !stendcomp(i,k) = &
                 !normassflx_up(i,k)*( dse(i,k)-dse(i,k+1) )/diffz/rho(i,k) &
                !+normassflx_up(i,k)*det_rate_bulk_up(i,k)&
                 !*( dse_up(i,k)-dse(i,k) )/rho(i,k)
-            !compqtend(i,k) = &
+            !qtendcomp(i,k) = &
                 !normassflx_up(i,k)*( q(i,k)-q(i,k+1) )/diffz/rho(i,k) &
                !+normassflx_up(i,k)*det_rate_bulk_up(i,k)&
                 !*( q_up(i,k)-q(i,k) )/rho(i,k)
@@ -1520,8 +1541,8 @@ subroutine scp_conv_tend( &
                 !*( q_up(i,k)-q(i,k) )/rho(i,k)
 
         !end do
-        !compstend(i,:) = compstend(i,:)*massflxbase(i)
-        !compqtend(i,:) = compqtend(i,:)*massflxbase(i)
+        !stendcomp(i,:) = stendcomp(i,:)*massflxbase(i)
+        !qtendcomp(i,:) = qtendcomp(i,:)*massflxbase(i)
 
 !!for diagnostics
         !tmp1stend(i,:) = tmp1stend(i,:)*massflxbase(i)
@@ -1558,15 +1579,15 @@ subroutine scp_conv_tend( &
             !massflxbase(i) = minqcheckf*massflxbase(i)
             !stend(i,:) = minqcheckf*stend(i,:)
             !qtend(i,:) = minqcheckf*qtend(i,:)
-            !condstend(i,:) = minqcheckf*condstend(i,:)
-            !condqtend(i,:) = minqcheckf*condqtend(i,:)
+            !stendcond(i,:) = minqcheckf*stendcond(i,:)
+            !qtendcond(i,:) = minqcheckf*qtendcond(i,:)
             !transtend_up(i,:) = minqcheckf*transtend_up(i,:)
             !tranqtend_up(i,:) = minqcheckf*tranqtend_up(i,:)
-            !evapstend(i,:) = minqcheckf*evapstend(i,:)
-            !evapqtend(i,:) = minqcheckf*evapqtend(i,:)
+            !stendevap(i,:) = minqcheckf*stendevap(i,:)
+            !qtendevap(i,:) = minqcheckf*qtendevap(i,:)
 
-            !compstend(i,:) = minqcheckf*compstend(i,:)
-            !compqtend(i,:) = minqcheckf*compqtend(i,:)
+            !stendcomp(i,:) = minqcheckf*stendcomp(i,:)
+            !qtendcomp(i,:) = minqcheckf*qtendcomp(i,:)
 
             !tmp1stend(i,:) = minqcheckf*tmp1stend(i,:)
             !tmp1qtend(i,:) = minqcheckf*tmp1qtend(i,:)
@@ -1586,9 +1607,9 @@ subroutine scp_conv_tend( &
 !!!                qtend(i,k) = (min_q-q(i,k))/dtime
                 !!qcheckf = (min_q-q(i,k))/dtime/qtend(i,k)
 !!!                stend(i,k) = qcheckf*stend(i,k)
-!!!                compstend(i,k) = qcheckf*compstend(i,k)
+!!!                stendcomp(i,k) = qcheckf*stendcomp(i,k)
                 !!qtend(i,k) = qcheckf*qtend(i,k)
-                !!compqtend(i,k) = qcheckf*compqtend(i,k)
+                !!qtendcomp(i,k) = qcheckf*qtendcomp(i,k)
 
                 !!!if( (qcheckf<minqcheckf) .and. (qcheckf>0._r8) ) then
                     !!!minqcheckf = qcheckf
@@ -1629,14 +1650,14 @@ subroutine scp_conv_tend( &
 
     outstend = stend
     outqtend = qtend
-    outcondstend = condstend
-    outcondqtend = condqtend
-    outtranupstend = transtend_up
-    outtranupqtend = tranqtend_up
-    outtrandnstend = 0._r8
-    outtrandnqtend = 0._r8
-    outevapstend = evapstend
-    outevapqtend = evapqtend
+    outstendcond = stendcond
+    outqtendcond = qtendcond
+    outstendtranup = transtend_up
+    outqtendtranup = tranqtend_up
+    outstendtrandn = 0._r8
+    outqtendtrandn = 0._r8
+    outstendevap = stendevap
+    outqtendevap = qtendevap
 
 
 #ifdef SCMDIAG 
@@ -1715,20 +1736,20 @@ subroutine scp_conv_tend( &
 
     !call subcol_netcdf_putclm( "stend", stend(1,:), 1 )
     !call subcol_netcdf_putclm( "qtend", qtend(1,:), 1 )
-    !call subcol_netcdf_putclm( "stendcond", condstend(1,:), 1 )
-    !call subcol_netcdf_putclm( "qtendcond", condqtend(1,:), 1 )
+    !call subcol_netcdf_putclm( "stendcond", stendcond(1,:), 1 )
+    !call subcol_netcdf_putclm( "qtendcond", qtendcond(1,:), 1 )
     !call subcol_netcdf_putclm( "stendtran", transtend_up(1,:), 1 )
     !call subcol_netcdf_putclm( "qtendtran", tranqtend_up(1,:), 1 )
-    !call subcol_netcdf_putclm( "compstend", compstend(1,:), 1 )
-    !call subcol_netcdf_putclm( "compqtend", compqtend(1,:), 1 )
+    !call subcol_netcdf_putclm( "stendcomp", stendcomp(1,:), 1 )
+    !call subcol_netcdf_putclm( "qtendcomp", qtendcomp(1,:), 1 )
 
     !call subcol_netcdf_putclm( "tmp1stend", tmp1stend(1,:), 1 )
     !call subcol_netcdf_putclm( "tmp1qtend", tmp1qtend(1,:), 1 )
     !call subcol_netcdf_putclm( "tmp2stend", tmp2stend(1,:), 1 )
     !call subcol_netcdf_putclm( "tmp2qtend", tmp2qtend(1,:), 1 )
 
-    !call subcol_netcdf_putclm( "evapstend", evapstend(1,:), 1 )
-    !call subcol_netcdf_putclm( "evapqtend", evapqtend(1,:), 1 )
+    !call subcol_netcdf_putclm( "stendevap", stendevap(1,:), 1 )
+    !call subcol_netcdf_putclm( "qtendevap", qtendevap(1,:), 1 )
 
     !call subcol_netcdf_putclm( "qliq", qliq(1,:), 1 )
     !call subcol_netcdf_putclm( "rainrate", rainrate(1,:), 1 )
@@ -1760,17 +1781,17 @@ subroutine scp_conv_tend( &
 !   call stdout3d( z, mse, msesat, mse_up, w)
 
    !call stdout3d( z, ent_rate_bulk_up, &
-      !det_rate_bulk_up, q_up, condrate_up)
+      !det_rate_bulk_up, q_up, condrate)
    !call stdout3d( z, ent_rate_bulk_up, &
       !det_rate_bulk_up, normassflx_up)
 
-!   call stdout3d( z, normassflx_up, q_up, condrate_up)
+!   call stdout3d( z, normassflx_up, q_up, condrate)
 !   call stdout3d( z, normassflx_up, t_up, dse, dse_up)
 !   call stdout3d( z, normassflx_up, t, t_up, tv_closure)
 
 !   call stdout3d( z, w_up, buoy, ent_rate_bulk_up, normassflx_up )
 !   call stdout3d( z, dz, buoy)
-!   call stdout3d( z, q, q_up, mse_up, condrate_up)
+!   call stdout3d( z, q, q_up, mse_up, condrate)
 !    call stdout3dmix( dz, zint, dp, pint )
 !    call stdout3dmix( mse, mse_up, buoy_mid, buoy )
 !    call stdout3dmix( ent_rate_bulk_up, buoy, dz, normassflx_up )
@@ -1778,16 +1799,16 @@ subroutine scp_conv_tend( &
 !    call stdout3dmix( w_up_mid, mse_up, msesat, w_up )
 !    call stdout3dmix( q, qint, t, tint )
 
-!   call stdout3d( z, q_up, normassflx_up, qliq_up, condrate_up )
+!   call stdout3d( z, q_up, normassflx_up, qliq_up, condrate )
 !   call stdout3d( z, normassflx_up, q, qsat, q_up)
 !   call stdout3d( z, normassflx_up, mse, msesat, mse_up)
 !   call stdout3d( z, dse, dse_up, normassflx_up, stend )
 !   call stdout3d( z, q, q_up, normassflx_up, qtend )
 !   call stdout3d( z, normassflx_up, q_up, qtend, qcheck)
 !   call stdout3d( z, normassflx_up, q_up, q)
-!   call stdout3d( z, normassflx_up, q_up, qsat, condrate_up)
-!   call stdout3d( z, condrate_up, rainrate, evaprate, qliqtend )
-!   call stdout3d( z, stend, compstend, qtend, compqtend, normassflx_up)
+!   call stdout3d( z, normassflx_up, q_up, qsat, condrate)
+!   call stdout3d( z, condrate, rainrate, evaprate, qliqtend )
+!   call stdout3d( z, stend, stendcomp, qtend, qtendcomp, normassflx_up)
 
 #endif
 
@@ -2543,7 +2564,7 @@ end subroutine cal_mse_up
 subroutine cal_mse_dn( &
 !input
         ent_opt, z, zint, dz, p, pint, rho, rh, t, tint, q, qint, qsat &
-       ,mse, mseint, msesat, msesatint, rainrate_up &
+       ,mse, mseint, msesat, msesatint, rainrate &
        ,kuplaunch, kuplcl, kuptop &
        ,ent_rate_dn, det_rate_dn, &
 !output
@@ -2569,7 +2590,7 @@ subroutine cal_mse_dn( &
     real(r8), dimension(ncol, nlevp), intent(in) :: mseint ! [J/kg]
     real(r8), dimension(ncol, nlev),  intent(in) :: msesat ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(in) :: msesatint ! [J/kg]
-    real(r8), dimension(ncol, nlev), intent(in)  :: rainrate_up ! [J/kg]
+    real(r8), dimension(ncol, nlev), intent(in)  :: rainrate ! [J/kg]
 
     integer , dimension(ncol), intent(in) :: kuplaunch ! [1]
     integer , dimension(ncol), intent(in) :: kuplcl    ! [1]
@@ -2612,7 +2633,7 @@ subroutine cal_mse_dn( &
         if ( trig(i) < 1 ) cycle
         k = kuptop(i)
 
-        normassflx_dn(i,k) = -1._r8
+        normassflx_dn(i,k) = 1._r8
         t_dn(i,k) = tint(i,k)
         q_dn(i,k) = qint(i,k)
         mse_dn(i,k) = mseint(i,k)
@@ -2623,10 +2644,10 @@ subroutine cal_mse_dn( &
         end do
 
         do k=kuptop(i), nlev
-            ent_rate_dn(i,k) = -dn_be*rho(i,k)*( twet(i,k)-t(i,k) )*rho(i,k)*rainrate_up(i,k)
+            ent_rate_dn(i,k) = -dn_be*rho(i,k)*( twet(i,k)-t(i,k) )*rho(i,k)*rainrate(i,k)
             qsat_tmp = 0.622*611.2*exp(5417*(1/273.16-1/twet(i,k)))/p(i,k)
-            evap(i,k) = dn_ae*( qsat_tmp-q(i,k) )*rho(i,k)*rainrate_up(i,k)/dn_vt
-!            write(*,'(10f20.15)') qsat_tmp, q(i,k), rainrate_up(i,k), evap(i,k)
+            evap(i,k) = dn_ae*( qsat_tmp-q(i,k) )*rho(i,k)*rainrate(i,k)/dn_vt
+!            write(*,'(10f20.15)') qsat_tmp, q(i,k), rainrate(i,k), evap(i,k)
         end do
 
         do k=kuptop(i)+1, nlevp
@@ -2637,6 +2658,7 @@ subroutine cal_mse_dn( &
             qsat_tmp = 0.622*611.2*exp(5417*(1/273.16-1/t_dn(i,k)))/pint(i,k)
             q_dn(i,k) = ( normassflx_dn(i,k-1)*q_dn(i,k-1)-latvap*evap(i,k-1)*dz(i,k-1) ) &
                 /normassflx_dn(i,k)
+            mse_dn(i,k) = dse_dn(i,k) + latvap*qsat_tmp
             write(*,'(i3,10f20.10)') k, qsat_tmp, q_dn(i,k)
         end do
     end do
@@ -2733,11 +2755,76 @@ subroutine cal_moisture_up( &
 !            rainrate(i,k) = 1/rho(i,k)*c0*normassflx_up(i,k)*qliq_up(i,k)
             rainrate(i,k) = max(0._r8, 1-exp(-(z(i,k)-zint(i,kuplcl(i))-rain_z0)/rain_zp)) &
                 *condrate(i,k)
-
         end do
+
     end do
 
 end subroutine cal_moisture_up
+
+
+
+subroutine cal_evap( &
+!input
+        ent_opt, z, zint, dz, p, pint, rho, rh, t, tint, twet, q, qint, qsat &
+       ,mse, mseint, msesat, msesatint, rainrate &
+       ,kuplcl, kuptop &
+!output
+       ,evaprate, netprec &
+!in/out
+       ,trig)
+
+!input
+    integer, intent(in) :: ent_opt
+    real(r8), dimension(ncol, nlev),  intent(in) :: z     ! [m]
+    real(r8), dimension(ncol, nlevp), intent(in) :: zint  ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: dz    ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: p     ! [m]
+    real(r8), dimension(ncol, nlevp), intent(in) :: pint  ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: rho   ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: rh    ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: t     ! [K]
+    real(r8), dimension(ncol, nlevp), intent(in) :: tint  ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: twet  ! [K]
+    real(r8), dimension(ncol, nlev),  intent(in) :: q     ! [kg/kg]
+    real(r8), dimension(ncol, nlevp), intent(in) :: qint  ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: qsat   ! [kg/kg]
+    real(r8), dimension(ncol, nlev),  intent(in) :: mse    ! [J/kg]
+    real(r8), dimension(ncol, nlevp), intent(in) :: mseint ! [J/kg]
+    real(r8), dimension(ncol, nlev),  intent(in) :: msesat ! [J/kg]
+    real(r8), dimension(ncol, nlevp), intent(in) :: msesatint ! [J/kg]
+    real(r8), dimension(ncol, nlev), intent(in)  :: rainrate ! [J/kg]
+
+    integer , dimension(ncol), intent(in) :: kuplcl    ! [1]
+    integer , dimension(ncol), intent(in) :: kuptop    ! [1]
+
+!input/output
+    real(r8), dimension(ncol, nlev), intent(out) :: evaprate  ! [J/kg]
+    real(r8), dimension(ncol), intent(out) :: netprec  ! [J/kg]
+    integer , dimension(ncol), intent(inout) :: trig     ! [1]
+
+!local
+    real(r8), dimension(ncol, nlev) :: prec  ! [J/kg]
+
+    real(r8) :: qsat_tmp  ! [J/kg]
+    integer :: i,j,k
+    integer :: stat
+
+    evaprate = 0._r8
+    prec = 0._r8
+    netprec  = 0._r8
+
+    do i=1, ncol
+        if ( trig(i) < 1 ) cycle
+        k = kuptop(i)
+
+        do k=kuptop(i), nlev
+            qsat_tmp = 0.622*611.2*exp(5417*(1/273.16-1/min( twet(i,k),t(i,k)) ) )/p(i,k)
+            evaprate(i,k) = dn_ae*( qsat_tmp-q(i,k) )*rho(i,k)*netprec(i)/dn_vt
+            netprec(i) = netprec(i) + rho(i,k)*( rainrate(i,k)-evaprate(i,k) ) *dz(i,k)
+        end do
+    end do
+
+end subroutine cal_evap
 
 
 
