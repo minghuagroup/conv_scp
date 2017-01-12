@@ -2819,8 +2819,10 @@ subroutine cal_evap( &
 
         do k=kuptop(i), nlev
             qsat_tmp = 0.622*611.2*exp(5417*(1/273.16-1/min( twet(i,k),t(i,k)) ) )/p(i,k)
-            evaprate(i,k) = dn_ae*( qsat_tmp-q(i,k) )*rho(i,k)*netprec(i)/dn_vt
+            evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) *rho(i,k)*netprec(i)/dn_vt
             netprec(i) = netprec(i) + rho(i,k)*( rainrate(i,k)-evaprate(i,k) ) *dz(i,k)
+            write(*,'(i3,10f20.10)') k, netprec(i), rainrate(i,k), evaprate(i,k), rho(i,k) &
+            , twet(i,k), t(i,k)
         end do
     end do
 
