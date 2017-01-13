@@ -1,5 +1,5 @@
 
-module scp_conv_intr
+module conv_intr_jp
 
 use shr_kind_mod, only: r8=>shr_kind_r8
 use ppgrid,       only: pver, pcols, pverp
@@ -13,13 +13,14 @@ use cam_history,  only: outfld, addfld, add_default, phys_decomp
 
 use cam_logfile,  only: iulog
 
-use scp_conv,     only: scp_conv_init, scp_conv_tend
+!use scp_conv,     only: scp_conv_init, scp_conv_tend
+use conv_jp,     only: conv_jp_init, conv_jp_tend
 
 implicit none
 private
 save
 
-public :: scp_conv_intr_init, scp_conv_register, scp_conv_intr_tend
+public :: conv_intr_jp_init, conv_intr_jp_register, conv_intr_jp_tend
 
 !  indices for fields in the physics buffer
 integer  :: cld_idx          = 0
@@ -48,7 +49,7 @@ integer :: bfls_q_idx = 0
 contains
 
 !------------------------------------------------------
-subroutine scp_conv_register
+subroutine conv_intr_jp_register
 !------------------------------------------------------
 !register for memory and so on
 !------------------------------------------------------
@@ -66,12 +67,12 @@ subroutine scp_conv_register
 
    !call pbuf_add_field('DP_MASSFLXBASE', 'physpkg', dtype_r8, (/pcols/), dp_massflxbase_idx)
 
-end subroutine scp_conv_register
+end subroutine conv_intr_jp_register
 
 
 
 !------------------------------------------------------
-subroutine scp_conv_intr_init
+subroutine conv_intr_jp_init
 
    use physics_buffer, only: pbuf_get_index
 
@@ -93,14 +94,14 @@ subroutine scp_conv_intr_init
    bfls_t_idx = pbuf_get_index('BFLS_T')
    bfls_q_idx = pbuf_get_index('BFLS_Q')
 
-   call scp_conv_init( pver )
+   call conv_jp_init( pver )
 
-end subroutine scp_conv_intr_init
+end subroutine conv_intr_jp_init
 
 
 
 !------------------------------------------------------
-subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dlf)
+subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dlf)
 
     use physics_buffer, only : pbuf_get_field, physics_buffer_desc, pbuf_old_tim_idx
     use constituents,  only: pcnst
@@ -149,7 +150,7 @@ subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, d
    real(r8) dilucape(pcols) !thickness in [m]
    real(r8) bfls_dilucape(pcols) !thickness in [m]
 
-   real(r8) srfz(pcols) !thickness in [m]
+   real(r8) zsrf(pcols) !thickness in [m]
    real(r8) dz(pcols,pver) !thickness in [m]
    real(r8) z(pcols,pver)  !height in [m]
    real(r8) :: massflxbase(pcols)
@@ -161,8 +162,8 @@ subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, d
 !for diagnostics
    real(r8) :: qliqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
 
-   real(r8) :: compstend(pcols,pver)    ! s tend but calculated from compensation
-   real(r8) :: compqtend(pcols,pver)    ! q tend but calculated from compensation
+   real(r8) :: stendcomp(pcols,pver)    ! s tend but calculated from compensation
+   real(r8) :: qtendcomp(pcols,pver)    ! q tend but calculated from compensation
 
    real(r8) :: outmb(pcols)    ! scattrd version of the detraining cld h2o tend
    real(r8) :: outtmp2d(pcols)    ! scattrd version of the detraining cld h2o tend
@@ -174,8 +175,8 @@ subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, d
    real(r8) :: outstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
    real(r8) :: outqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
 
-   real(r8) :: outcondstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outcondqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
+   real(r8) :: outstendcond(pcols,pver)    ! scattrd version of the detraining cld h2o tend
+   real(r8) :: outqtendcond(pcols,pver)    ! scattrd version of the detraining cld h2o tend
    real(r8) :: outtranupstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
    real(r8) :: outtranupqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
    real(r8) :: outtrandnstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
@@ -243,40 +244,41 @@ subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, d
        dz(:ncol,k) = state%zi(:ncol,k) - state%zi(:ncol,k+1)
        z(:ncol,k)  = state%zm(:ncol,k) + state%phis(:ncol)/gravit
    end do
-   srfz(:ncol) = state%phis(:ncol)/gravit
+   zsrf(:ncol) = state%zi(:ncol,pverp)
 
-   call scp_conv_tend( &
+   call conv_jp_tend( &
 !input
        ncol, &
-       0, 10, 1._r8*ztodt, &
-       state%ulat(:ncol), srfz(:ncol), landfrac(:ncol), lhflx(:ncol), &
-       state%pmid(:ncol,:), z(:ncol,:), dz(:ncol,:), &
-       state%t(:ncol,:), state%q(:ncol,:,1), &
-       bfls_t(:ncol,:), bfls_q(:ncol,:), &
-       omega(:ncol,:), pblh(:ncol), tpert(:ncol), &
+       2, 15, 1._r8*ztodt, &
+       state%ulat, landfrac, lhflx, &
+       state%ps, state%pmid, state%pdel, &
+       zsrf, z, dz, &
+       state%t, state%q(:,:,1), &
+       bfls_t, bfls_q, &
+       omega, pblh, tpert, &
 !in/output
-       massflxbase(:ncol), &
+       massflxbase, &
 !output
-       stend(:ncol,:), qtend(:ncol,:), &
-       qliqtend(:ncol,:), &
-       prec(:ncol), ql(:ncol,:), rprd(:ncol,:), &
-       compstend(:ncol,:), compqtend(:ncol,:), &
-       dilucape(:ncol), bfls_dilucape(:ncol), &
+       stend, qtend, &
+       qliqtend, &
+       prec, ql, rprd, &
+       stendcomp, qtendcomp, &
+       dilucape, bfls_dilucape, &
 !diagnostics
-       outtmp2d(:ncol), outtmp3d(:ncol,:), &
-       outmb(:ncol), outmse(:ncol,:), outmsesat(:ncol,:), outmseup(:ncol,:), &
-       outstend(:ncol,:), outqtend(:ncol,:), &
-       outcondstend(:ncol,:), outcondqtend(:ncol,:), &
-       outtranupstend(:ncol,:), outtranupqtend(:ncol,:), &
-       outtrandnstend(:ncol,:), outtrandnqtend(:ncol,:), &
-       outevapstend(:ncol,:), outevapqtend(:ncol,:) &
+       outtmp2d, outtmp3d, &
+       outmb, outmse, outmsesat, outmseup, &
+       outstend, outqtend, &
+       outstendcond, outqtendcond, &
+       outtranupstend, outtranupqtend, &
+       outtrandnstend, outtrandnqtend, &
+       outevapstend, outevapqtend &
        )
    dlf = qliqtend
 
    ptend_loc%s(:ncol,:)   = stend(:ncol,:)
    ptend_loc%q(:ncol,:,1) = qtend(:ncol,:)
-   !ptend_loc%s(:ncol,:)   = compstend(:ncol,:)
-   !ptend_loc%q(:ncol,:,1) = compqtend(:ncol,:)
+   !ptend_loc%s(:ncol,:)   = stendcomp(:ncol,:)
+   !ptend_loc%q(:ncol,:,1) = qtendcomp(:ncol,:)
 
    call outfld('CONVDPMB', outmb, pcols, state%lchnk )
    call outfld('TMP2D', outtmp2d, pcols, state%lchnk )
@@ -286,8 +288,8 @@ subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, d
    call outfld('MSEUP', outmseup, pcols, state%lchnk )
    call outfld('CONVZ', z, pcols, state%lchnk )
 
-   call outfld('CONVDPCONDSTEND', outcondstend, pcols, lchnk)
-   call outfld('CONVDPCONDQTEND', outcondqtend, pcols, lchnk)
+   call outfld('CONVDPCONDSTEND', outstendcond, pcols, lchnk)
+   call outfld('CONVDPCONDQTEND', outqtendcond, pcols, lchnk)
    call outfld('CONVDPTRANUPSTEND', outtranupstend, pcols, lchnk)
    call outfld('CONVDPTRANUPQTEND', outtranupqtend, pcols, lchnk)
    call outfld('CONVDPTRANDNSTEND', outtrandnstend, pcols, lchnk)
@@ -295,8 +297,8 @@ subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, d
    call outfld('CONVDPEVAPSTEND', outevapstend, pcols, lchnk)
    call outfld('CONVDPEVAPQTEND', outevapqtend, pcols, lchnk)
 
-   call outfld('CONVDPCOMPSTEND', compstend, pcols, lchnk)
-   call outfld('CONVDPCOMPQTEND', compqtend, pcols, lchnk)
+   call outfld('CONVDPCOMPSTEND', stendcomp, pcols, lchnk)
+   call outfld('CONVDPCOMPQTEND', qtendcomp, pcols, lchnk)
 
    call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
    call outfld('BFLSDILUCAPE', bfls_dilucape, pcols, lchnk)   ! RBN - CAPE output
@@ -310,7 +312,7 @@ subroutine scp_conv_intr_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, d
    call physics_ptend_init(ptend_all, state%psetcols, 'convect_deep')
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
 
-end subroutine scp_conv_intr_tend
+end subroutine conv_intr_jp_tend
 
-end module scp_conv_intr
+end module conv_intr_jp
 

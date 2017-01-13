@@ -3,7 +3,7 @@ program test
 
     use netcdf
 !    use scp_conv
-    use conv_jp
+    use conv_jp, only: conv_jp_init, conv_jp_tend
 #ifdef SCMDIAG
     use scmdiag, only: subcol_netcdf_init, subcol_netcdf_setdim, subcol_netcdf_end
     use scmdiag, only: subcol_netcdf_addfld
@@ -185,7 +185,7 @@ program test
 
     write(*,*) "nlon:", nlon, "nlat:", nlat, "nlev:", nlev, "ntime:", ntime
 
-    call scp_conv_init(nlev)
+    call conv_jp_init(nlev)
 
 #ifdef SCMDIAG
 !init subcol_netcdf
@@ -302,7 +302,6 @@ program test
 !simulation begins
    do itime=1,nrun
 
-       write(*,*)
        write(*,"(a12,i5)") "time step:", itime
 
 !input 3D fields
@@ -361,10 +360,11 @@ program test
        !zsrf = 0._r8
 
        do j = 1, nlat
-           call scp_conv_tend( nlon &
+           call conv_jp_tend( nlon &
               ,2, nplume, dtime &
-              ,lat(j), ht(:,j), landfrac(:,j), lhflx(:,j) &
-              ,psrf(:,j), p(:,j,:), dp(:,j,:), zsrf(:,j), z(:,j,:), dz(:,j,:) &
+              ,lat(j), landfrac(:,j), lhflx(:,j) &
+              ,psrf(:,j), p(:,j,:), dp(:,j,:) &
+              ,zsrf(:,j), z(:,j,:), dz(:,j,:) &
               ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
               ,omega(:,j,:), pblh(:,j), tpert(:,j) &
               ,massflxbase(:,j) &

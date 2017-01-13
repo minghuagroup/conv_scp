@@ -85,7 +85,7 @@ subroutine convect_deep_register
   use zm_conv_intr, only: zm_conv_register
   use phys_control, only: phys_getopts
 !xiex
-  use scp_conv_intr, only: scp_conv_register
+  use conv_intr_jp, only: conv_intr_jp_register
 
   implicit none
 
@@ -98,7 +98,7 @@ subroutine convect_deep_register
   case('ZM') !    Zhang-McFarlane (default)
      call zm_conv_register
   case('SCP') !   SCP
-     call scp_conv_register
+     call conv_intr_jp_register
   end select
 
   call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
@@ -128,7 +128,7 @@ subroutine convect_deep_init(pref_edge)
   use physics_buffer,        only: physics_buffer_desc, pbuf_get_index
 
   use cam_history,        only: addfld, phys_decomp
-  use scp_conv_intr,  only: scp_conv_intr_init
+  use conv_intr_jp,  only: conv_intr_jp_init
   use physics_buffer,        only: pbuf_get_field
 
   implicit none
@@ -145,7 +145,7 @@ subroutine convect_deep_init(pref_edge)
      call zm_conv_init(pref_edge)
 !xiex
   case('SCP') !   2 ==> SCP
-     call scp_conv_intr_init
+     call conv_intr_jp_init
   case default
      if (masterproc) write(iulog,*)'WARNING: convect_deep: no deep convection scheme. May fail.'
   end select
@@ -222,7 +222,7 @@ subroutine convect_deep_tend( &
    use constituents,   only: pcnst
    use zm_conv_intr,   only: zm_conv_tend
 !xiex
-   use scp_conv_intr, only: scp_conv_intr_tend
+   use conv_intr_jp, only: conv_intr_jp_tend
    use time_manager,  only: is_first_step
    use scamMod,       only: single_column, wfld
 
@@ -404,8 +404,7 @@ subroutine convect_deep_tend( &
        !fracis = 0
        !evapcdp = 0
 
-       call scp_conv_intr_tend(ztodt, landfrac, lhflx, state, ptend, pbuf, dlf)
-!       call scp_conv_intr_tend(ztodt, landfrac, state, ptend, pbuf, dlf)
+       call conv_intr_jp_tend(ztodt, landfrac, lhflx, state, ptend, pbuf, dlf)
    end select
 
 !xiex

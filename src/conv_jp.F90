@@ -56,7 +56,7 @@ module conv_jp
 
     integer,parameter :: r8 = selected_real_kind(12)
 
-    public :: scp_conv_init, scp_conv_tend
+    public :: conv_jp_init, conv_jp_tend
 
     integer :: ncol=0, nlev=0, nlevp=0
 
@@ -193,7 +193,7 @@ end subroutine temp
 
 
 
-subroutine scp_conv_init(innlev)
+subroutine conv_jp_init(innlev)
 !------------------------------------------------------
 !do some initialization.
 !------------------------------------------------------
@@ -205,7 +205,7 @@ subroutine scp_conv_init(innlev)
     nlev  = innlev
     nlevp = innlev+1
 #ifdef SCMDIAG
-    write(*,*) "[scp_conv_init]"
+    write(*,*) "[conv_jp_init]"
     write(*,*) "Parameter"
     write(*,"(a20f20.10)") "gravit", gravit
     write(*,"(a20f20.10)") "cpair", cpair
@@ -223,22 +223,23 @@ subroutine scp_conv_init(innlev)
     zuplaunchtop = 3000._r8 ! max cloud parcel launch height [m]
     zuplaunchlow = 0._r8  ! min cloud parcel launch height [m]
 
-end subroutine scp_conv_init
+end subroutine conv_jp_init
 
 
 
-subroutine scp_conv_tend( &
+subroutine conv_jp_tend( &
 !input
         inncol, &
         in_ent_opt, nplume, dtime, &
-        lat, ht, landfrac, lhflx, &
+        lat, landfrac, lhflx, &
         psrf, p, dp, zsrf, z, dz, &
         t, q, bfls_t, bfls_q, &
         omega, pblh, tpert, &
 !in/output
         massflxbase_p, &
 !output
-        stend, qtend, qliqtend, prec, qliq, rainrate_out, &
+        stend, qtend, &
+        qliqtend, prec, qliq, rainrate_out, &
         stendcomp, qtendcomp, &
 !diagnostics
         dilucape, bfls_dilucape, &
@@ -259,7 +260,7 @@ subroutine scp_conv_tend( &
     integer , intent(in) :: in_ent_opt ! 0=ec, 1=greg
     integer , intent(in) :: nplume !
     real(r8), intent(in) :: dtime  ! [s] time step
-    real(r8), dimension(inncol), intent(in) :: lat, ht, landfrac, lhflx
+    real(r8), dimension(inncol), intent(in) :: lat, landfrac, lhflx
     real(r8), dimension(inncol), intent(in) :: psrf, zsrf
     real(r8), dimension(inncol, nlev), intent(in) :: p, dp, z, dz ! [Pa] ; [m]
     real(r8), dimension(inncol, nlev), intent(in) :: t, q ! [K] ; [kg/kg]
@@ -543,7 +544,7 @@ subroutine scp_conv_tend( &
 
 !Calculation begins
 #ifdef SCMDIAG
-    write(*,*) "[scp_conv_tend]"
+    write(*,*) "[conv_jp_tend]"
     call subcol_netcdf_nextstep
 #endif
 
@@ -692,7 +693,7 @@ subroutine scp_conv_tend( &
         + 273.16
 
 !estimate z at the interface from z and dz
-    zint(:,nlevp) = ht(:)
+    zint(:,nlevp) = zsrf(:)
     do k=nlev,1,-1
         zint(:,k) = zint(:,k+1)+dz(:,k)
     end do
@@ -947,9 +948,11 @@ subroutine scp_conv_tend( &
             end do
         end do
 
+#ifdef SCMDIAG
+        call stdout3dmix( z, zint, t, t_up )
 !        call stdout3dmix( z, tint, t, t_up )
 !        call stdout3dmix( z, msesatint, t, mse_up )
-        call stdout3dmix( q, msesatint, t, mse_up )
+!        call stdout3dmix( q, msesatint, t, mse_up )
 !        call stdout3dmix( z, dseint, t, dse_up )
 !        call stdout3dmix( z, qint, t, q_up )
 
@@ -994,6 +997,7 @@ subroutine scp_conv_tend( &
         call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
 
         call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
+#endif
     end do
 
     !w_up_init = w_up_param
@@ -1662,12 +1666,12 @@ subroutine scp_conv_tend( &
 
 #ifdef SCMDIAG 
     write(*,"(a20,f20.10)") "dtime:", dtime
-    write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "zsrf:", zsrf, "psrf:", psrf
+    write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "psrf:", psrf
     write(*,"(a20,i4,a20,i4)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
     write(*,"(a20,i4)") "uptopmax:", kuptopmax
     write(*,"(a20,i4,a20,i4)") "uptop:", kuptop,  "knbtop:", knbtop
     write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp, "trigsh:", trigsh
-    write(*,"(a20,f20.10)") "ht:", ht
+    write(*,"(a20,f20.10)") "zsrf:",zsrf 
     write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
     write(*,"(a20,f20.10)") "dilucape:", dilucape
     write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
@@ -1812,7 +1816,7 @@ subroutine scp_conv_tend( &
 
 #endif
 
-end subroutine scp_conv_tend
+end subroutine conv_jp_tend
 
 
 
@@ -2821,8 +2825,8 @@ subroutine cal_evap( &
             qsat_tmp = 0.622*611.2*exp(5417*(1/273.16-1/min( twet(i,k),t(i,k)) ) )/p(i,k)
             evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) *rho(i,k)*netprec(i)/dn_vt
             netprec(i) = netprec(i) + rho(i,k)*( rainrate(i,k)-evaprate(i,k) ) *dz(i,k)
-            write(*,'(i3,10f20.10)') k, netprec(i), rainrate(i,k), evaprate(i,k), rho(i,k) &
-            , twet(i,k), t(i,k)
+            !write(*,'(i3,10f20.10)') k, netprec(i), rainrate(i,k), evaprate(i,k), rho(i,k) &
+            !, twet(i,k), t(i,k)
         end do
     end do
 
