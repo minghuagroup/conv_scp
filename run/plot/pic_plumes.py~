@@ -79,7 +79,7 @@ if __name__ == '__main__':
             xlim = [-0.1, 1]
         if i==9: 
             var  = ['accuprec']
-            fac  = [10]
+            fac  = [1e3]
             icol = [-1,-1]
             xlim = [-0.1, 1]
 
