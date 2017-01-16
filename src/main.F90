@@ -45,9 +45,10 @@ program test
     real(r8), dimension(:,:), allocatable :: massflxbase
 
 !output fields
-    real(r8), dimension(:,:,:), allocatable :: stend, qtend, qliqtend
+    real(r8), dimension(:,:,:), allocatable :: stend, qtend, qliqtend, qicetend
     real(r8), dimension(:,:), allocatable   :: precc
-    real(r8), dimension(:,:,:), allocatable :: qliq, rainrate
+    real(r8), dimension(:,:,:), allocatable :: qliq, qice
+    real(r8), dimension(:,:,:), allocatable :: rainrate, snowrate, precrate
     real(r8), dimension(:,:,:), allocatable :: compstend, compqtend
     real(r8), dimension(:,:), allocatable   :: dilucape, bfls_dilucape
 
@@ -233,6 +234,8 @@ program test
     call subcol_netcdf_addfld( "mse_up", "m/s", "mlevp")
     call subcol_netcdf_addfld( "t_up", "kg/kg", "mlevp")
     call subcol_netcdf_addfld( "q_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "qliq_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "qice_up", "kg/kg", "mlevp")
     call subcol_netcdf_addfld( "normassflx_up", "1", "mlevp")
     call subcol_netcdf_addfld( "mse_up_plume", "J/kg", "mlevp")
 
@@ -248,13 +251,13 @@ program test
     call subcol_netcdf_addfld( "camstendtrandn", "K/s", "mlev")
     call subcol_netcdf_addfld( "camqtendtrandn", "kg/kg/s", "mlev")
 
-    call subcol_netcdf_addfld( "stend", "K/s", "mlev")
-    call subcol_netcdf_addfld( "qtend", "kg/kg/s", "mlev")
-    call subcol_netcdf_addfld( "stendcond", "K/s", "mlev")
+    call subcol_netcdf_addfld( "stend",     "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtend",     "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendcond", "K/s",     "mlev")
     call subcol_netcdf_addfld( "qtendcond", "kg/kg/s", "mlev")
-    call subcol_netcdf_addfld( "stendtran", "K/s", "mlev")
+    call subcol_netcdf_addfld( "stendtran", "K/s",     "mlev")
     call subcol_netcdf_addfld( "qtendtran", "kg/kg/s", "mlev")
-    call subcol_netcdf_addfld( "stendcomp", "K/s", "mlev")
+    call subcol_netcdf_addfld( "stendcomp", "K/s",     "mlev")
     call subcol_netcdf_addfld( "qtendcomp", "kg/kg/s", "mlev")
 
     call subcol_netcdf_addfld( "tmp1stend", "K/s", "mlev")
@@ -265,9 +268,11 @@ program test
     call subcol_netcdf_addfld( "stendevap", "K/s", "mlev")
     call subcol_netcdf_addfld( "qtendevap", "kg/kg/s", "mlev")
 
-    call subcol_netcdf_addfld( "qliq", "kg/kg", "mlev")
-    call subcol_netcdf_addfld( "rainrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "mseQi",    "J/kg/m", "mlev")
     call subcol_netcdf_addfld( "condrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "rainrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "snowrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "precrate", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "evaprate", "kg/kg/s", "mlev")
 
     call subcol_netcdf_addfld( "prec", "1", "slev")
@@ -368,8 +373,9 @@ program test
               ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
               ,omega(:,j,:), pblh(:,j), tpert(:,j) &
               ,massflxbase(:,j) &
-              ,stend(:,j,:), qtend(:,j,:), qliqtend &
-              ,precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
+              ,stend(:,j,:), qtend(:,j,:), qliqtend, qicetend &
+              ,precc(:,j), qliq(:,j,:), qice(:,j,:) & 
+              ,rainrate(:,j,:), snowrate(:,j,:), precrate(:,j,:) &
               ,compstend(:,j,:), compqtend(:,j,:) &
               ,dilucape(:,j), bfls_dilucape(:,j) &
               ,outtmp2d, outtmp3d &
@@ -402,6 +408,8 @@ program test
                write(*,*) qtend(i,j,:)
                write(*,*) "ql"
                write(*,*) qliq(i,j,:)
+               write(*,*) "qi"
+               write(*,*) qice(i,j,:)
                write(*,*) "rprd"
                write(*,*) rainrate(i,j,:)
            end if
@@ -539,9 +547,13 @@ program test
        allocate( stend(innlon, innlat, innlev) )
        allocate( qtend(innlon, innlat, innlev) )
        allocate( qliqtend(innlon, innlat, innlev) )
+       allocate( qicetend(innlon, innlat, innlev) )
        allocate( precc(innlon, innlat) )
        allocate( qliq(innlon, innlat, innlev) )
+       allocate( qice(innlon, innlat, innlev) )
        allocate( rainrate(innlon, innlat, innlev) )
+       allocate( snowrate(innlon, innlat, innlev) )
+       allocate( precrate(innlon, innlat, innlev) )
        allocate( compstend(innlon, innlat, innlev) )
        allocate( compqtend(innlon, innlat, innlev) )
 
