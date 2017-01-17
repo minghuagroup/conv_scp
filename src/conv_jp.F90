@@ -1,4 +1,4 @@
-
+    
 module conv_jp
 !------------------------------------------------------
 ! Stochastic Convective Parameterization Scheme
@@ -510,9 +510,6 @@ subroutine conv_jp_tend( &
 
 
 !zero local variables
-    twet = (t-273.16)*atan( 0.151977*(rh*100.+8.313659)**0.5 ) + atan(t-273.16+rh*100.) &
-        - atan(rh*100.-1.676331) + 0.00391838*((rh*100.)**1.5)*atan(0.023101*rh*100.) - 4.686035 &
-        + 273.16
 
     mse = 0._r8
     dse = 0._r8
@@ -590,6 +587,9 @@ subroutine conv_jp_tend( &
     rho = p/t/rair
     w = -omega/rho/gravit
 
+    twet = (t-273.16)*atan( 0.151977*(rh*100.+8.313659)**0.5 ) + atan(t-273.16+rh*100.) &
+        - atan(rh*100.-1.676331) + 0.00391838*((rh*100.)**1.5)*atan(0.023101*rh*100.) - 4.686035 &
+        + 273.16
 
 !estimate z at the interface from z and dz
     zint(:,nlevp) = zsrf(:)
@@ -738,7 +738,7 @@ subroutine conv_jp_tend( &
             snowrate(i,:) = snowrate(i,:) * massflxbase(i)  ! 1/s
             precrate(i,:) = precrate(i,:) * massflxbase(i)  ! 1/s
             accuprec(i,:) = accuprec(i,:) * massflxbase(i)  ! kg/m2/s
-            evaprate(i,:) = evaprate(i,:) * massflxbase(i)*rho(i,:) ! 1/s
+            evaprate(i,:) = evaprate(i,:) * massflxbase(i) / rho(i,:) ! 1/s
             surfprec(i) = surfprec(i) * massflxbase(i) / rhofw  ! m/s
 
             transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
@@ -1470,6 +1470,7 @@ subroutine cal_evap( &
         do k=kuptop(i), nlev
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
+            write(*,*) "k,twet,t,qwet,q,diff:",k,twet(i,k),t(i,k),qsat_tmp,q(i,k),qsat_tmp-q(i,k)
             evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt
             accuprec(i,k) = accuprec(i,k) - evaprate(i,k)*dz(i,k)
         end do
@@ -1863,6 +1864,7 @@ subroutine stdout3d( var1, var2, var3, var4, var5, var6)
 end subroutine stdout3d
 
 
+
 subroutine stdout3dmix( var1, var2, var3, var4, var5, var6)
 !------------------------------------------------------
 !output to stdout for diagnostics
@@ -1873,6 +1875,8 @@ subroutine stdout3dmix( var1, var2, var3, var4, var5, var6)
         var3, var4, var5, var6
 
     integer i, j, k
+
+    
 
     if ( present(var6) ) then
         do i=1, ncol

@@ -74,7 +74,7 @@ if __name__ == '__main__':
             xlim = [-0.1, 1]
         if i==8: 
             var  = ['condrate', 'evaprate']
-            fac  = [10000,10000]
+            fac  = [100000,100000]
             icol = [-1,-1]
             xlim = [-0.1, 1]
         if i==9: 
