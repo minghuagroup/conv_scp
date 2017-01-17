@@ -1098,7 +1098,7 @@ subroutine cal_launchtolcl( &
 
         t_up(i,kuplaunch(i) ) = t(i,kuplaunch(i) )+perturbt
         q_up(i,kuplaunch(i) ) = q(i,kuplaunch(i) )+perturbq
-        mse_up(i,kuplaunch(i) ) = mse(i,kuplaunch(i) )+perturbt*cpair+perturbq*latvap
+        mse_up(i,kuplaunch(i) ) = mse( i,kuplaunch(i) )+perturbt*cpair+perturbq*latvap
 
         do k=kuplaunch(i)-1, 1, -1
 
@@ -1124,6 +1124,10 @@ subroutine cal_launchtolcl( &
 
         do k=nlevp, kuplcl(i), -1
             normassflx_up(i,k) = (zint(i,k)/zint(i,kuplcl(i)))**0.5
+            mse_up(i,k) = mse_up(i, kuplcl(i))
+            q_up(i,k) = q_up(i, kuplcl(i))
+            t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) )/ &
+                (cpair-(cpliq-cpwv)*q_up(i,k))
         end do
 
     end do

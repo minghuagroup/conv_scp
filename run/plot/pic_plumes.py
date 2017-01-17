@@ -27,7 +27,8 @@ def fncread(fn,var):
 #===============================================================================
 if __name__ == '__main__':
 
-    fin = '/Users/Oscar/yhy/Research/ECP/conv_scp/run/scmdiag-output.nc'
+    pin = '/disk2/yhy/Research/ECP/conv_scp/'
+    fin = pin+'run/scmdiag-output.nc'
 
     lev  = fncread(fin, 'p')[0,:,0]/100.0
     levp = fncread(fin, 'pint')[0,:,0]/100.0
@@ -104,7 +105,7 @@ if __name__ == '__main__':
 
 
     plt.tight_layout()
-    ffig = '/Users/Oscar/yhy/Research/ECP/conv_scp/run/plot/pic_scmdiag-output.png'; print ffig
+    ffig = pin+'run/plot/pic_scmdiag-output.png'; print ffig
     plt.savefig(ffig)
     plt.close(1)
 
