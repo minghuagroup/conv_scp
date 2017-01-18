@@ -39,7 +39,7 @@ integer  ::  tpert_idx       = 0
 !integer  :: dp_flxsnw_idx = 0
 !integer  :: dp_cldliq_idx = 0
 !integer  :: dp_cldice_idx = 0
-!integer  :: dp_massflxbase_idx = 0
+integer  :: massflxbase_p_idx = 0
 
 !xiex
 integer :: bfls_t_idx = 0
@@ -65,7 +65,7 @@ subroutine conv_intr_jp_register
 !! deep gbm cloud liquid water (kg/kg)
    !call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)
 
-   !call pbuf_add_field('DP_MASSFLXBASE', 'physpkg', dtype_r8, (/pcols/), dp_massflxbase_idx)
+   call pbuf_add_field('MASSFLXBASE_P', 'physpkg', dtype_r8, (/pcols/), massflxbase_p_idx)
 
 end subroutine conv_intr_jp_register
 
@@ -145,44 +145,43 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
    real(r8),pointer :: bfls_t(:,:)           ! temp state right after conv
    real(r8),pointer :: bfls_q(:,:)           ! state right after conv
 
-   real(r8), pointer, dimension(:) :: dp_massflxbase
+   real(r8), pointer, dimension(:,:) :: massflxbase_p
 
    real(r8) dilucape(pcols) !thickness in [m]
    real(r8) bfls_dilucape(pcols) !thickness in [m]
 
-   real(r8) zsrf(pcols) !thickness in [m]
-   real(r8) dz(pcols,pver) !thickness in [m]
-   real(r8) z(pcols,pver)  !height in [m]
-   real(r8) :: massflxbase(pcols)
-   real(r8) omega(pcols,pver)
+   real(r8) zsrf(pcols)    ! model lowest interface Z
+   real(r8) dz(pcols,pver) ! model delta Z
+   real(r8) z(pcols,pver)  ! Z in the level middel
+   real(r8) omega(pcols,pver) ! OMEGA
 
    real(r8) :: stend(pcols,pver)    ! s tend
    real(r8) :: qtend(pcols,pver)    ! q tend
 
 !for diagnostics
-   real(r8) :: qliqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
+   real(r8) :: qliqtend(pcols,pver)     ! liquid water tendency
 
    real(r8) :: stendcomp(pcols,pver)    ! s tend but calculated from compensation
    real(r8) :: qtendcomp(pcols,pver)    ! q tend but calculated from compensation
 
-   real(r8) :: outmb(pcols)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outtmp2d(pcols)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outtmp3d(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outmse(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outmsesat(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outmseup(pcols,pver)    ! scattrd version of the detraining cld h2o tend
+   real(r8) :: outmb(pcols)       ! scattrd version of the detraining cld h2o tend
+   real(r8) :: outtmp2d(pcols)    ! temp 2D output
+   real(r8) :: outtmp3d(pcols,pver)  ! temp 3D output
+   real(r8) :: outmse(pcols,pver)    ! MSE
+   real(r8) :: outmsesat(pcols,pver)   ! MSESAT
+   real(r8) :: outmseup(pcols,pver)    ! MSEUP
 
-   real(r8) :: outstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
+   real(r8) :: outstend(pcols,pver)    ! total DSE tend
+   real(r8) :: outqtend(pcols,pver)    ! total Q tend
 
-   real(r8) :: outstendcond(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outqtendcond(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outtranupstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outtranupqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outtrandnstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outtrandnqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outevapstend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
-   real(r8) :: outevapqtend(pcols,pver)    ! scattrd version of the detraining cld h2o tend
+   real(r8) :: outstendcond(pcols,pver)    ! condensation DSE tend
+   real(r8) :: outqtendcond(pcols,pver)    ! condensation Q tend
+   real(r8) :: outtranupstend(pcols,pver)  ! up transport DSE tend
+   real(r8) :: outtranupqtend(pcols,pver)  ! up transport Q tend
+   real(r8) :: outtrandnstend(pcols,pver)  ! down transport DSE tend
+   real(r8) :: outtrandnqtend(pcols,pver)  ! down transport Q tend
+   real(r8) :: outevapstend(pcols,pver)    ! evaporation DSE tend
+   real(r8) :: outevapqtend(pcols,pver)    ! evaporation Q tend
 
 
    integer :: i, j, k
@@ -224,7 +223,7 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
    !dp_cldliq = 0._r8
    !dp_cldice = 0._r8
 
-   !call pbuf_get_field(pbuf, dp_massflxbase_idx, dp_massflxbase )
+   call pbuf_get_field(pbuf, massflxbase_p_idx, massflxbase_p )
 
 !xiex
    call pbuf_get_field(pbuf, bfls_t_idx, bfls_t)
@@ -257,7 +256,7 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
        bfls_t, bfls_q, &
        omega, pblh, tpert, &
 !in/output
-       massflxbase, &
+       massflxbase_p, &
 !output
        stend, qtend, &
        qliqtend, &
@@ -280,25 +279,29 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
    !ptend_loc%s(:ncol,:)   = stendcomp(:ncol,:)
    !ptend_loc%q(:ncol,:,1) = qtendcomp(:ncol,:)
 
-   call outfld('CONVDPMB', outmb, pcols, state%lchnk )
+
    call outfld('TMP2D', outtmp2d, pcols, state%lchnk )
    call outfld('TMP3D', outtmp3d, pcols, state%lchnk )
+
+   call outfld('MASSFLXBASE_P', massflxbase_p, pcols, state%lchnk )
+
+   call outfld('CONVDPMB', outmb, pcols, state%lchnk )
    call outfld('MSE', outmse, pcols, state%lchnk )
    call outfld('MSESAT', outmsesat, pcols, state%lchnk )
    call outfld('MSEUP', outmseup, pcols, state%lchnk )
    call outfld('CONVZ', z, pcols, state%lchnk )
 
-   call outfld('CONVDPCONDSTEND', outstendcond, pcols, lchnk)
-   call outfld('CONVDPCONDQTEND', outqtendcond, pcols, lchnk)
-   call outfld('CONVDPTRANUPSTEND', outtranupstend, pcols, lchnk)
-   call outfld('CONVDPTRANUPQTEND', outtranupqtend, pcols, lchnk)
-   call outfld('CONVDPTRANDNSTEND', outtrandnstend, pcols, lchnk)
-   call outfld('CONVDPTRANDNQTEND', outtrandnqtend, pcols, lchnk)
-   call outfld('CONVDPEVAPSTEND', outevapstend, pcols, lchnk)
-   call outfld('CONVDPEVAPQTEND', outevapqtend, pcols, lchnk)
+   call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
+   call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
+   call outfld('STENDCONVDPTRANUP', outtranupstend, pcols, lchnk)
+   call outfld('QTENDCONVDPTRANUP', outtranupqtend, pcols, lchnk)
+   call outfld('STENDCONVDPTRANDN', outtrandnstend, pcols, lchnk)
+   call outfld('QTENDCONVDPTRANDN', outtrandnqtend, pcols, lchnk)
+   call outfld('STENDCONVDPEVAP', outevapstend, pcols, lchnk)
+   call outfld('QTENDCONVDPEVAP', outevapqtend, pcols, lchnk)
 
-   call outfld('CONVDPCOMPSTEND', stendcomp, pcols, lchnk)
-   call outfld('CONVDPCOMPQTEND', qtendcomp, pcols, lchnk)
+   call outfld('STENDCONVDPCOMP', stendcomp, pcols, lchnk)
+   call outfld('QTENDCONVDPCOMP', qtendcomp, pcols, lchnk)
 
    call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
    call outfld('BFLSDILUCAPE', bfls_dilucape, pcols, lchnk)   ! RBN - CAPE output

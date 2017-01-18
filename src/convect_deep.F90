@@ -49,6 +49,7 @@ module convect_deep
 !xiex
    integer     ::  bfls_t_idx   = 0
    integer     ::  bfls_q_idx   = 0
+   integer     ::  massflxbase_p_idx = 0
 
 
 !=========================================================================================
@@ -166,22 +167,20 @@ subroutine convect_deep_init(pref_edge)
   call addfld ('MSEUP','J/kg     ',pver, 'I','MSEUP - SCP', phys_decomp)
 
 !xiex
-  call addfld ('CONVDPMB', 'J/kg',      1, 'A', 'T tendency - zm cond tendt',phys_decomp)
-  call addfld ('CONVDPSU', 'J/kg',      pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
-  call addfld ('CONVDPQU', 'kg/kg',     pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
-  call addfld ('CONVDPSTEND', 'K/s',      pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
-  call addfld ('CONVDPQTEND', 'kg/kg/s',  pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
-  call addfld ('CONVDPCONDSTEND', 'K/s',      pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
-  call addfld ('CONVDPCONDQTEND', 'kg/kg/s',  pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
-  call addfld ('CONVDPTRANUPSTEND', 'K/s',     pver, 'A', 'T tendency - zm trans tendt',phys_decomp)
-  call addfld ('CONVDPTRANUPQTEND', 'kg/kg/s', pver, 'A', 'Q tendency - zm trans tendq',phys_decomp)
-  call addfld ('CONVDPTRANDNSTEND', 'K/s',     pver, 'A', 'T tendency - zm trans tendt',phys_decomp)
-  call addfld ('CONVDPTRANDNQTEND', 'kg/kg/s', pver, 'A', 'Q tendency - zm trans tendq',phys_decomp)
-  call addfld ('CONVDPEVAPSTEND', 'K/s',      pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
-  call addfld ('CONVDPEVAPQTEND', 'kg/kg/s',  pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
+  call addfld ('MASSFLXBASE_P', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
 
-  call addfld ('CONVDPCOMPSTEND', 'K/s',      pver, 'A', 'T tendency - zm compensate tendt',phys_decomp)
-  call addfld ('CONVDPCOMPQTEND', 'kg/kg/s',  pver, 'A', 'Q tendency - zm compensate tendq',phys_decomp)
+  call addfld ('CONVDPMB', 'J/kg',                1, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('STENDCONVDPCOND', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('QTENDCONVDPCOND', 'kg/kg/s',   pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
+  call addfld ('STENDCONVDPTRANUP', 'K/s',     pver, 'A', 'T tendency - zm trans tendt',phys_decomp)
+  call addfld ('QTENDCONVDPTRANUP', 'kg/kg/s', pver, 'A', 'Q tendency - zm trans tendq',phys_decomp)
+  call addfld ('STENDCONVDPTRANDN', 'K/s',     pver, 'A', 'T tendency - zm trans tendt',phys_decomp)
+  call addfld ('QTENDCONVDPTRANDN', 'kg/kg/s', pver, 'A', 'Q tendency - zm trans tendq',phys_decomp)
+  call addfld ('STENDCONVDPEVAP', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('QTENDCONVDPEVAP', 'kg/kg/s',   pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
+
+  call addfld ('STENDCONVDPCOMP', 'K/s',       pver, 'A', 'T tendency - zm compensate tendt',phys_decomp)
+  call addfld ('QTENDCONVDPCOMP', 'kg/kg/s',   pver, 'A', 'Q tendency - zm compensate tendq',phys_decomp)
 
   call addfld ('DILUCAPE',     'J/kg',   1, 'I', &
       'Convectively available potential energy', phys_decomp)
@@ -191,6 +190,8 @@ subroutine convect_deep_init(pref_edge)
 !xiex
   bfls_t_idx = pbuf_get_index('BFLS_T')
   bfls_q_idx = pbuf_get_index('BFLS_Q')
+
+  massflxbase_p_idx = pbuf_get_index('MASSFLXBASE_P')
 
   cldtop_idx = pbuf_get_index('CLDTOP')
   cldbot_idx = pbuf_get_index('CLDBOT')
@@ -267,6 +268,8 @@ subroutine convect_deep_tend( &
    real(r8),pointer :: bfls_t(:,:)           ! temp state right after conv
    real(r8),pointer :: bfls_q(:,:)           ! state right after conv
 
+   real(r8),pointer :: massflxbase_p(:,:)           ! state right after conv
+
    real(r8), pointer, dimension(:,:) :: evapcdp   ! Evaporation of deep convective precipitation
 
    real(r8), pointer :: pblh(:)                ! Planetary boundary layer height
@@ -299,6 +302,8 @@ subroutine convect_deep_tend( &
    call pbuf_get_field(pbuf, bfls_t_idx, bfls_t)
    call pbuf_get_field(pbuf, bfls_q_idx, bfls_q)
 
+   call pbuf_get_field(pbuf, massflxbase_p_idx, massflxbase_p)
+
 
    if ( .not. is_first_step() ) then
        call outfld('BFLST', bfls_t, pcols, state%lchnk   )
@@ -308,6 +313,9 @@ subroutine convect_deep_tend( &
        bfls_q = state%q(:,:,1)
        call outfld('BFLST', state%t           ,pcols   , state%lchnk )
        call outfld('BFLSQ', state%q(1,1,1)    ,pcols   , state%lchnk )
+
+       massflxbase_p = 0._r8
+
    end if
 
    !do i=1,pcols
@@ -370,42 +378,18 @@ subroutine convect_deep_tend( &
           state   ,ptend   ,landfrac, pbuf)
 !xiex
   case('SCP') !    2 ==> SCP
-       zero = 0     
-       mcon = 0
-       cme = 0
-       dlf = 0
-       pflx = 0
-       zdu = 0
-       rliq = 0
+      zero = 0     
+      mcon = 0
+      cme = 0
+      dlf = 0
+      pflx = 0
+      zdu = 0
+      rliq = 0
 
-       call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
+      call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
 
-!
-! Associate pointers with physics buffer fields
-!
-
-       !call pbuf_get_field(pbuf, pblh_idx,  pblh)
-       !call pbuf_get_field(pbuf, tpert_idx, tpert)
-
-       !call pbuf_get_field(pbuf, cld_idx,         cld,    start=(/1,1/),   kount=(/pcols,pver/) ) 
-       !call pbuf_get_field(pbuf, icwmrdp_idx,     ql )
-       !call pbuf_get_field(pbuf, rprddp_idx,      rprd )
-       !call pbuf_get_field(pbuf, fracis_idx,      fracis, start=(/1,1,1/), kount=(/pcols, pver, pcnst/) )
-       !call pbuf_get_field(pbuf, nevapr_dpcu_idx, evapcdp )
-       !call pbuf_get_field(pbuf, prec_dp_idx,     prec )
-       !call pbuf_get_field(pbuf, snow_dp_idx,     snow )
-
-       !prec=0
-       !snow=0
-
-       !cld = 0
-       !ql = 0
-       !rprd = 0
-       !fracis = 0
-       !evapcdp = 0
-
-       call conv_intr_jp_tend(ztodt, landfrac, lhflx, state, ptend, pbuf, dlf)
-   end select
+      call conv_intr_jp_tend(ztodt, landfrac, lhflx, state, ptend, pbuf, dlf)
+  end select
 
 !xiex
   if( deep_scheme /= 'off' ) then

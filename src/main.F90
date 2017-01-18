@@ -42,7 +42,7 @@ program test
     real(r8), dimension(:), allocatable :: lon, lat, time
 
 !in/out put fields
-    real(r8), dimension(:,:), allocatable :: massflxbase
+    real(r8), dimension(:,:,:), allocatable :: massflxbase
 
 !output fields
     real(r8), dimension(:,:,:), allocatable :: stend, qtend, qliqtend
@@ -93,11 +93,11 @@ program test
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
-    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
+!    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
 !    call netcdf_check( nf90_open("inputscm_core_select_new.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_core_all.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
-!   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
+   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
     call netcdf_check( nf90_inq_varid(inncid, "u", uvarid) )
@@ -196,6 +196,9 @@ program test
     call subcol_netcdf_addfld( "z", "m", "mlev")
     call subcol_netcdf_addfld( "p", "Pa", "mlev")
     call subcol_netcdf_addfld( "rho", "kg/kg", "mlev")
+
+    call subcol_netcdf_addfld( "mseint", "J/kg", "mlevp")
+    call subcol_netcdf_addfld( "msesatint", "J/kg", "mlevp")
 
     call subcol_netcdf_addfld( "mse_closure", "J/kg", "mlev")
 
@@ -297,8 +300,8 @@ program test
    massflxbase = 0._r8
    lat = lat/180._r8*3.141592653_r8
 
-   nrun = 1
-!   nrun = ntime
+!   nrun = 5
+   nrun = ntime
 !simulation begins
    do itime=1,nrun
 
@@ -364,10 +367,10 @@ program test
               ,2, nplume, dtime &
               ,lat(j), landfrac(:,j), lhflx(:,j) &
               ,psrf(:,j), p(:,j,:), dp(:,j,:) &
-              ,zsrf(:,j), z(:,j,:), dz(:,j,:) &
+              ,ht(:,j), z(:,j,:), dz(:,j,:) &
               ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
               ,omega(:,j,:), pblh(:,j), tpert(:,j) &
-              ,massflxbase(:,j) &
+              ,massflxbase(:,j,:) &
               ,stend(:,j,:), qtend(:,j,:), qliqtend &
               ,precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
               ,compstend(:,j,:), compqtend(:,j,:) &
@@ -533,7 +536,7 @@ program test
        allocate( outqtendevap(innlon, innlat, innlev) )
 
 !for in/output
-       allocate( massflxbase(innlon, innlat) )
+       allocate( massflxbase(innlon, innlat, innlev) )
 
 !for output
        allocate( stend(innlon, innlat, innlev) )

@@ -125,7 +125,7 @@ module conv_jp
     real(r8), parameter :: dn_vt = 10._r8
 
 !parameter for prognostics mass flux calculation
-    real(r8), parameter :: pmf_inc =3.e-10_r8, pmf_dec=2.e-10_r8
+    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -268,10 +268,10 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev), intent(in) :: bfls_t, bfls_q ! [K] ; [kg/kg]
        ! T and Q state before the large-scale forcing is applied
     real(r8), dimension(inncol, nlev), intent(in) :: omega ! [m/s]
-    real(r8), dimension(inncol), intent(in) :: pblh ! [m/s]
+    real(r8), dimension(inncol), intent(in) :: pblh  ! [m/s]
     real(r8), dimension(inncol), intent(in) :: tpert ! [m/s]
 !in/output
-    real(r8), dimension(inncol), intent(inout) :: massflxbase_p !output convective precip[m/s]
+    real(r8), dimension(inncol, nlev), intent(inout) :: massflxbase_p !output convective precip[m/s]
 !output
     real(r8), dimension(inncol), intent(out) :: prec !output convective precip[m/s]
     real(r8), dimension(inncol, nlev), intent(out) :: stend, qtend, qliqtend
@@ -370,6 +370,7 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: evaprate  ! [1]  bulk evaporation production
     real(r8), dimension(inncol) :: evaprateflx     ! [1]  bulk evaporation production
     real(r8), dimension(inncol) :: netprec         ! [1]  bulk evaporation production
+    real(r8), dimension(inncol) :: precsum         ! [1]  bulk evaporation production
     real(r8) :: evaplimit ! [1]  bulk evaporation limit for special case
 
 !for EC en/detrainment rate depending on RH
@@ -455,6 +456,9 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: stendevap  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: qtendevap  ! [K/s] Q tendency
 
+    real(r8), dimension(inncol, nlev) :: stendsum
+    real(r8), dimension(inncol, nlev) :: qtendsum
+
     real(r8), dimension(inncol, nlev) :: tmp1stend, tmp1qtend
     real(r8), dimension(inncol, nlev) :: tmp2stend, tmp2qtend
 
@@ -469,7 +473,7 @@ subroutine conv_jp_tend( &
     ent_opt = in_ent_opt
 
 !intialize output
-    massflxbase_p = 0._r8
+!    massflxbase_p = 0._r8
     prec = 0._r8
     stend = 0._r8
     qtend = 0._r8
@@ -524,6 +528,10 @@ subroutine conv_jp_tend( &
     qtendevap = 0._r8
     stendcomp  = 0._r8
     qtendcomp  = 0._r8
+
+    stendsum = 0._r8
+    qtendsum = 0._r8
+    precsum = 0._r8
 
     knbtop = nlev
 
@@ -831,6 +839,9 @@ subroutine conv_jp_tend( &
 
     dse_up = cpair*t_up+gravit*zint
 
+    !write(*,*) "before:"
+    !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
+
     do j = 1, nplume
 !        kuplcl = 39
 #ifdef SCMDIAG 
@@ -845,7 +856,7 @@ subroutine conv_jp_tend( &
         normassflx_dn_tmp = 0._r8
         trigdp = 1
         call cal_mse_up( &
-            ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, &
+            ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
             mse, mseint, msesat, msesatint, &
             kuplaunch, kuplcl, &
             ent_rate_bulk_up, det_rate_bulk_up, w_up_init, &
@@ -917,10 +928,21 @@ subroutine conv_jp_tend( &
         stendevap = -latvap*evaprate
         qtendevap =  evaprate
 
-        massflxbase = 0.01_r8
+
+        do i=1, inncol
+!            if ( trigdp(i)<1 ) cycle
+            massflxbase_p(i,j) = max( 0., &
+                massflxbase_p(i,j) + dtime*( dilucape(i)/(2*pmf_alpha) &
+                - massflxbase_p(i,j)/(2*pmf_tau) ) )
+!            write(*,"(10f20.10)") dtime*( dilucape(i)/(2*pmf_alpha)- massflxbase_p(i,j)/(2*pmf_tau) )
+        end do
+
+!        massflxbase = 0.01_r8
+        massflxbase(:) = massflxbase_p(:,j)
         do i=1, inncol
             condrate(i,:) = condrate(i,:)*massflxbase(i)
             rainrate(i,:) = rainrate(i,:)*massflxbase(i)
+            evaprate(i,:) = evaprate(i,:)*massflxbase(i)
 
             transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
             tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
@@ -933,8 +955,11 @@ subroutine conv_jp_tend( &
 
             stend(i,:) = stendcond(i,:)+stendevap(i,:)+transtend_up(i,:)
             qtend(i,:) = qtendcond(i,:)+qtendevap(i,:)+tranqtend_up(i,:)
-
             netprec(i) = netprec(i)*massflxbase(i)
+
+            stendsum(i,:) = stendsum(i,:)+stend(i,:)
+            qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
+            precsum(i) = precsum(i)+netprec(i)
         end do
 
         diffdse_up = 0._r8
@@ -948,10 +973,14 @@ subroutine conv_jp_tend( &
             end do
         end do
 
+
 #ifdef SCMDIAG
-        call stdout3dmix( z, zint, t, t_up )
+!        call stdout3dmix( z, zint, t, t_up )
+!        call stdout3dmix( z, zint, t, tint )
+        !call stdout3dmix( stendcond, zint, stendevap, zint )
+        !call stdout3dmix( condrate, zint, evaprate, zint )
 !        call stdout3dmix( z, tint, t, t_up )
-!        call stdout3dmix( z, msesatint, t, mse_up )
+!        call stdout3dmix( z, msesatint, msesat, mse_up )
 !        call stdout3dmix( q, msesatint, t, mse_up )
 !        call stdout3dmix( z, dseint, t, dse_up )
 !        call stdout3dmix( z, qint, t, q_up )
@@ -997,6 +1026,8 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
 
         call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
+        call subcol_netcdf_putclm( "prec", 1, netprec(1), j )
+
 #endif
     end do
 
@@ -1018,6 +1049,13 @@ subroutine conv_jp_tend( &
             !normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
         end do
     end do
+
+!use average as ouput
+    prec = precsum/nplume
+    stend = stendsum/nplume
+    qtend = qtendsum/nplume
+    !write(*,*) "after:"
+    !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
 
 
 !!------------------------------------------------------
@@ -1556,53 +1594,55 @@ subroutine conv_jp_tend( &
 
     !end do
 
-!!------------------------------------------------------
-!!make sure no negative q
-!!------------------------------------------------------
+!------------------------------------------------------
+!make sure no negative q
+!------------------------------------------------------
     !qcheckout = 1._r8
-    qcheck  = 0._r8
+    !qcheck  = 0._r8
     !qcheck  = q + dtime*qtend
 
-    !minqcheckf = 1._r8
-    !do i=1, inncol
-        !if ( trigdp(i)<1 ) cycle
+    minqcheckf = 1._r8
+    do i=1, inncol
+        if ( trigdp(i)<1 ) cycle
 
-!!whole column adjustment
-        !minqcheckf = 1._r8
-        !do k=nlev, 1, -1
-            !if( (qtend(i,k)<0.) .and. (q(i,k)>0.) ) then
-                !qcheckf = (min_q-q(i,k))/dtime/qtend(i,k)
-                !if( (qcheckf<minqcheckf) .and. (qcheckf>0._r8) ) then
-                    !minqcheckf = qcheckf
-                !end if
-            !end if
-        !end do
+!whole column adjustment
+        minqcheckf = 1._r8
+        do k=nlev, 1, -1
+            if( (qtend(i,k)<0.) .and. (q(i,k)>0.) ) then
+                qcheckf = (min_q-q(i,k))/dtime/qtend(i,k)
+                if( (qcheckf<minqcheckf) .and. (qcheckf>0._r8) ) then
+                    minqcheckf = qcheckf
+                end if
+            end if
+        end do
 
-        !if( minqcheckf<1._r8 ) then
-            !qcheckout(i) = minqcheckf
-            !massflxbase(i) = minqcheckf*massflxbase(i)
-            !stend(i,:) = minqcheckf*stend(i,:)
-            !qtend(i,:) = minqcheckf*qtend(i,:)
-            !stendcond(i,:) = minqcheckf*stendcond(i,:)
-            !qtendcond(i,:) = minqcheckf*qtendcond(i,:)
-            !transtend_up(i,:) = minqcheckf*transtend_up(i,:)
-            !tranqtend_up(i,:) = minqcheckf*tranqtend_up(i,:)
-            !stendevap(i,:) = minqcheckf*stendevap(i,:)
-            !qtendevap(i,:) = minqcheckf*qtendevap(i,:)
+        if( minqcheckf<1._r8 ) then
+            qcheckout(i) = minqcheckf
+            massflxbase(i) = minqcheckf*massflxbase(i)
 
-            !stendcomp(i,:) = minqcheckf*stendcomp(i,:)
-            !qtendcomp(i,:) = minqcheckf*qtendcomp(i,:)
+            stend(i,:) = minqcheckf*stend(i,:)
+            qtend(i,:) = minqcheckf*qtend(i,:)
+            stendcond(i,:) = minqcheckf*stendcond(i,:)
+            qtendcond(i,:) = minqcheckf*qtendcond(i,:)
+            transtend_up(i,:) = minqcheckf*transtend_up(i,:)
+            tranqtend_up(i,:) = minqcheckf*tranqtend_up(i,:)
+            stendevap(i,:) = minqcheckf*stendevap(i,:)
+            qtendevap(i,:) = minqcheckf*qtendevap(i,:)
 
-            !tmp1stend(i,:) = minqcheckf*tmp1stend(i,:)
-            !tmp1qtend(i,:) = minqcheckf*tmp1qtend(i,:)
-            !tmp2stend(i,:) = minqcheckf*tmp2stend(i,:)
-            !tmp2qtend(i,:) = minqcheckf*tmp2qtend(i,:)
+            stendcomp(i,:) = minqcheckf*stendcomp(i,:)
+            qtendcomp(i,:) = minqcheckf*qtendcomp(i,:)
 
-            !qliq(i,:) = minqcheckf*qliq(i,:)
-            !rainrate(i,:) = minqcheckf*rainrate(i,:)
-            !prec(i) = minqcheckf*prec(i)
-            !netprec(i) = minqcheckf*netprec(i)
-        !end if
+            tmp1stend(i,:) = minqcheckf*tmp1stend(i,:)
+            tmp1qtend(i,:) = minqcheckf*tmp1qtend(i,:)
+            tmp2stend(i,:) = minqcheckf*tmp2stend(i,:)
+            tmp2qtend(i,:) = minqcheckf*tmp2qtend(i,:)
+
+            qliq(i,:) = minqcheckf*qliq(i,:)
+            rainrate(i,:) = minqcheckf*rainrate(i,:)
+            prec(i) = minqcheckf*prec(i)
+!            netprec(i) = minqcheckf*netprec(i)
+        end if
+
 
 !!!single level adjustment
         !!minqcheckf = 1._r8
@@ -1621,16 +1661,16 @@ subroutine conv_jp_tend( &
             !!end if
         !!end do
 
-        !qcheckout(i) = minqcheckf
+        qcheckout(i) = minqcheckf
 
-    !end do
+    end do
 
-!!clean output.
-    !do i=1, inncol
-        !if ( trigdp(i)<1 ) then
-            !mse_up(i,:) = 0._r8
-        !end if
-    !end do
+!clean output.
+    do i=1, inncol
+        if ( trigdp(i)<1 ) then
+            mse_up(i,:) = 0._r8
+        end if
+    end do
 
 
     outmb = massflxbase
@@ -1678,7 +1718,8 @@ subroutine conv_jp_tend( &
     write(*,"(a20,f20.10)") "capefc:", capefc
     write(*,"(a20,f20.10)") "capeclm:", capeclm
     write(*,"(a20,f20.10)") "mconv:", mconv
-    write(*,"(a20,f20.10)") "massflxbase_p:", massflxbase_p
+!    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p
+    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
     write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape
     write(*,"(a20,f20.10)") "massflxbase_dcape:", massflxbase_dcape
     write(*,"(a20,f20.10)") "massflxbase_clm:", massflxbase_clm
@@ -1696,6 +1737,9 @@ subroutine conv_jp_tend( &
     call subcol_netcdf_putclm( "z", nlev, z(1,:), 1 )
     call subcol_netcdf_putclm( "p", nlev, p(1,:), 1 )
     call subcol_netcdf_putclm( "rho", nlev, rho(1,:), 1 )
+
+    call subcol_netcdf_putclm( "mseint", nlevp, mseint(1,:), 1 )
+    call subcol_netcdf_putclm( "msesatint", nlevp, msesatint(1,:), 1 )
 
     call subcol_netcdf_putclm( "zint", nlevp, zint(1,:), 1 )
     call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
@@ -2170,7 +2214,7 @@ end subroutine triggercond
 
 subroutine cal_mse_up( &
 !input
-        ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, &
+        ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
         mse, mseint, msesat, msesatint, kuplaunch, kuplcl, &
         ent_rate_up, det_rate_up, w_up_init, &
 !output
@@ -2189,8 +2233,9 @@ subroutine cal_mse_up( &
     real(r8), dimension(ncol, nlevp), intent(in) :: tint  ! [m]
     real(r8), dimension(ncol, nlev),  intent(in) :: q     ! [kg/kg]
     real(r8), dimension(ncol, nlevp), intent(in) :: qint  ! [m]
-    real(r8), dimension(ncol, nlev), intent(in) :: qsat   ! [kg/kg]
-    real(r8), dimension(ncol, nlev), intent(in) :: mse    ! [J/kg]
+    real(r8), dimension(ncol, nlev),  intent(in) :: qsat   ! [kg/kg]
+    real(r8), dimension(ncol, nlevp), intent(in) :: qsatint! [kg/kg]
+    real(r8), dimension(ncol, nlev),  intent(in) :: mse    ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(in):: mseint ! [J/kg]
     real(r8), dimension(ncol, nlev), intent(in) :: msesat ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(in):: msesatint ! [J/kg]
@@ -2218,9 +2263,7 @@ subroutine cal_mse_up( &
     real(r8), dimension(ncol, nlev)  :: w2_up    ! [1]
     real(r8), dimension(ncol, nlevp) :: tvint    ! [J/kg]
 
-    real(r8) :: dt   ! [m]
-    real(r8) :: dq   ! [m]
-    real(r8) :: diffmse !
+    real(r8) :: dt, dq, diffmse   ! [m]
     real(r8) :: intsum, inttest
     real(r8) :: intsummassflux
     real(r8) :: tv, tv_up, msesat_lcl, ent_rate_up_l, ent_rate_up_h
@@ -2290,11 +2333,8 @@ subroutine cal_mse_up( &
         ent_rate_up_l = min( max_ent_rate,  ent_rate_up_l )
 
 #ifdef SCMDIAG 
-        write(*,"(i3,10f15.6)") k, mse_up(i,k), ent_rate_up_l, buoy(i,k), w_up(i,k)
-        !write(*,"(a3,10a15)") 'L', 'normassflx_up', 'normassflx_up' &
-            !, 'mse_up(L)', 'mse_up(H)', 'msesat', 'ent_rate_up_l', 'dz', 'buoy' &
-            !, 'ent_rate_up', 'w_up'
-        write(*,"(a3,10a15)") 'L', 'z', 'msesatint', 'mse_up', 'tint', 't_up', 'q_up', 'tv', 'tv_up'
+        !write(*,"(i3,10f15.6)") k, mse_up(i,k), ent_rate_up_l, buoy(i,k), w_up(i,k)
+        !write(*,"(a3,10a15)") 'L', 'z', 'msesatint', 'mse_up', 'tint', 't_up', 'q_up', 'tv', 'tv_up'
 #endif
 
         do k=kuplcl(i)-1, 1, -1
@@ -2319,19 +2359,22 @@ subroutine cal_mse_up( &
             w_up(i,k)  = sqrt( w2_up(i,k) )
 
             normassflx_up(i,k) = normassflx_up(i,k+1)*exp(ent_rate_up_l*dz(i,k) )
-
-            !mse_up(i,k) = (normassflx_up(i,k+1)*mse_up(i,k+1) &
-                !+dz(i,k)*ent_rate_up_l*normassflx_up(i,k+1)*mse(i,k) ) &
-                !/normassflx_up(i,k)
             mse_up(i,k) = ( normassflx_up(i,k+1)*mse_up(i,k+1) &
                 +( normassflx_up(i,k)-normassflx_up(i,k+1) )*mse(i,k) ) &
                 /normassflx_up(i,k)
+!----method 1------------------------------------------------------
+            !call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
+            !q_up(i,k) = q_up_test
+!------------------------------------------------------------------
+!----method 2------------------------------------------------------
+            diffmse = mse_up(i,k)-msesatint(i, k)
+            call cal_buoy( diffmse, tint(i,k), qint(i,k), qsatint(i,k), dt, dq )
+            t_up(i,k) = tint(i,k) + dt
+            q_up(i,k) = qsatint(i,k) + dq
+!------------------------------------------------------------------
 
-            call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
-            q_up(i,k) = q_up_test
-            tv_up = t_up(i,k)*( 1+0.61*q_up(i,k) )
+            tv_up = t_up(i,k)*( 1+0.61*q_up(i,k))
             buoy(i,k) = gravit*(tv_up-tv)/tv
-!            buoy(i,k) = gravit*(t_up(i,k)-tint(i,k))/tint(i,k)
 
             if ( ent_opt == 2 ) then
                 ent_rate_up_h = max( 0._r8, greg_ce*greg_ent_a*buoy(i,k)/w2_up(i,k) )
@@ -2344,17 +2387,13 @@ subroutine cal_mse_up( &
             ent_rate_up_h = min( max_ent_rate,  ent_rate_up_h )
 
 #ifdef SCMDIAG 
-            !write(*,"(i3,10f15.6)") k, normassflx_up(i,k+1), normassflx_up(i,k) &
-                !, mse_up(i,k+1), mse_up(i,k), msesat(i,k), ent_rate_up_l, dz(i,k), buoy(i,k) &
-                !, ent_rate_up_h, w_up(i,k)
-            write(*,"(i3,10f15.6)") k, zint(i,k), msesatint(i,k), mse_up(i,k), tint(i,k), t_up(i,k), q_up(i,k), tv, tv_up
+!            write(*,"(i3,10f15.6)") k, zint(i,k), msesatint(i,k), mse_up(i,k), tint(i,k), t_up(i,k), q_up(i,k), tv, tv_up
 #endif
 
 !calculate mid
             w_up_mid(i,k) = 0.5*( w_up(i,k)+w_up(i,k+1) )
             buoy_mid(i,k) = 0.5*( buoy(i,k)+buoy(i,k+1) )
             ent_rate_up(i,k) = min( max_ent_rate, 0.5*(ent_rate_up_l+ent_rate_up_h) )
-!            ent_rate_up(i,k) = w_up_init(i)*0.0001
 
 !recalculate k+1/2
             if ( ent_opt == 2 ) then
@@ -2372,23 +2411,26 @@ subroutine cal_mse_up( &
             end if
             w2_up(i,k) = max( w_up_init(i)**2, w2_up(i,k) )
             w_up(i,k)  = sqrt( w2_up(i,k) )
-            normassflx_up(i,k) = normassflx_up(i,k+1)*exp(ent_rate_up(i,k)*dz(i,k) )
 
+            normassflx_up(i,k) = normassflx_up(i,k+1)*exp(ent_rate_up(i,k)*dz(i,k) )
             mse_up(i,k) = ( normassflx_up(i,k+1)*mse_up(i,k+1) &
                 +( normassflx_up(i,k)-normassflx_up(i,k+1) )*mse(i,k) ) &
                 /normassflx_up(i,k)
+!----method 1------------------------------------------------------
+            !call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
+            !q_up(i,k) = q_up_test
+!------------------------------------------------------------------
+!----method 2------------------------------------------------------
+            diffmse = mse_up(i,k)-msesatint(i, k)
+            call cal_buoy( diffmse, tint(i,k), qint(i,k), qsatint(i,k), dt, dq )
+            t_up(i,k) = tint(i,k) + dt
+            q_up(i,k) = qsatint(i,k) + dq
+!------------------------------------------------------------------
 
-            call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
-            q_up(i,k) = q_up_test
             tv_up = t_up(i,k)*( 1+0.61*q_up(i,k))
             buoy(i,k) = gravit*(tv_up-tv)/tv
-!            buoy(i,k) = gravit*(t_up(i,k)-tint(i,k))/tint(i,k)
-
 #ifdef SCMDIAG 
-            !write(*,"(i3,10f15.6)") k, normassflx_up(i,k+1), normassflx_up(i,k) &
-                !, mse_up(i,k+1), mse_up(i,k), msesat(i,k), ent_rate_up_l, dz(i,k), buoy_mid(i,k) &
-                !, ent_rate_up(i,k), w_up(i,k)
-            write(*,"(i3,10f15.6)") k, zint(i,k), msesatint(i,k), mse_up(i,k), tint(i,k), t_up(i,k), q_up(i,k), tv, tv_up
+!            write(*,"(i3,10f15.6)") k, zint(i,k), msesatint(i,k), mse_up(i,k), tint(i,k), t_up(i,k), q_up(i,k), tv, tv_up
 #endif
 
 !            if ( mse_up(i,k) < msesatint(i,k) ) then
@@ -2405,40 +2447,30 @@ subroutine cal_mse_up( &
             end if
             ent_rate_up_l = min( max_ent_rate,  ent_rate_up_l )
 
-            !if ( buoy(i,k)<=0 ) then
-                !ent_rate_up_l = 0._r8
-            !else
-                !ent_rate_up_l = ent_rate_up_h
-            !end if
-
         end do
 
-        mse_up(i,k) = mseint(i,k)
-        t_up(i,k) = tint(i,k)
-        q_up(i,k) = qint(i,k)
-        w_up(i,k) = 0._r8
-        w2_up(i,k) = 0._r8
-        buoy(i,k) = 0._r8
-        ent_rate_up(i,k) = 0._r8
-        normassflx_up(i,k) = 0._r8
+        if (k>=1) then
+            mse_up(i,k) = mseint(i,k)
+            t_up(i,k) = tint(i,k)
+            q_up(i,k) = qint(i,k)
+            w_up(i,k) = 0._r8
+            w2_up(i,k) = 0._r8
+            buoy(i,k) = 0._r8
+            ent_rate_up(i,k) = 0._r8
+            normassflx_up(i,k) = 0._r8
 
-        kuptop(i) = k+1
+            kuptop(i) = k+1
 !not penetrating more than one level
-        if ( k == kuplcl(i)-1 ) then
-            trig(i) = -11
+            if ( k == kuplcl(i)-1 ) then
+                trig(i) = -11
+            end if
+        else
+            kuptop(i) = 1
         end if
 
-!the last level is the top
-#ifdef SCMDIAG 
-        write(*,*) 'end', trig(i)
-#endif
 
     end do
 
-
-    do i=1, ncol
-        if ( trig(i) < 1 ) cycle
-    end do
 
 
     !do i=1, ncol
@@ -2823,10 +2855,9 @@ subroutine cal_evap( &
 
         do k=kuptop(i), nlev
             qsat_tmp = 0.622*611.2*exp(5417*(1/273.16-1/min( twet(i,k),t(i,k)) ) )/p(i,k)
-            evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) *rho(i,k)*netprec(i)/dn_vt
+            evaprate(i,k) = dn_ae* max( 0._r8, qsat_tmp-q(i,k) ) *rho(i,k)*netprec(i)/dn_vt
+            evaprate(i,k) = evaprate(i,k)/rho(i,k)
             netprec(i) = netprec(i) + rho(i,k)*( rainrate(i,k)-evaprate(i,k) ) *dz(i,k)
-            !write(*,'(i3,10f20.10)') k, netprec(i), rainrate(i,k), evaprate(i,k), rho(i,k) &
-            !, twet(i,k), t(i,k)
         end do
     end do
 
@@ -3208,7 +3239,7 @@ subroutine mse2tsat( mse, z, p, t, q, stat)
 
 end subroutine mse2tsat
 
-subroutine cal_buoy( diffmse, t, q, qsat, dt, dq, buoy )
+subroutine cal_buoy( diffmse, t, q, qsat, dt, dq )
 !------------------------------------------------------
 !calculate staturated tempeature given MSE and pressure
 !------------------------------------------------------
@@ -3218,22 +3249,16 @@ subroutine cal_buoy( diffmse, t, q, qsat, dt, dq, buoy )
     real(r8), intent(in) :: qsat
     real(r8), intent(out) :: dt
     real(r8), intent(out) :: dq
-    real(r8), intent(out) :: buoy
 !local
     real(r8) :: dqsdt, tv, tv_up, q_up
 
     dt = 0._r8
     dq = 0._r8
-    buoy = 0._r8
 
-    dqsdt = (latvap/cpair)* latvap*qsat/rair/(t**2)
+    dqsdt = (latvap/cpair)* latvap*qsat/rh2o/(t**2)
     dt = diffmse/(1+dqsdt)/cpair
     dq = dt*dqsdt/latvap*cpair
     tv = t*(1+0.61*q)
-    q_up = q+dq
-    tv_up = (t+dt)*(1+0.61*q_up)
-
-    buoy = gravit*(tv_up-tv)/tv
 
 end subroutine cal_buoy
 
