@@ -370,7 +370,7 @@ program test
               ,2, nplume, dtime &
               ,lat(j), landfrac(:,j), lhflx(:,j) &
               ,psrf(:,j), p(:,j,:), dp(:,j,:) &
-              ,zsrf(:,j), z(:,j,:), dz(:,j,:) &
+              ,ht(:,j), z(:,j,:), dz(:,j,:) &
               ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
               ,omega(:,j,:), pblh(:,j), tpert(:,j) &
               ,massflxbase(:,j) &
