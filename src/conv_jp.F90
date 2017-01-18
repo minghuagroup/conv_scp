@@ -466,6 +466,8 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: qtendcond  ! [K/s] Q tendency
     real(r8), dimension(inncol, nlev) :: transtend_up  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: tranqtend_up  ! [K/s] Q tendency
+    real(r8), dimension(inncol, nlev) :: transtend_dn  ! [K/s] DSE tendency
+    real(r8), dimension(inncol, nlev) :: tranqtend_dn  ! [K/s] Q tendency
     real(r8), dimension(inncol, nlev) :: stendevap  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: qtendevap  ! [K/s] Q tendency
 
@@ -538,6 +540,8 @@ subroutine conv_jp_tend( &
     qtendcond = 0._r8
     transtend_up = 0._r8
     tranqtend_up = 0._r8
+    transtend_dn = 0._r8
+    tranqtend_dn = 0._r8
     stendevap = 0._r8
     qtendevap = 0._r8
     stendcomp  = 0._r8
@@ -719,6 +723,8 @@ subroutine conv_jp_tend( &
             qint, dseint, accuprec, evaprate, &
             dse_dn, q_dn, normassflx_dn_tmp)
 
+        mse_dn = dse_dn + lvint*q_dn
+
         call cal_tendtransport( &
             dz, kuplcl, kuptop, &
             rho, dseint, qint, dse_up, q_up, &
@@ -726,6 +732,13 @@ subroutine conv_jp_tend( &
             transtend_up, tranqtend_up, &
             trigdp)
 
+        call cal_tendtransport( &
+            dz, kuplcl, kuptop, &
+            rho, dseint, qint, dse_dn, q_dn, &
+            normassflx_dn_tmp,  &
+            transtend_dn, tranqtend_dn, &
+            trigdp)
+        
         stendcond =  latvap*condrate
         qtendcond = -condrate
         stendevap = -latvap*evaprate
@@ -738,11 +751,14 @@ subroutine conv_jp_tend( &
             snowrate(i,:) = snowrate(i,:) * massflxbase(i)  ! 1/s
             precrate(i,:) = precrate(i,:) * massflxbase(i)  ! 1/s
             accuprec(i,:) = accuprec(i,:) * massflxbase(i)  ! kg/m2/s
-            evaprate(i,:) = evaprate(i,:) * massflxbase(i) / rho(i,:) ! 1/s
+            evaprate(i,:) = evaprate(i,:) * massflxbase(i)  ! 1/s
             surfprec(i) = surfprec(i) * massflxbase(i) / rhofw  ! m/s
 
             transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
             tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
+
+            transtend_dn(i,:) = transtend_dn(i,:)*massflxbase(i)
+            tranqtend_dn(i,:) = tranqtend_dn(i,:)*massflxbase(i)
 
             stendcond(i,:) = stendcond(i,:)*massflxbase(i)
             qtendcond(i,:) = qtendcond(i,:)*massflxbase(i)
@@ -750,8 +766,8 @@ subroutine conv_jp_tend( &
             stendevap(i,:) = stendevap(i,:)*massflxbase(i)
             qtendevap(i,:) = qtendevap(i,:)*massflxbase(i)
 
-            stend(i,:) = stendcond(i,:)+stendevap(i,:)+transtend_up(i,:)
-            qtend(i,:) = qtendcond(i,:)+qtendevap(i,:)+tranqtend_up(i,:)
+            stend(i,:) = stendcond(i,:)+stendevap(i,:)+transtend_up(i,:)+transtend_dn(i,:)
+            qtend(i,:) = qtendcond(i,:)+qtendevap(i,:)+tranqtend_up(i,:)+tranqtend_dn(i,:)
 
         end do
 
@@ -814,8 +830,10 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "qtendcond", nlev, qtendcond(1,:), j )
         call subcol_netcdf_putclm( "stendevap", nlev, stendevap(1,:), j )
         call subcol_netcdf_putclm( "qtendevap", nlev, qtendevap(1,:), j )
-        call subcol_netcdf_putclm( "stendtran", nlev, transtend_up(1,:), j )
-        call subcol_netcdf_putclm( "qtendtran", nlev, tranqtend_up(1,:), j )
+        call subcol_netcdf_putclm( "stendtranup", nlev, transtend_up(1,:), j )
+        call subcol_netcdf_putclm( "qtendtranup", nlev, tranqtend_up(1,:), j )
+        call subcol_netcdf_putclm( "stendtrandn", nlev, transtend_dn(1,:), j )
+        call subcol_netcdf_putclm( "qtendtrandn", nlev, tranqtend_dn(1,:), j )
 
         call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
         call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
@@ -852,6 +870,8 @@ subroutine conv_jp_tend( &
     outqtendcond = qtendcond
     outstendtranup = transtend_up
     outqtendtranup = tranqtend_up
+    outstendtrandn = transtend_dn
+    outqtendtrandn = tranqtend_dn
     outstendtrandn = 0._r8
     outqtendtrandn = 0._r8
     outstendevap = stendevap
@@ -1334,7 +1354,8 @@ subroutine cal_mse_up( &
 !                ngbuoy = 0
 !            end if
             
-            if (buoy(i,k) < 0.0) then
+            !if (buoy(i,k) < 0.0) then
+            if (w_up(i,k) < 0.1) then
                 exit
             end if
 
@@ -1459,7 +1480,7 @@ subroutine cal_evap( &
     real(r8), dimension(ncol, nlev),  intent(in) :: precrate ! [m2/kg]
 !output
     real(r8), dimension(ncol, nlev), intent(out) :: accuprec  ! [#]
-    real(r8), dimension(ncol, nlev), intent(out) :: evaprate  ! [1/m]
+    real(r8), dimension(ncol, nlev), intent(out) :: evaprate  ! [m2/kg]
     real(r8), dimension(ncol), intent(out) :: surfprec  ! [#]
 
 !local
@@ -1476,8 +1497,8 @@ subroutine cal_evap( &
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
             write(*,*) "k,twet,t,qwet,q,diff:",k,twet(i,k),t(i,k),qsat_tmp,q(i,k),qsat_tmp-q(i,k)
-            evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt
-            accuprec(i,k) = accuprec(i,k) - evaprate(i,k)*dz(i,k)
+            evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt / rho(i,k)
+            accuprec(i,k) = accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k)
         end do
         surfprec(i) = accuprec(i,nlev)
     end do
@@ -1718,7 +1739,7 @@ subroutine cal_tendtransport( &
 !input
         dz, kuplcl, kuptop, &
         rho, dseint, qint, dse_up, q_up, &
-        normassflx_up, &
+        normassflx_up,  &
 !output
         stend, qtend, &
 !in/out
@@ -1751,34 +1772,6 @@ subroutine cal_tendtransport( &
 
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
-!        if ( massflxbase(i) <= 0. ) cycle
-
-!lowest level transport
-        !do k=kuplaunch(i),nlev
-            !dz = z(i, kuplaunch(i) )
-            !if( k == kuplaunch(i) ) then
-                !stend(i,k) = -( &
-                    !normassflx_up(i,k)*( cpair*0.5 )&
-                    !)/dz/rho(i,k)
-                !qtend(i,k) = -( &
-                    !normassflx_up(i,k)*0.5*q(i,k) &
-                    !)/dz/rho(i,k)
-            !else
-                !stend(i,k) = stend(i,k-1)
-                !qtend(i,k) = qtend(i,k-1)
-            !end if
-        !end do
-
-        !k = kuplaunch(i)
-        !dz = z(i,k-1)-z(i,k)
-        !stend(i,k) = -( &
-            !normassflx_up(i,k-1)*( dse_up(i,k-1)-dse(i,k-1) )&
-            !- normassflx_up(i,k)*( dse_up(i,k)-dse(i,k) )&
-            !)/dz/rho(i,k)
-        !qtend(i,k) = -( &
-            !normassflx_up(i,k-1)*( q_up(i,k-1)-q(i,k-1) )&
-            !- normassflx_up(i,k)*( q_up(i,k)-q(i,k) )&
-            !)/dz/rho(i,k)
 
 !sub cloud layer transport
 !        do k=kuplaunch(i)-1, kuptop(i), -1

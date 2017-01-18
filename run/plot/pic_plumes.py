@@ -27,21 +27,21 @@ def fncread(fn,var):
 #===============================================================================
 if __name__ == '__main__':
 
-    pin = '/disk2/yhy/Research/ECP/conv_scp/'
+    pin = '/Users/Oscar/yhy/Research/ECP/conv_scp/'
     fin = pin+'run/scmdiag-output.nc'
 
     lev  = fncread(fin, 'p')[0,:,0]/100.0
     levp = fncread(fin, 'pint')[0,:,0]/100.0
 
-    cstr = ['r','g','b']    
+    cstr = ['r','g','b','m','c']    
     plt.figure(1, figsize=(16,15))
 
-    for i in range(1,10):
+    for i in range(1,12):
         plt.subplot(3,4,i)
         if i==1: 
-            var  = ['mse', 'msesat', 'mse_up']
-            fac  = [1/1000.0, 1/1000.0, 1/1000.0]
-            icol = [0, 0, -1]
+            var  = ['mse', 'msesat', 'mse_up', 'mse_dn']
+            fac  = [1/1000.0, 1/1000.0, 1/1000.0, 1/1000.0]
+            icol = [0, 0, -1, -1]
             xlim = [330, 365]
         if i==2: 
             var  = ['ent_rate']
@@ -59,15 +59,15 @@ if __name__ == '__main__':
             icol = [-1, -1]
             xlim = [-1, 10]
         if i==5: 
-            var  = ['normassflx_up']
-            fac  = [1]
-            icol = [-1]
+            var  = ['normassflx_up','normassflx_dn']
+            fac  = [1,1]
+            icol = [-1,-1]
             xlim = [-1, 10]
         if i==6: 
             var  = ['qliq_up','qice_up']
-            fac  = [1e5,1e5]
-            icol = [-1,-1]
-            xlim = [-0.1, 1]
+            fac  = [1e5,1e5,1e5]
+            icol = [-1,-1,-1]
+            xlim = [-0.1, 2]
         if i==7: 
             var  = ['rainrate','snowrate','precrate']
             fac  = [1e5,1e5,1e5]
@@ -83,6 +83,16 @@ if __name__ == '__main__':
             fac  = [10]
             icol = [-1,-1]
             xlim = [-0.1, 1]
+        if i==10: 
+            var  = ['stend','stendcond','stendevap','stendtranup','stendtrandn']
+            fac  = [1,1,1,1,1]
+            icol = [-1,-1,-1,-1,-1]
+            xlim = [-30, 30]
+        if i==11: 
+            var  = ['qtend','qtendcond','qtendevap','qtendtranup','qtendtrandn']
+            fac  = [1e5,1e5,1e5,1e5,1e5]
+            icol = [-1,-1,-1,-1,-1]
+            xlim = [-2, 2]
 
 
         tstr = ''
@@ -98,7 +108,8 @@ if __name__ == '__main__':
                     plt.plot(data[:,k]*fac[ivar], piclev, '-'+cstr[ivar]+'.')
             else:
                 plt.plot(data[:,0]*fac[ivar], piclev, '-'+cstr[ivar]+'.')
-        plt.title(tstr)
+        if i in range(1,10):
+            plt.title(tstr)
         plt.axis([xlim[0], xlim[1], 100,1000])
         plt.grid('on')
         plt.gca().invert_yaxis()

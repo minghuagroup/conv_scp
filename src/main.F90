@@ -255,8 +255,10 @@ program test
     call subcol_netcdf_addfld( "qtend",     "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "stendcond", "K/s",     "mlev")
     call subcol_netcdf_addfld( "qtendcond", "kg/kg/s", "mlev")
-    call subcol_netcdf_addfld( "stendtran", "K/s",     "mlev")
-    call subcol_netcdf_addfld( "qtendtran", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendtranup", "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtendtranup", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendtrandn", "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtendtrandn", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "stendcomp", "K/s",     "mlev")
     call subcol_netcdf_addfld( "qtendcomp", "kg/kg/s", "mlev")
 
