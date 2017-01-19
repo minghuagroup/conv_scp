@@ -784,8 +784,9 @@ subroutine conv_jp_tend( &
 !            write(*,"(10f20.10)") dtime*( dilucape(i)/(2*pmf_alpha)- massflxbase_p(i,j)/(2*pmf_tau) )
         end do
 
-        massflxbase = 0.01_r8
-!        massflxbase(:) = massflxbase_p(:,j)
+!        massflxbase = 0.01_r8
+        massflxbase(:) = massflxbase_p(:,j)
+
         do i=1, inncol
             condrate(i,:) = condrate(i,:) * massflxbase(i)  ! 1/s
             rainrate(i,:) = rainrate(i,:) * massflxbase(i)  ! 1/s
