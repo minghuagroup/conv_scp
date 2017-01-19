@@ -65,8 +65,6 @@ subroutine conv_intr_jp_register
 !! deep gbm cloud liquid water (kg/kg)
    !call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)
 
-   call pbuf_add_field('MASSFLXBASE_P', 'physpkg', dtype_r8, (/pcols/), massflxbase_p_idx)
-
 end subroutine conv_intr_jp_register
 
 
@@ -95,6 +93,7 @@ subroutine conv_intr_jp_init
    bfls_q_idx = pbuf_get_index('BFLS_Q')
 
    call conv_jp_init( pver )
+   massflxbase_p_idx = pbuf_get_index('MASSFLXBASE_P')
 
 end subroutine conv_intr_jp_init
 
@@ -176,12 +175,12 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
 
    real(r8) :: outstendcond(pcols,pver)    ! condensation DSE tend
    real(r8) :: outqtendcond(pcols,pver)    ! condensation Q tend
-   real(r8) :: outtranupstend(pcols,pver)  ! up transport DSE tend
-   real(r8) :: outtranupqtend(pcols,pver)  ! up transport Q tend
-   real(r8) :: outtrandnstend(pcols,pver)  ! down transport DSE tend
-   real(r8) :: outtrandnqtend(pcols,pver)  ! down transport Q tend
-   real(r8) :: outevapstend(pcols,pver)    ! evaporation DSE tend
-   real(r8) :: outevapqtend(pcols,pver)    ! evaporation Q tend
+   real(r8) :: outstendtranup(pcols,pver)  ! up transport DSE tend
+   real(r8) :: outqtendtranup(pcols,pver)  ! up transport Q tend
+   real(r8) :: outstendtrandn(pcols,pver)  ! down transport DSE tend
+   real(r8) :: outqtendtrandn(pcols,pver)  ! down transport Q tend
+   real(r8) :: outstendevap(pcols,pver)    ! evaporation DSE tend
+   real(r8) :: outqtendevap(pcols,pver)    ! evaporation Q tend
 
 
    integer :: i, j, k
@@ -235,7 +234,7 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
    if (single_column) then
        omega(1,:) = wfld
    else
-       omega = state%omega
+       omega(:ncol,:) = state%omega
    endif
 
 !for layer depth
@@ -243,36 +242,38 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
        dz(:ncol,k) = state%zi(:ncol,k) - state%zi(:ncol,k+1)
        z(:ncol,k)  = state%zm(:ncol,k) + state%phis(:ncol)/gravit
    end do
-   zsrf(:ncol) = state%zi(:ncol,pverp)
+   zsrf(:ncol) = state%phis(:ncol)/gravit
 
    call conv_jp_tend( &
 !input
        ncol, &
        2, 15, 1._r8*ztodt, &
-       state%ulat, landfrac, lhflx, &
-       state%ps, state%pmid, state%pdel, &
-       zsrf, z, dz, &
-       state%t, state%q(:,:,1), &
-       bfls_t, bfls_q, &
-       omega, pblh, tpert, &
+       state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), &
+       state%ps(:ncol), state%pmid(:ncol,:), state%pdel(:ncol,:), &
+       zsrf(:ncol), z(:ncol,:), dz(:ncol,:), &
+       state%t(:ncol,:), state%q(:ncol,:,1), &
+       bfls_t(:ncol,:), bfls_q(:ncol,:), &
+       omega(:ncol,:), pblh(:ncol), tpert(:ncol), &
 !in/output
-       massflxbase_p, &
+       massflxbase_p(:ncol,:), &
 !output
-       stend, qtend, &
-       qliqtend, &
-       prec, ql, rprd, &
-       stendcomp, qtendcomp, &
-       dilucape, bfls_dilucape, &
+       stend(:ncol,:), qtend(:ncol,:), &
+       qliqtend(:ncol,:), &
+       prec(:ncol), ql(:ncol,:), rprd(:ncol,:), &
+       stendcomp(:ncol,:), qtendcomp(:ncol,:), &
+       dilucape(:ncol), bfls_dilucape(:ncol), &
 !diagnostics
-       outtmp2d, outtmp3d, &
-       outmb, outmse, outmsesat, outmseup, &
-       outstend, outqtend, &
-       outstendcond, outqtendcond, &
-       outtranupstend, outtranupqtend, &
-       outtrandnstend, outtrandnqtend, &
-       outevapstend, outevapqtend &
+       outtmp2d(:ncol), outtmp3d(:ncol,:), &
+       outmb(:ncol), outmse(:ncol,:), outmsesat(:ncol,:), outmseup(:ncol,:), &
+       outstend(:ncol,:), outqtend(:ncol,:), &
+       outstendcond(:ncol,:), outqtendcond(:ncol,:), &
+       outstendtranup(:ncol,:), outqtendtranup(:ncol,:), &
+       outstendtrandn(:ncol,:), outqtendtrandn(:ncol,:), &
+       outstendevap(:ncol,:), outqtendevap(:ncol,:) &
        )
-   dlf = qliqtend
+
+
+   dlf(:ncol,:) = qliqtend(:ncol,:)
 
    ptend_loc%s(:ncol,:)   = stend(:ncol,:)
    ptend_loc%q(:ncol,:,1) = qtend(:ncol,:)
@@ -293,12 +294,12 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
 
    call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
    call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
-   call outfld('STENDCONVDPTRANUP', outtranupstend, pcols, lchnk)
-   call outfld('QTENDCONVDPTRANUP', outtranupqtend, pcols, lchnk)
-   call outfld('STENDCONVDPTRANDN', outtrandnstend, pcols, lchnk)
-   call outfld('QTENDCONVDPTRANDN', outtrandnqtend, pcols, lchnk)
-   call outfld('STENDCONVDPEVAP', outevapstend, pcols, lchnk)
-   call outfld('QTENDCONVDPEVAP', outevapqtend, pcols, lchnk)
+   call outfld('STENDCONVDPTRANUP', outstendtranup, pcols, lchnk)
+   call outfld('QTENDCONVDPTRANUP', outqtendtranup, pcols, lchnk)
+   call outfld('STENDCONVDPTRANDN', outstendtrandn, pcols, lchnk)
+   call outfld('QTENDCONVDPTRANDN', outqtendtrandn, pcols, lchnk)
+   call outfld('STENDCONVDPEVAP', outstendevap, pcols, lchnk)
+   call outfld('QTENDCONVDPEVAP', outqtendevap, pcols, lchnk)
 
    call outfld('STENDCONVDPCOMP', stendcomp, pcols, lchnk)
    call outfld('QTENDCONVDPCOMP', qtendcomp, pcols, lchnk)
@@ -308,9 +309,9 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
 
    !ptend_loc%s = 0._r8
    !ptend_loc%q(:,:,1) = 0._r8
-   !prec = 0._r8
-   !ql   = 0._r8
-   !rprd = 0._r8
+!   prec = 0._r8
+   ql   = 0._r8
+   rprd = 0._r8
 
    call physics_ptend_init(ptend_all, state%psetcols, 'convect_deep')
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)

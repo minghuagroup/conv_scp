@@ -92,12 +92,12 @@ program test
     integer  :: nplume = 15
 
 !field input
-!    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
+    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
 !    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
 !    call netcdf_check( nf90_open("inputscm_core_select_new.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_core_all.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
-   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
+!   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
     call netcdf_check( nf90_inq_varid(inncid, "u", uvarid) )
@@ -120,8 +120,8 @@ program test
 
 
 !output definition
-!    call netcdf_check( nf90_create("diaggcm.nc", NF90_CLOBBER, outncid) )
-   call netcdf_check( nf90_create("diagscm.nc", NF90_CLOBBER, outncid) )
+    call netcdf_check( nf90_create("diaggcm.nc", NF90_CLOBBER, outncid) )
+!   call netcdf_check( nf90_create("diagscm.nc", NF90_CLOBBER, outncid) )
 
     call netcdf_check( nf90_def_dim( outncid, "lon", nlon, outlondimid) )
     call netcdf_check( nf90_def_dim( outncid, "lat", nlat, outlatdimid) )
@@ -163,7 +163,6 @@ program test
     call netcdf_check( nf90_inq_varid(inncid, "q", qvarid) )
     call netcdf_check( nf90_inq_varid(inncid, "bfls_t", bfls_tvarid) )
     call netcdf_check( nf90_inq_varid(inncid, "bfls_q", bfls_qvarid) )
-!    call netcdf_check( nf90_inq_varid(inncid, "pi", pivarid) )
     call netcdf_check( nf90_inq_varid(inncid, "dp", dpvarid) )
     call netcdf_check( nf90_inq_varid(inncid, "dz", dzvarid) )
     call netcdf_check( nf90_inq_varid(inncid, "rho", rhovarid) )

@@ -809,6 +809,7 @@ end subroutine diag_conv_tend_ini
 !xiex
     call outfld('VAR1    ',state%var1 , pcols   ,lchnk   )
     call outfld('VAR2    ',state%var2 , pcols   ,lchnk   )
+!xiex over
 
     do m=1,pcnst
        if ( cnst_cam_outfld(m) ) then
@@ -823,10 +824,9 @@ end subroutine diag_conv_tend_ini
        end do
     end do
     call outfld('PMID       ',state%pmid , pcols   ,lchnk   )
-!    call outfld('PINT       ',state%pint(:,2:pver+1) , pcols   ,lchnk   )
-!    call outfld('INVEXNER   ',state%exner , pcols   ,lchnk   )
     call outfld('PDEL       ',state%pdel , pcols   ,lchnk   )
     call outfld('ZDEL       ',zdel , pcols   ,lchnk   )
+!xiex over
 
 
     if (co2_transport()) then
@@ -1312,6 +1312,7 @@ subroutine diag_conv(state, ztodt, pbuf)
 
 !xiex
    call outfld('PRECDP', prec_dp, pcols, lchnk )
+!xiex over
 
    call outfld('PRECC   ', precc, pcols, lchnk )
    call outfld('PRECL   ', precl, pcols, lchnk )

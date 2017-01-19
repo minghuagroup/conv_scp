@@ -73,7 +73,8 @@ module conv_jp
     real(r8), parameter :: rh2o   = 461.5046398202  ! Water vapor gas constant ~ J/K/kg
     real(r8), parameter :: rhofw  = 1000. ! liquid water density ~ J/K/kg
 
-    real(r8), parameter :: min_q=1.e-12
+!    real(r8), parameter :: min_q=1.e-12
+    real(r8), parameter :: min_q=1.e-8
 
 !parameter for subcloud entrainment
 !    real(r8), parameter :: ent_rate_subcld=2.e-4_r8
@@ -481,22 +482,25 @@ subroutine conv_jp_tend( &
     qliq  = 0._r8
     rainrate_out = 0._r8
 
-    !outmb = 0._r8
-    !outtmp2d = 0._r8
-    !outtmp3d = 0._r8
-    !outmse = 0._r8
-    !outmsesat = 0._r8
-    !outmseup = 0._r8
-    !outstend = 0._r8
-    !outqtend = 0._r8
-    !outstendcond = 0._r8
-    !outqtendcond = 0._r8
-    !outstendtranup = 0._r8
-    !outqtendtranup = 0._r8
-    !outstendtrandn = 0._r8
-    !outqtendtrandn = 0._r8
-    !outstendevap = 0._r8
-    !outqtendevap = 0._r8
+    stendcomp  = 0._r8
+    qtendcomp  = 0._r8
+
+    outmb = 0._r8
+    outtmp2d = 0._r8
+    outtmp3d = 0._r8
+    outmse = 0._r8
+    outmsesat = 0._r8
+    outmseup = 0._r8
+    outstend = 0._r8
+    outqtend = 0._r8
+    outstendcond = 0._r8
+    outqtendcond = 0._r8
+    outstendtranup = 0._r8
+    outqtendtranup = 0._r8
+    outstendtrandn = 0._r8
+    outqtendtrandn = 0._r8
+    outstendevap = 0._r8
+    outqtendevap = 0._r8
 
 
 !zero local variables
@@ -526,8 +530,6 @@ subroutine conv_jp_tend( &
     tranqtend_up = 0._r8
     stendevap = 0._r8
     qtendevap = 0._r8
-    stendcomp  = 0._r8
-    qtendcomp  = 0._r8
 
     stendsum = 0._r8
     qtendsum = 0._r8
@@ -931,9 +933,9 @@ subroutine conv_jp_tend( &
 
         do i=1, inncol
 !            if ( trigdp(i)<1 ) cycle
-            massflxbase_p(i,j) = max( 0., &
+            massflxbase_p(i,j) = min( 0.1, max( 0., &
                 massflxbase_p(i,j) + dtime*( dilucape(i)/(2*pmf_alpha) &
-                - massflxbase_p(i,j)/(2*pmf_tau) ) )
+                - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
 !            write(*,"(10f20.10)") dtime*( dilucape(i)/(2*pmf_alpha)- massflxbase_p(i,j)/(2*pmf_tau) )
         end do
 
@@ -974,6 +976,7 @@ subroutine conv_jp_tend( &
         end do
 
 
+!        call stdout3dmix( z, zint, t, t_up )
 #ifdef SCMDIAG
 !        call stdout3dmix( z, zint, t, t_up )
 !        call stdout3dmix( z, zint, t, tint )
@@ -1622,6 +1625,7 @@ subroutine conv_jp_tend( &
 
             stend(i,:) = minqcheckf*stend(i,:)
             qtend(i,:) = minqcheckf*qtend(i,:)
+
             stendcond(i,:) = minqcheckf*stendcond(i,:)
             qtendcond(i,:) = minqcheckf*qtendcond(i,:)
             transtend_up(i,:) = minqcheckf*transtend_up(i,:)
@@ -1640,7 +1644,6 @@ subroutine conv_jp_tend( &
             qliq(i,:) = minqcheckf*qliq(i,:)
             rainrate(i,:) = minqcheckf*rainrate(i,:)
             prec(i) = minqcheckf*prec(i)
-!            netprec(i) = minqcheckf*netprec(i)
         end if
 
 
@@ -1683,10 +1686,12 @@ subroutine conv_jp_tend( &
 !    outtmp2d = massflxbase
 !    outtmp2d = massflxbase_cape/(massflxbase_cape+massflxbase_mconv+massflxbase_w)
 !    outtmp2d = massflxbase_dcape
-    outtmp2d = trigdp
+!    outtmp2d = trigdp
 !    outtmp2d = landfrac
 !    outtmp2d = massflxbase
+
 !    outtmp3d = t
+    outtmp3d = massflxbase_p
 
     outmse = mse
     outmsesat= msesat

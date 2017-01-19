@@ -107,6 +107,9 @@ subroutine convect_deep_register
   call pbuf_add_field('NEVAPR_DPCU','physpkg',dtype_r8,(/pcols,pver/),nevapr_dpcu_idx)
   call pbuf_add_field('PREC_DP',    'physpkg',dtype_r8,(/pcols/),     prec_dp_idx)
   call pbuf_add_field('SNOW_DP',   'physpkg',dtype_r8,(/pcols/),      snow_dp_idx)
+!xiex
+  call pbuf_add_field('MASSFLXBASE_P', 'physpkg', dtype_r8, (/pcols,pver/), massflxbase_p_idx)
+!xiex over
 
 end subroutine convect_deep_register
 
@@ -170,6 +173,9 @@ subroutine convect_deep_init(pref_edge)
   call addfld ('MASSFLXBASE_P', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
 
   call addfld ('CONVDPMB', 'J/kg',                1, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('STENDCONVDP', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('QTENDCONVDP', 'kg/kg/s',   pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
+
   call addfld ('STENDCONVDPCOND', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
   call addfld ('QTENDCONVDPCOND', 'kg/kg/s',   pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
   call addfld ('STENDCONVDPTRANUP', 'K/s',     pver, 'A', 'T tendency - zm trans tendt',phys_decomp)
@@ -191,7 +197,6 @@ subroutine convect_deep_init(pref_edge)
   bfls_t_idx = pbuf_get_index('BFLS_T')
   bfls_q_idx = pbuf_get_index('BFLS_Q')
 
-  massflxbase_p_idx = pbuf_get_index('MASSFLXBASE_P')
 
   cldtop_idx = pbuf_get_index('CLDTOP')
   cldbot_idx = pbuf_get_index('CLDBOT')
@@ -393,16 +398,16 @@ subroutine convect_deep_tend( &
 
 !xiex
   if( deep_scheme /= 'off' ) then
-      call outfld('CONVDPSTEND    ', ptend%s          ,pcols   , state%lchnk   )
-      call outfld('CONVDPQTEND    ', ptend%q(:,:,1)   ,pcols   , state%lchnk   )
+      call outfld('STENDCONVDP', ptend%s          ,pcols   , state%lchnk   )
+      call outfld('QTENDCONVDP', ptend%q(:,:,1)   ,pcols   , state%lchnk   )
   end if
 
   if (do_waccm_phys()) then
      call pbuf_get_field(pbuf, zmdt_idx, zmdt)
      ftem(:state%ncol,:pver) = ptend%s(:state%ncol,:pver)/cpair
      zmdt(:state%ncol,:pver) = ftem(:state%ncol,:pver)
-     call outfld('ZMDT    ',ftem           ,pcols   ,state%lchnk   )
-     call outfld('ZMDQ    ',ptend%q(:,:,1) ,pcols   ,state%lchnk   )
+     call outfld('ZMDT',ftem           ,pcols   ,state%lchnk   )
+     call outfld('ZMDQ',ptend%q(:,:,1) ,pcols   ,state%lchnk   )
   end if
 
 
