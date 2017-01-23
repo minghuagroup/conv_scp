@@ -272,7 +272,7 @@ program test
     call subcol_netcdf_addfld( "stendevap", "K/s", "mlev")
     call subcol_netcdf_addfld( "qtendevap", "kg/kg/s", "mlev")
 
-    call subcol_netcdf_addfld( "mseQi",    "J/kg/m", "mlev")
+    call subcol_netcdf_addfld( "mseqi",    "J/kg/m", "mlev")
     call subcol_netcdf_addfld( "condrate", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "evaprate", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "rainrate", "kg/kg/s", "mlev")
