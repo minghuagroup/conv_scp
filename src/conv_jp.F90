@@ -391,15 +391,7 @@ subroutine conv_jp_tend( &
 !for evaporation
     real(r8), dimension(inncol, nlev) :: accuprec  ! [1]  bulk precipitation production
     real(r8), dimension(inncol, nlev) :: evaprate  ! [1]  bulk evaporation production
-    real(r8), dimension(inncol) :: surfprec         ! [1]  bulk evaporation production
-
-    real(r8), dimension(inncol) :: evaprateflx     ! [1]  bulk evaporation production
-!<<<<<<< HEAD
-    real(r8), dimension(inncol) :: netprec         ! [1]  bulk evaporation production
-    real(r8), dimension(inncol) :: precsum         ! [1]  bulk evaporation production
-!=======
-!>>>>>>> origin/dd_ice_evap
-    real(r8) :: evaplimit ! [1]  bulk evaporation limit for special case
+    real(r8), dimension(inncol) :: surfprec        ! [1]  bulk evaporation production
 
 !for EC en/detrainment rate depending on RH
     real(r8), dimension(inncol, nlev) :: fscale_up ! [1]
@@ -488,6 +480,7 @@ subroutine conv_jp_tend( &
 
     real(r8), dimension(inncol, nlev) :: stendsum
     real(r8), dimension(inncol, nlev) :: qtendsum
+    real(r8), dimension(inncol) :: precsum
 
     real(r8), dimension(inncol, nlev) :: tmp1stend, tmp1qtend
     real(r8), dimension(inncol, nlev) :: tmp2stend, tmp2qtend
@@ -545,7 +538,6 @@ subroutine conv_jp_tend( &
     precrate = 0._r8
     accuprec = 0._r8
     evaprate = 0._r8
-    evaprateflx = 0._r8
     surfprec = 0._r8
 
     w = 0._r8
@@ -701,8 +693,9 @@ subroutine conv_jp_tend( &
 #ifdef SCMDIAG 
         write(*,"(a10,i3)") "plume:", j
 #endif
+!        w_up_init = 0.01
         if ( ent_opt == 2 ) then
-            w_up_init = j * 0.1
+            w_up_init = j * 0.3
         else if ( ent_opt == 3 ) then
             w_up_init = j * 0.2
         end if
@@ -713,25 +706,28 @@ subroutine conv_jp_tend( &
         trigdp = 1
 
         call cal_mse_up( &
-!<<<<<<< HEAD
-!            ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
-!=======
             ent_opt, rho, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
-!>>>>>>> origin/dd_ice_evap
             mse, mseint, msesat, msesatint, &
             kuplaunch, kuplcl, &
             ent_rate_bulk_up, det_rate_bulk_up, w_up_init, &
             mse_up, t_up, q_up, qliq_up, qice_up, mseqi, condrate, rainrate, snowrate, precrate, &
             normassflx_up_tmp, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
             trigdp)
-            
+
         dse_up = cpair*t_up+gravit*zint
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
-            if ( (k>kuplcl(i)) .or. (k<kuptop(i)) ) then
+!            if ( (k>kuplcl(i)) .or. (k<kuptop(i)) ) then
+            if ( k<kuptop(i) ) then
                 dse_up(i,k) = dseint(i,k)
             end if
         end do
+
+        write(*,*)
+        write(*,"(10f20.10)") mse_up(1,kuplcl(1)+1:nlevp)
+        write(*,"(10f20.10)") q_up(1,kuplcl(1)+1:nlevp)
+        write(*,"(10f20.10)") t_up(1,kuplcl(1)+1:nlevp)
+        write(*,"(10f20.10)") dse_up(1,kuplcl(1)+1:nlevp)
 
         mse_up_mid = 0._r8
         t_up_mid = 0._r8
@@ -774,14 +770,11 @@ subroutine conv_jp_tend( &
         stendevap = -latvap*evaprate
         qtendevap =  evaprate
 
-!<<<<<<< HEAD
-
         do i=1, inncol
 !            if ( trigdp(i)<1 ) cycle
             massflxbase_p(i,j) = min( 0.1, max( 0., &
                 massflxbase_p(i,j) + dtime*( dilucape(i)/(2*pmf_alpha) &
                 - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
-!            write(*,"(10f20.10)") dtime*( dilucape(i)/(2*pmf_alpha)- massflxbase_p(i,j)/(2*pmf_tau) )
         end do
 
 !        massflxbase = 0.01_r8
@@ -795,17 +788,6 @@ subroutine conv_jp_tend( &
             accuprec(i,:) = accuprec(i,:) * massflxbase(i)  ! kg/m2/s
             evaprate(i,:) = evaprate(i,:) * massflxbase(i)  ! 1/s
             surfprec(i) = surfprec(i) * massflxbase(i) / rhofw  ! m/s
-!=======
-!        massflxbase = 1.0_r8
-!        do i=1, inncol
-!            condrate(i,:) = condrate(i,:) * massflxbase(i)  ! 1/s
-!            rainrate(i,:) = rainrate(i,:) * massflxbase(i)  ! 1/s
-!            snowrate(i,:) = snowrate(i,:) * massflxbase(i)  ! 1/s
-!            precrate(i,:) = precrate(i,:) * massflxbase(i)  ! 1/s
-!            accuprec(i,:) = accuprec(i,:) * massflxbase(i)  ! kg/m2/s
-!            evaprate(i,:) = evaprate(i,:) * massflxbase(i)  ! 1/s
-!            surfprec(i) = surfprec(i) * massflxbase(i) / rhofw  ! m/s
-!>>>>>>> origin/dd_ice_evap
 
             transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
             tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
@@ -819,29 +801,18 @@ subroutine conv_jp_tend( &
             stendevap(i,:) = stendevap(i,:)*massflxbase(i)
             qtendevap(i,:) = qtendevap(i,:)*massflxbase(i)
 
-!<<<<<<< HEAD
-!            stend(i,:) = stendcond(i,:)+stendevap(i,:)+transtend_up(i,:)
-!            qtend(i,:) = qtendcond(i,:)+qtendevap(i,:)+tranqtend_up(i,:)
-!            netprec(i) = netprec(i)*massflxbase(i)
-
-!            stendsum(i,:) = stendsum(i,:)+stend(i,:)
-!            qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
-!            precsum(i) = precsum(i)+surfprec(i)
-!=======
             stend(i,:) = stendcond(i,:)+stendevap(i,:)+transtend_up(i,:)+transtend_dn(i,:)
             qtend(i,:) = qtendcond(i,:)+qtendevap(i,:)+tranqtend_up(i,:)+tranqtend_dn(i,:)
 
             stendsum(i,:) = stendsum(i,:)+stend(i,:)
             qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
             precsum(i) = precsum(i)+surfprec(i)
-!>>>>>>> origin/dd_ice_evap
         end do
 
         diffdse_up = 0._r8
         diffq_up = 0._r8
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
-!            do k=kuplcl(i)-1, kuptop(i), -1
             do k=nlevp, kuptop(i), -1
                 diffdse_up(i,k) = normassflx_up_tmp(i,k)*( dse_up(i,k)-dseint(i,k) )
                 diffq_up(i,k)   = normassflx_up_tmp(i,k)*( q_up(i,k)-qint(i,k) )
@@ -870,7 +841,6 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), j )
         call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), j )
 
-        call subcol_netcdf_putclm( "ent_rate", nlevp, ent_rate_bulk_up(1,:), j )
         call subcol_netcdf_putclm( "w_up_init", 1, w_up_init(1), j )
         call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
         call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), j )
@@ -910,8 +880,10 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
 
         call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
-        call subcol_netcdf_putclm( "prec", 1, netprec(1), j )
+        call subcol_netcdf_putclm( "prec", 1, surfprec(1), j )
 
+        tmp2d = trigdp
+        call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
 #endif
     end do
 
@@ -1698,9 +1670,6 @@ subroutine conv_jp_tend( &
     !call subcol_netcdf_putclm( "massflxbase_mconv", massflxbase_mconv(1), 1 )
     call subcol_netcdf_putclm( "qcheck", 1, qcheckout(1), 1 )
 
-    tmp2d = trigdp
-    call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), 1 )
-
     tmp = kupbase-kuptop+1
     call subcol_netcdf_putclm( "nconvlev", 1, tmp(1), 1 )
     tmp = kuplaunch
@@ -1935,20 +1904,8 @@ subroutine cal_mse_up( &
     real(r8), dimension(ncol, nlevp), intent(inout) :: normassflx_up  ! [J/kg]
     integer , dimension(ncol), intent(inout) :: trig     ! [1]
 !local
-!<<<<<<< HEAD
-!    real(r8), dimension(ncol, nlev)  :: w2_up    ! [1]
-!    real(r8), dimension(ncol, nlevp) :: tvint    ! [J/kg]
-
-!    real(r8) :: dt, dq, diffmse   ! [m]
-!    real(r8) :: intsum, inttest
-!    real(r8) :: intsummassflux
-!    real(r8) :: tv, tv_up, msesat_lcl, ent_rate_up_l, ent_rate_up_h
-!    real(r8) :: esat_tmp, qsat_tmp
-!    real(r8) :: q_up_test
-!=======
     real(r8), dimension(ncol, nlev)  :: ent_rate_up_mid ! [1]
     real(r8) :: tv, tv_up,  w2, qw, Fp, Fi, Ek
-!>>>>>>> origin/dd_ice_evap
 
     integer :: i,j,k, iteration
     integer :: ngbuoy
@@ -1982,8 +1939,8 @@ subroutine cal_mse_up( &
 
         tv = tint(i,k)*(1+tveps*qint(i,k))
         tv_up = t_up(i,k)*(1 + tveps*q_up(i,k) )
-        buoy(i,k) = gravit*  (tv_up-tv)/tv 
-                
+        buoy(i,k) = gravit*(tv_up-tv)/tv 
+
         if ( buoy(i,k)<0. ) then
             trig(i) = -10
             cycle
@@ -1998,6 +1955,7 @@ subroutine cal_mse_up( &
         end if
         ent_rate_up(i,k) = max(0.0, min( max_ent_rate,  ent_rate_up(i,k)))
 
+!        write(*,"(f20.10)") buoy(i,k), tv_up, tv, ent_rate_up(i,k)
 
 #ifdef SCMDIAG 
         !write(*,"(i3,10f15.6)") k, mse_up(i,k), ent_rate_up_l, buoy(i,k), w_up(i,k)
@@ -2106,6 +2064,8 @@ subroutine cal_mse_up( &
             det_rate_up(i,k) = 0._r8
             normassflx_up(i,k) = 0._r8
 
+            ent_rate_up(i,kuplcl(i) ) = 0._r8
+
             kuptop(i) = k+1
 
 !not penetrating more than one level
@@ -2116,10 +2076,7 @@ subroutine cal_mse_up( &
             kuptop(i) = 1
         end if
 
-
     end do
-
-
 
 end subroutine cal_mse_up
 
