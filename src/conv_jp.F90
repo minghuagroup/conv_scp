@@ -102,8 +102,9 @@ module conv_jp
 
     real(r8), parameter :: greg_z0=1.e4_r8 !paper default
 
-    real(r8), parameter :: greg_ent_a = 0.15_r8 
-    real(r8), parameter :: greg_ce    = 0.5_r8  
+    real(r8), parameter :: greg_ent_a = 0.15
+    real(r8), parameter :: greg_ce    = 0.6
+
     !real(r8), parameter :: nsj_ent_a=0.09_r8 
     !real(r8), parameter :: nsj_coef=2.4e-3_r8
 
@@ -693,9 +694,8 @@ subroutine conv_jp_tend( &
 #ifdef SCMDIAG 
         write(*,"(a10,i3)") "plume:", j
 #endif
-!        w_up_init = 0.01
         if ( ent_opt == 2 ) then
-            w_up_init = j * 0.3
+            w_up_init = j * 0.1
         else if ( ent_opt == 3 ) then
             w_up_init = j * 0.2
         end if
@@ -2009,6 +2009,8 @@ subroutine cal_mse_up( &
                     -( normassflx_up(i,k)*q_up(i,k) &
                     -normassflx_up(i,k+1)*q_up(i,k+1) )/dz(i,k) )
 
+                condrate(i,k) = max(0.0, condrate(i,k))
+
                 Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kuplcl(i)) - rain_z0)/rain_zp) )
                 qw = (normassflx_up(i,k+1)*(qliq_up(i,k+1)+qice_up(i,k+1)) + &
                     rho(i,k)*(1-Fp)*condrate(i,k) )/normassflx_up(i,k)
@@ -2201,7 +2203,7 @@ subroutine cal_evap( &
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
             evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt / rho(i,k)
-            accuprec(i,k) = accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k)
+            accuprec(i,k) = max(0.0, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k))
 !>>>>>>> origin/dd_ice_evap
         end do
         surfprec(i) = accuprec(i,nlev)

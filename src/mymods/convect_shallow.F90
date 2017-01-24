@@ -666,8 +666,9 @@
    do i = 1, ncol
       if( cnt2(i) < cnt(i)) cnt(i) = cnt2(i)
       if( cnb2(i) > cnb(i)) cnb(i) = cnb2(i)
-      pcnt(i) = state%pmid(i,int(cnt(i)))
-      pcnb(i) = state%pmid(i,int(cnb(i)))     
+      pcnt(i) = state%pmid(i,int(max(1.0, cnt(i))))  
+      ! Haiyang Yu: use max to prevent 0 index
+      pcnb(i) = state%pmid(i,int(max(1.0, cnb(i))))     
    end do
    
    ! ----------------------------------------------- !
