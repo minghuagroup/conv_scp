@@ -247,6 +247,7 @@ subroutine conv_jp_tend( &
 !in/output
         massflxbase_p, &
 !output
+        jctop, jcbot, &
         stend, qtend, &
         qliqtend,  prec, qliq,  &
         precrate_out, &
@@ -285,6 +286,9 @@ subroutine conv_jp_tend( &
 !in/output
     real(r8), dimension(inncol, nlev), intent(inout) :: massflxbase_p !output convective precip[m/s]
 !output
+    real(r8), dimension(inncol), intent(out) :: jctop
+    real(r8), dimension(inncol), intent(out) :: jcbot
+
     real(r8), dimension(inncol), intent(out) :: prec !output convective precip[m/s]
     real(r8), dimension(inncol, nlev), intent(out) :: stend, qtend, qliqtend
     ! [K/s] ; [kg/kg/s] output tendencies calculated by adding (condensate rate+transport)
@@ -684,6 +688,9 @@ subroutine conv_jp_tend( &
 
     kupbase = kuplcl
 
+    jcbot = kuplcl
+    jctop = kuplcl
+
     dse_up = cpair*t_up+gravit*zint
 
     !write(*,*) "before:"
@@ -714,6 +721,13 @@ subroutine conv_jp_tend( &
             mse_up, t_up, q_up, qliq_up, qice_up, mseqi, condrate, rainrate, snowrate, precrate, &
             normassflx_up_tmp, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
             trigdp)
+
+        do i=1, inncol
+            if ( trigdp(i)<1 ) cycle
+            if ( kuptop(i)>jctop(i) ) then
+                jctop(i) = kuptop(i)
+            end if
+        end do
 
         dse_up = cpair*t_up+gravit*zint
         do i=1, inncol

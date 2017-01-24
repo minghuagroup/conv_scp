@@ -393,7 +393,9 @@ subroutine convect_deep_tend( &
 
       call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
 
-      call conv_intr_jp_tend(ztodt, landfrac, lhflx, state, ptend, pbuf, dlf)
+      call conv_intr_jp_tend( &
+          ztodt, landfrac, lhflx, state &
+         ,ptend, pbuf, dlf)
   end select
 
 !xiex

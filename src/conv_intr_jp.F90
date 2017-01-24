@@ -34,6 +34,9 @@ integer  :: snow_dp_idx      = 0
 integer  ::  pblh_idx        = 0
 integer  ::  tpert_idx       = 0
 
+integer  ::  cldtop_idx       = 0
+integer  ::  cldbot_idx       = 0
+
 !used since CESM V1.2.2
 !integer  :: dp_flxprc_idx = 0
 !integer  :: dp_flxsnw_idx = 0
@@ -86,6 +89,9 @@ subroutine conv_intr_jp_init
    prec_dp_idx     = pbuf_get_index('PREC_DP')
    snow_dp_idx     = pbuf_get_index('SNOW_DP')
 
+   cldtop_idx = pbuf_get_index('CLDTOP')
+   cldbot_idx = pbuf_get_index('CLDBOT')
+
    pblh_idx   = pbuf_get_index('pblh')
    tpert_idx  = pbuf_get_index('tpert')
 
@@ -100,7 +106,9 @@ end subroutine conv_intr_jp_init
 
 
 !------------------------------------------------------
-subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dlf)
+subroutine conv_intr_jp_tend( &
+        ztodt, landfrac, lhflx, state &
+       ,ptend_all, pbuf, dlf)
 
     use physics_buffer, only : pbuf_get_field, physics_buffer_desc, pbuf_old_tim_idx
     use constituents,  only: pcnst
@@ -135,6 +143,9 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
 
    real(r8), pointer :: pblh(:)      ! Planetary boundary layer height
    real(r8), pointer :: tpert(:)     ! Thermal temperature excess
+
+   real(r8), pointer, dimension(:) :: jctop
+   real(r8), pointer, dimension(:) :: jcbot
 
    real(r8), pointer, dimension(:,:) :: flxprec      ! Convective-scale flux of precip at interfaces (kg/m2/s)
    real(r8), pointer, dimension(:,:) :: flxsnow      ! Convective-scale flux of snow   at interfaces (kg/m2/s)
@@ -200,6 +211,9 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
    call pbuf_get_field(pbuf, prec_dp_idx,     prec )
    call pbuf_get_field(pbuf, snow_dp_idx,     snow )
 
+   call pbuf_get_field(pbuf, cldtop_idx, jctop )
+   call pbuf_get_field(pbuf, cldbot_idx, jcbot )
+
    cld = 0._r8
    ql  = 0._r8
    rprd = 0._r8
@@ -257,6 +271,7 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
 !in/output
        massflxbase_p(:ncol,:), &
 !output
+       jctop(:ncol), jcbot(:ncol), &
        stend(:ncol,:), qtend(:ncol,:), &
        qliqtend(:ncol,:), &
        prec(:ncol), ql(:ncol,:), rprd(:ncol,:), &

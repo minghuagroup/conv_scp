@@ -51,6 +51,7 @@ program test
     real(r8), dimension(:,:,:), allocatable :: rainrate, snowrate, precrate
     real(r8), dimension(:,:,:), allocatable :: compstend, compqtend
     real(r8), dimension(:,:), allocatable   :: dilucape, bfls_dilucape
+    real(r8), dimension(:,:), allocatable   :: jctop, jcbot
 
     real(r8), dimension(:,:), allocatable ::  outmb
     real(r8), dimension(:,:), allocatable ::  outtmp2d
@@ -379,6 +380,7 @@ program test
               ,omega(:,j,:), pblh(:,j), tpert(:,j) &
 !<<<<<<< HEAD
               ,massflxbase(:,j,:) &
+              ,jctop(:,j), jcbot(:,j) &
               ,stend(:,j,:), qtend(:,j,:), qliqtend &
               ,precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
 !=======
@@ -555,6 +557,9 @@ program test
        allocate( massflxbase(innlon, innlat, innlev) )
 
 !for output
+       allocate( jctop(innlon, innlat) )
+       allocate( jcbot(innlon, innlat) )
+
        allocate( stend(innlon, innlat, innlev) )
        allocate( qtend(innlon, innlat, innlev) )
        allocate( qliqtend(innlon, innlat, innlev) )
