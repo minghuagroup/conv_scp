@@ -133,7 +133,8 @@ module conv_jp
     real(r8), parameter :: dn_fac = 0.3_r8
 
 !parameter for prognostics mass flux calculation
-    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8
+!    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
+    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=2.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -723,11 +724,11 @@ subroutine conv_jp_tend( &
             end if
         end do
 
-        write(*,*)
-        write(*,"(10f20.10)") mse_up(1,kuplcl(1)+1:nlevp)
-        write(*,"(10f20.10)") q_up(1,kuplcl(1)+1:nlevp)
-        write(*,"(10f20.10)") t_up(1,kuplcl(1)+1:nlevp)
-        write(*,"(10f20.10)") dse_up(1,kuplcl(1)+1:nlevp)
+        !write(*,*)
+        !write(*,"(10f20.10)") mse_up(1,kuplcl(1)+1:nlevp)
+        !write(*,"(10f20.10)") q_up(1,kuplcl(1)+1:nlevp)
+        !write(*,"(10f20.10)") t_up(1,kuplcl(1)+1:nlevp)
+        !write(*,"(10f20.10)") dse_up(1,kuplcl(1)+1:nlevp)
 
         mse_up_mid = 0._r8
         t_up_mid = 0._r8
@@ -742,7 +743,8 @@ subroutine conv_jp_tend( &
 
         call cal_evap( &
             ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
-            precrate, accuprec, surfprec, evaprate )
+            rainrate, accuprec, surfprec, evaprate )
+!            precrate, accuprec, surfprec, evaprate )
 
         call cal_mse_dn( &
             ent_opt, kuptop, trigdp, dz, p, rho, t, twet, lvmid, &
@@ -903,6 +905,7 @@ subroutine conv_jp_tend( &
     prec = precsum/nplume
     stend = stendsum/nplume
     qtend = qtendsum/nplume
+
     !write(*,*) "after:"
     !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
 
@@ -2201,7 +2204,7 @@ subroutine cal_evap( &
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
             evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt / rho(i,k)
-            accuprec(i,k) = accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k)
+            accuprec(i,k) = max(0._r8, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k) )
 !>>>>>>> origin/dd_ice_evap
         end do
         surfprec(i) = accuprec(i,nlev)
@@ -2480,7 +2483,7 @@ subroutine cal_tendtransport( &
 !sub cloud layer transport
 !        do k=kuplaunch(i)-1, kuptop(i), -1
 !        do k=kuplcl(i)-1, kuptop(i), -1
-        do k=nlev-1, kuptop(i), -1
+        do k=nlev, kuptop(i), -1
             stend(i,k) = -( &
                 normassflx_up(i,k)*( dse_up(i,k)-dseint(i,k) )&
                 - normassflx_up(i,k+1)*( dse_up(i,k+1)-dseint(i,k+1) )&

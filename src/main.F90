@@ -94,11 +94,11 @@ program test
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
-    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
+!    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
 !    call netcdf_check( nf90_open("inputscm_core_select_new.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_core_all.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
-!   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
+   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
     call netcdf_check( nf90_inq_varid(inncid, "u", uvarid) )
@@ -307,7 +307,7 @@ program test
    massflxbase = 0._r8
    lat = lat/180._r8*3.141592653_r8
 
-!   nrun = 5
+!   nrun = 40
    nrun = ntime
 !simulation begins
    do itime=1,nrun

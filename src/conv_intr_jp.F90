@@ -292,6 +292,9 @@ subroutine conv_intr_jp_tend( ztodt, landfrac, lhflx, state, ptend_all, pbuf, dl
    call outfld('MSEUP', outmseup, pcols, state%lchnk )
    call outfld('CONVZ', z, pcols, state%lchnk )
 
+   call outfld('STENDCONVDP', stend, pcols, lchnk)
+   call outfld('QTENDCONVDP', qtend, pcols, lchnk)
+
    call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
    call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
    call outfld('STENDCONVDPTRANUP', outstendtranup, pcols, lchnk)
