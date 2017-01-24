@@ -134,7 +134,7 @@ module conv_jp
 
 !parameter for prognostics mass flux calculation
 !    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
-    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=2.e3_r8
+    real(r8), parameter :: pmf_alpha =100.e7_r8, pmf_tau=2.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -757,8 +757,8 @@ subroutine conv_jp_tend( &
 
         call cal_evap( &
             ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
-            rainrate, accuprec, surfprec, evaprate )
-!            precrate, accuprec, surfprec, evaprate )
+!            rainrate, accuprec, surfprec, evaprate )
+            precrate, accuprec, surfprec, evaprate )
 
         call cal_mse_dn( &
             ent_opt, kuptop, trigdp, dz, p, rho, t, twet, lvmid, &
@@ -1505,7 +1505,6 @@ subroutine conv_jp_tend( &
             tmp2stend(i,:) = minqcheckf*tmp2stend(i,:)
             tmp2qtend(i,:) = minqcheckf*tmp2qtend(i,:)
 
-            qliq(i,:) = minqcheckf*qliq(i,:)
             precrate(i,:) = minqcheckf*precrate(i,:)
             prec(i) = minqcheckf*prec(i)
         end if

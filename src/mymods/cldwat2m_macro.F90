@@ -1346,6 +1346,8 @@
       ! Handling of input state !
       ! ----------------------- !
 
+      !write(*,'(a10,f20.10,a10,f20.10,a10,f20.10)') 'ql0', ql0, 'a_dc', a_dc,'ql_dc', ql_dc !xiex
+      !write(*,'(a10,f20.10,a10,f20.10,a10,f20.10)') 'a_sc', a_sc, 'qi_sc', qi_sc !xiex
       ql0_nc  = max(0._r8,ql0-a_dc*ql_dc-a_sc*ql_sc)
       qi0_nc  = max(0._r8,qi0-a_dc*qi_dc-a_sc*qi_sc)
       qc0_nc  = ql0_nc + qi0_nc 

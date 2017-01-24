@@ -25,9 +25,13 @@ camqtendtrandn = np.mean(lat/cp*fc*f.variables['camqtendtrandn'][:,::-1,0], axis
 
 qcheck    = f.variables['qcheck'][:,0]
 
+ttend_all = qcheck*fc/cp*f.variables['stend'][:,::-1,0].T
+
 ttend     = np.mean(qcheck*fc/cp*f.variables['stend'][:,::-1,0].T, axis=1)
 ttendcond = np.mean(qcheck*fc/cp*f.variables['stendcond'][:,::-1,0].T, axis=1)
 ttendtran = np.mean(fc/cp*f.variables['stendtranup'][:,::-1,0].T, axis=1)
+
+qtend_all = qcheck*lat/cp*fc*f.variables['qtend'][:,::-1,0].T
 
 qtend     = np.mean(qcheck*lat/cp*fc*f.variables['qtend'][:,::-1,0].T, axis=1)
 qtendcond = np.mean(qcheck*lat/cp*fc*f.variables['qtendcond'][:,::-1,0].T, axis=1)
@@ -47,27 +51,38 @@ z = np.mean(f.variables['z'][:,::-1,0]/1000., axis=0)
 xmin = -5
 xmax =  5
 
+ymin = 0
+ymax = 18
+
 plt.subplot(121)
+plt.ylabel("Z")
+plt.ylim( ymin, ymax )
+
+plt.plot( ttend_all, z, 'k.-', alpha=0.1, lw=2)
+plt.plot( qtend_all, z, 'k.--', alpha=0.1, lw=2)
+
 plt.plot( ttend, z, 'k.-', lw=2)
-plt.plot( ttendtran, z, 'b.-')
-plt.plot( ttendcond, z, 'r.-')
+#plt.plot( ttendtran, z, 'b.-')
+#plt.plot( ttendcond, z, 'r.-')
 plt.plot( qtend, z, 'k.--', lw=2)
-plt.plot( qtendtran, z, 'b.--')
-plt.plot( qtendcond, z, 'r.--')
+#plt.plot( qtendtran, z, 'b.--')
+#plt.plot( qtendcond, z, 'r.--')
 
 #plt.plot( ttendcomp, z, 'm.-', lw=2)
 #plt.plot( qtendcomp, z, 'm.--', lw=2)
 
-plt.plot( ttendevap, z, 'g.-', lw=2)
-plt.plot( qtendevap, z, 'g.--', lw=2)
+#plt.plot( ttendevap, z, 'g.-', lw=2)
+#plt.plot( qtendevap, z, 'g.--', lw=2)
 
 plt.xlabel("Heating(J/K/day)")
-plt.ylabel("Z")
 plt.axvline(x=0, lw=1, color='k')
-#plt.xlim(xmin, xmax)
+plt.xlim(xmin, xmax)
 
 
 plt.subplot(122)
+plt.ylabel("Z")
+plt.ylim( ymin, ymax )
+
 plt.plot( camttend, z, 'k.-', lw=2)
 plt.plot( camttendtranup, z, 'b.-')
 plt.plot( camttendtrandn, z, 'g.-')
@@ -76,9 +91,9 @@ plt.plot( camqtend, z, 'k.--', lw=2)
 plt.plot( camqtendtranup, z, 'b.--')
 plt.plot( camqtendtrandn, z, 'g.--')
 plt.plot( camqtendcond, z, 'r--')
-plt.xlabel("CAM Heating(J/K/day)")
-plt.ylabel("Z")
 plt.axvline(x=0, lw=1, color='k')
+
+plt.xlabel("CAM Heating(J/K/day)")
 plt.xlim(xmin, xmax)
 
 

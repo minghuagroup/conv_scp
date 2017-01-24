@@ -328,6 +328,7 @@ subroutine conv_intr_jp_tend( &
    !ptend_loc%s = 0._r8
    !ptend_loc%q(:,:,1) = 0._r8
 !   prec = 0._r8
+
    ql   = 0._r8
    rprd = 0._r8
 
