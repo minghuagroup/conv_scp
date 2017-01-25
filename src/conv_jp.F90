@@ -133,8 +133,8 @@ module conv_jp
     real(r8), parameter :: dn_fac = 0.3_r8
 
 !parameter for prognostics mass flux calculation
-!    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
-    real(r8), parameter :: pmf_alpha =100.e7_r8, pmf_tau=2.e3_r8
+    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
+!    real(r8), parameter :: pmf_alpha =100.e7_r8, pmf_tau=2.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -611,9 +611,19 @@ subroutine conv_jp_tend( &
     rho = p/t/rair
     w = -omega/rho/gravit
 
+
     twet = (t-273.16)*atan( 0.151977*(rh*100.+8.313659)**0.5 ) + atan(t-273.16+rh*100.) &
         - atan(rh*100.-1.676331) + 0.00391838*((rh*100.)**1.5)*atan(0.023101*rh*100.) - 4.686035 &
         + 273.16
+
+    do i=1, inncol
+        do k=1, nlev
+!            rh(i,k) = min( 1., rh(i,k) )
+            twet(i,k) = min( t(i,k), twet(i,k) )
+        end do
+    end do
+
+
 
 !estimate z at the interface from z and dz
     zint(:,nlevp) = zsrf(:)
@@ -836,17 +846,21 @@ subroutine conv_jp_tend( &
         end do
 
 
-!        call stdout3dmix( z, zint, t, t_up )
 #ifdef SCMDIAG
 !        call stdout3dmix( z, zint, t, t_up )
 !        call stdout3dmix( z, zint, t, tint )
         !call stdout3dmix( stendcond, zint, stendevap, zint )
-        !call stdout3dmix( condrate, zint, evaprate, zint )
+!        call stdout3dmix( condrate, zint, evaprate, zint )
+!        call stdout3dmix( precrate, zint, evaprate, zint )
 !        call stdout3dmix( z, tint, t, t_up )
 !        call stdout3dmix( z, msesatint, msesat, mse_up )
 !        call stdout3dmix( q, msesatint, t, mse_up )
 !        call stdout3dmix( z, dseint, t, dse_up )
 !        call stdout3dmix( z, qint, t, q_up )
+        call stdout3dmix( t, zint, twet, t_up )
+!        call stdout3dmix( rh, zint, twet, t_up )
+!        call stdout3dmix( t, zint, rh, t_up )
+!        call stdout3dmix( q, zint, qsat, t_up )
 
         call subcol_netcdf_putclm( "ent_rate", nlev, ent_rate_bulk_up(1,:), j )
 
@@ -2017,8 +2031,8 @@ subroutine cal_mse_up( &
 
             !----method 2: Taylor expanding ------------------------------------------------
                 call cal_mse2tsat(mse_up(i,k), tint(i,k), qsatint(i,k), msesatint(i,k), t_up(i,k) )
-            
             !-------------------------------------------------------------------------------
+
                 call cal_qsat(t_up(i,k), pint(i,k), q_up(i,k))
 
                 condrate(i,k) = 1/rho(i,k)*( Ek*q(i,k) &
@@ -2063,6 +2077,10 @@ subroutine cal_mse_up( &
             
             if (buoy(i,k) < 0.0) then
             !if (w_up(i,k) < 0.1) then
+                exit
+            end if
+
+            if ( condrate(i,k)<0 ) then
                 exit
             end if
 
@@ -2218,6 +2236,7 @@ subroutine cal_evap( &
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
             evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt / rho(i,k)
             accuprec(i,k) = max(0._r8, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k) )
+!            write(*,'(i3,10f20.10)') k, evaprate(i,k), accuprec(i,k), t(i,k), twet(i,k), qsat_tmp, q(i,k), rho(i,k)
 !>>>>>>> origin/dd_ice_evap
         end do
         surfprec(i) = accuprec(i,nlev)

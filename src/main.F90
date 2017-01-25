@@ -308,7 +308,7 @@ program test
    massflxbase = 0._r8
    lat = lat/180._r8*3.141592653_r8
 
-!   nrun = 40
+!   nrun = 35
    nrun = ntime
 !simulation begins
    do itime=1,nrun

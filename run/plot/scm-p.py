@@ -24,9 +24,9 @@ colors = [ cm(x) for x in cm_subsection ]
 
 #for itime in range(ntime-1,ntime):
 #for itime in range(ntime-10,ntime):
-#for itime in range(35, 40):
+for itime in range(34, 40):
 #for itime in [97]:
-for itime in range(ntime):
+#for itime in range(ntime):
     print( ('%02i'%(itime+1) ) )
 
     z = f.variables['z'][itime,::-1,0]/1000.
@@ -92,6 +92,7 @@ for itime in range(ntime):
     rainrate = qcheck*1000*fc*f.variables['rainrate'][itime,::-1,:]
     condrate = qcheck*1000*fc*f.variables['condrate'][itime,::-1,:]
     evaprate = qcheck*1000*fc*f.variables['evaprate'][itime,::-1,:]
+    snowrate = qcheck*1000*fc*f.variables['snowrate'][itime,::-1,:]
 
     massflxbase = f.variables['massflxbase'][itime,:]
     dilucape    = f.variables['dilucape'][itime,:]
@@ -186,8 +187,10 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
+    plt.axvline(x=0, color='grey')
     plt.plot( condrate , z, 'b.-', lw=1)
     plt.plot( rainrate , z, 'r.-', lw=1)
+    plt.plot( snowrate , z, 'm.-', lw=1)
     plt.plot( evaprate , z, 'c.-', lw=1)
     plt.xlabel("g/kg/day cond(b) rain(r)")
     #plt.xlim(0, 60)
@@ -199,6 +202,7 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
+    plt.axvline(x=0, color='grey')
     plt.plot( q, z, 'k.-')
     for i in range(nsubcol):
         q_up_tmp = q_up[:,i]
@@ -220,6 +224,7 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
+    plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
         ttendcond_tmp = ttendcond[:,i]
         qtendcond_tmp = qtendcond[:,i]
@@ -233,6 +238,7 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
+    plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
         ttend_tmp = ttend[:,i]
         qtend_tmp = qtend[:,i]

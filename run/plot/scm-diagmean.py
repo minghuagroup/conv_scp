@@ -58,13 +58,13 @@ plt.subplot(121)
 plt.ylabel("Z")
 plt.ylim( ymin, ymax )
 
-plt.plot( ttend_all, z, 'k.-', alpha=0.1, lw=2)
-plt.plot( qtend_all, z, 'k.--', alpha=0.1, lw=2)
+plt.plot( ttend_all, z, 'b.-', alpha=0.1, lw=2)
+plt.plot( qtend_all, z, 'g.--', alpha=0.1, lw=2)
 
-plt.plot( ttend, z, 'k.-', lw=2)
+plt.plot( ttend, z, 'b.-', lw=2)
 #plt.plot( ttendtran, z, 'b.-')
 #plt.plot( ttendcond, z, 'r.-')
-plt.plot( qtend, z, 'k.--', lw=2)
+plt.plot( qtend, z, 'g.--', lw=2)
 #plt.plot( qtendtran, z, 'b.--')
 #plt.plot( qtendcond, z, 'r.--')
 
@@ -76,7 +76,7 @@ plt.plot( qtend, z, 'k.--', lw=2)
 
 plt.xlabel("Heating(J/K/day)")
 plt.axvline(x=0, lw=1, color='k')
-plt.xlim(xmin, xmax)
+#plt.xlim(xmin, xmax)
 
 
 plt.subplot(122)
