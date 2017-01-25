@@ -442,12 +442,15 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    !call outfld('CONVDPSU', outsu, pcols, lchnk)        ! RBN - CAPE output
    !call outfld('CONVDPQU', outqu, pcols, lchnk)        ! RBN - CAPE output
 
-   !call outfld('CONVDPCONDSTEND', outcondtends, pcols, lchnk)        ! RBN - CAPE output
-   !call outfld('CONVDPCONDQTEND', outcondtendq, pcols, lchnk)        ! RBN - CAPE output
-   !call outfld('CONVDPTRANUPSTEND', outtranuptends, pcols, lchnk)      ! RBN - CAPE output
-   !call outfld('CONVDPTRANUPQTEND', outtranuptendq, pcols, lchnk)      ! RBN - CAPE output
-   !call outfld('CONVDPTRANDNSTEND', outtrandntends, pcols, lchnk)      ! RBN - CAPE output
-   !call outfld('CONVDPTRANDNQTEND', outtrandntendq, pcols, lchnk)      ! RBN - CAPE output
+   call outfld('STENDCONVDP', ptend_loc%s, pcols, lchnk)        ! RBN - CAPE output
+   call outfld('QTENDCONVDP', ptend_loc%q(:,:,1), pcols, lchnk)        ! RBN - CAPE output
+
+   call outfld('STENDCONVDPCOND', outcondtends, pcols, lchnk)        ! RBN - CAPE output
+   call outfld('QTENDCONVDPCOND', outcondtendq, pcols, lchnk)        ! RBN - CAPE output
+   call outfld('STENDCONVDPTRANUP', outtranuptends, pcols, lchnk)      ! RBN - CAPE output
+   call outfld('QTENDCONVDPTRANUP', outtranuptendq, pcols, lchnk)      ! RBN - CAPE output
+   call outfld('STENDCONVDPTRANDN', outtrandntends, pcols, lchnk)      ! RBN - CAPE output
+   call outfld('QTENDCONVDPTRANDN', outtrandntendq, pcols, lchnk)      ! RBN - CAPE output
 !xiex#
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output

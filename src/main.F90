@@ -51,6 +51,7 @@ program test
     real(r8), dimension(:,:,:), allocatable :: rainrate, snowrate, precrate
     real(r8), dimension(:,:,:), allocatable :: compstend, compqtend
     real(r8), dimension(:,:), allocatable   :: dilucape, bfls_dilucape
+    real(r8), dimension(:,:), allocatable   :: jctop, jcbot
 
     real(r8), dimension(:,:), allocatable ::  outmb
     real(r8), dimension(:,:), allocatable ::  outtmp2d
@@ -94,11 +95,11 @@ program test
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
-    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
+!    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
 !    call netcdf_check( nf90_open("inputscm_core_select_new.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_core_all.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
-!   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
+   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
     call netcdf_check( nf90_inq_varid(inncid, "u", uvarid) )
@@ -307,7 +308,7 @@ program test
    massflxbase = 0._r8
    lat = lat/180._r8*3.141592653_r8
 
-!   nrun = 5
+!   nrun = 40
    nrun = ntime
 !simulation begins
    do itime=1,nrun
@@ -379,6 +380,7 @@ program test
               ,omega(:,j,:), pblh(:,j), tpert(:,j) &
 !<<<<<<< HEAD
               ,massflxbase(:,j,:) &
+              ,jctop(:,j), jcbot(:,j) &
               ,stend(:,j,:), qtend(:,j,:), qliqtend &
               ,precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
 !=======
@@ -555,6 +557,9 @@ program test
        allocate( massflxbase(innlon, innlat, innlev) )
 
 !for output
+       allocate( jctop(innlon, innlat) )
+       allocate( jcbot(innlon, innlat) )
+
        allocate( stend(innlon, innlat, innlev) )
        allocate( qtend(innlon, innlat, innlev) )
        allocate( qliqtend(innlon, innlat, innlev) )

@@ -16,7 +16,7 @@ xsubcol = range(nsubcol)
 
 ymax = 18
 
-plt.figure( figsize=(18,12) )
+plt.figure( figsize=(20,12) )
 
 cm_subsection = np.linspace(0., 1., nsubcol)
 cm = aplt.read_cmap( 'ncl_default' )
@@ -50,7 +50,7 @@ for itime in range(ntime):
     qsat = f.variables['qsat'][itime,::-1,0]
 
     t_up = f.variables['t_up'][itime,::-1,0]
-    q_up = f.variables['q_up'][itime,::-1,0]
+    q_up = f.variables['q_up'][itime,::-1,:]
     dse_up = fcmse*f.variables['dse_up'][itime,::-1,:]
 
 
@@ -74,37 +74,30 @@ for itime in range(ntime):
     camqtendtranup = lat/cp*fc*f.variables['camqtendtranup'][itime,::-1,0]
     camqtendtrandn = lat/cp*fc*f.variables['camqtendtrandn'][itime,::-1,0]
 
-    ttend     = fc/cp*f.variables['stend'][itime,::-1,:]
-    ttendcond = fc/cp*f.variables['stendcond'][itime,::-1,:]
-    ttendtran = fc/cp*f.variables['stendtranup'][itime,::-1,:]
-    qtend     = lat/cp*fc*f.variables['qtend'][itime,::-1,:]
-    qtendcond = lat/cp*fc*f.variables['qtendcond'][itime,::-1,:]
-    qtendtran = lat/cp*fc*f.variables['qtendtranup'][itime,::-1,:]
+    qcheck = f.variables['qcheck'][itime,0]
+
+    ttend     = qcheck*fc/cp*f.variables['stend'][itime,::-1,:]
+    ttendcond = qcheck*fc/cp*f.variables['stendcond'][itime,::-1,:]
+    ttendtran = qcheck*fc/cp*f.variables['stendtranup'][itime,::-1,:]
+    qtend     = qcheck*lat/cp*fc*f.variables['qtend'][itime,::-1,:]
+    qtendcond = qcheck*lat/cp*fc*f.variables['qtendcond'][itime,::-1,:]
+    qtendtran = qcheck*lat/cp*fc*f.variables['qtendtranup'][itime,::-1,:]
 
     ttend_avg = np.mean( ttend, axis=1 )
     qtend_avg = np.mean( qtend, axis=1 )
 
-    #ttendcomp = fc/cp*f.variables['stendcomp'][itime,::-1,0]
-    #qtendcomp = lat/cp*fc*f.variables['qtendcomp'][itime,::-1,0]
-
-    #tmp1ttend     = fc/cp*f.variables['tmp1stend'][itime,::-1,0]
-    #tmp1qtend     = lat/cp*fc*f.variables['tmp1qtend'][itime,::-1,0]
-    #tmp2ttend     = fc/cp*f.variables['tmp2stend'][itime,::-1,0]
-    #tmp2qtend     = lat/cp*fc*f.variables['tmp2qtend'][itime,::-1,0]
-
     #ttendevap     = fc/cp*f.variables['stendevap'][itime,::-1,0]
     #qtendevap     = lat/cp*fc*f.variables['qtendevap'][itime,::-1,0]
 
-    rainrate = 1000*fc*f.variables['rainrate'][itime,::-1,:]
-    condrate = 1000*fc*f.variables['condrate'][itime,::-1,:]
-    evaprate = 1000*fc*f.variables['evaprate'][itime,::-1,:]
+    rainrate = qcheck*1000*fc*f.variables['rainrate'][itime,::-1,:]
+    condrate = qcheck*1000*fc*f.variables['condrate'][itime,::-1,:]
+    evaprate = qcheck*1000*fc*f.variables['evaprate'][itime,::-1,:]
 
     massflxbase = f.variables['massflxbase'][itime,:]
     dilucape    = f.variables['dilucape'][itime,:]
     massflxbase_cape = f.variables['massflxbase_cape'][itime,0]
     massflxbase_w = f.variables['massflxbase_w'][itime,0]
     massflxbase_mconv = f.variables['massflxbase_mconv'][itime,0]
-    qcheck = f.variables['qcheck'][itime,0]
 
     w_up_init = f.variables['w_up_init'][itime,:]
 
@@ -119,7 +112,7 @@ for itime in range(ntime):
     plt.axhline(y=z[kuplaunch], lw=1, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
-    plt.title( "time {:d}".format(itime) )
+    plt.title( "time {:d}".format(itime+1) )
 
     for i in range(nsubcol):
         mse_up_tmp = mse_up[:,i]
@@ -143,7 +136,7 @@ for itime in range(ntime):
     plt.axhline(y=z[kuplaunch], lw=1, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
-    plt.title( 'qcheck:{:8.3f}'.format(qcheck) )
+    plt.title( 'qcheck:{:8.3f} trigdp:{:1.0f}'.format(qcheck, trigdp) )
 
     for i in range(nsubcol):
         ent_rate_tmp = ent_rate[:,i]
@@ -159,6 +152,7 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
+    plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
         w_up_tmp = w_up[:,i]
         levind = (w_up_tmp > 0)
@@ -172,6 +166,7 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
+    plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
         buoy_tmp = buoy[:,i]
         levind = (buoy_tmp > 0)
@@ -183,7 +178,7 @@ for itime in range(ntime):
     plt.subplot(2,5,5)
     plt.bar( xsubcol ,massflxbase )
     plt.ylabel('Base Mass Flux')
-    plt.ylim( 0, 0.5 )
+    plt.ylim( 0, 0.2 )
 
 
     plt.subplot(2,5,6)
@@ -195,7 +190,8 @@ for itime in range(ntime):
     plt.plot( rainrate , z, 'r.-', lw=1)
     plt.plot( evaprate , z, 'c.-', lw=1)
     plt.xlabel("g/kg/day cond(b) rain(r)")
-    plt.xlim(0, 60)
+    #plt.xlim(0, 60)
+
 
 
     plt.subplot(2,5,7)
@@ -203,13 +199,20 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    plt.plot( dse, z, 'k.-')
+    plt.plot( q, z, 'k.-')
     for i in range(nsubcol):
-        dse_up_tmp = dse_up[:,i]
-        levind = (dse_up_tmp > 0)
-        plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("DSE ^3 J/kg")
-    plt.xlim(290, 360)
+        q_up_tmp = q_up[:,i]
+        levind = (q_up_tmp > 0)
+        plt.plot( q_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+
+    #plt.plot( dse, z, 'k.-')
+    #for i in range(nsubcol):
+        #dse_up_tmp = dse_up[:,i]
+        #levind = (dse_up_tmp > 0)
+        #plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("DSE ^3 J/kg")
+    #plt.xlim(290, 360)
+
 
 
     plt.subplot(2,5,8)
