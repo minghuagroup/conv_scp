@@ -91,7 +91,7 @@ program test
 !local
     real(r8) :: dtime
     logical  :: flag
-    integer  :: nplume = 15
+    integer  :: nplume = 5
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )

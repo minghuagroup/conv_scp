@@ -7,7 +7,7 @@ use physconst,    only: cpair, gravit
 
 use physics_types, only: physics_state, physics_ptend
 use physics_types, only: physics_ptend_init, physics_ptend_sum
-use physics_types, only: physics_update
+use physics_types, only: physics_update, physics_ptend_dealloc
 
 use cam_history,  only: outfld, addfld, add_default, phys_decomp
 
@@ -199,8 +199,6 @@ subroutine conv_intr_jp_tend( &
 
    lchnk = state%lchnk
    ncol  = state%ncol
-   lq(:) = .false.
-   lq(1) = .true.
 
    itim = pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, cld_idx,         cld,    start=(/1,1,itim/), kount=(/pcols,pver,1/) )
@@ -242,6 +240,11 @@ subroutine conv_intr_jp_tend( &
    call pbuf_get_field(pbuf, bfls_t_idx, bfls_t)
    call pbuf_get_field(pbuf, bfls_q_idx, bfls_q)
 
+
+   lq(:) = .false.
+   lq(1) = .true.
+   call physics_ptend_init(ptend_all, state%psetcols, 'convect_deep')
+!   call physics_ptend_init(ptend_all, state%psetcols, 'convect_deep', ls=.true., lq=lq)
 
    call physics_ptend_init(ptend_loc, state%psetcols, 'scp_convr', ls=.true., lq=lq)
 
@@ -287,9 +290,6 @@ subroutine conv_intr_jp_tend( &
        outstendevap(:ncol,:), outqtendevap(:ncol,:) &
        )
 
-
-   dlf(:ncol,:) = qliqtend(:ncol,:)
-
    ptend_loc%s(:ncol,:)   = stend(:ncol,:)
    ptend_loc%q(:ncol,:,1) = qtend(:ncol,:)
    !ptend_loc%s(:ncol,:)   = stendcomp(:ncol,:)
@@ -329,11 +329,14 @@ subroutine conv_intr_jp_tend( &
    !ptend_loc%q(:,:,1) = 0._r8
 !   prec = 0._r8
 
+!   dlf(:ncol,:) = qliqtend(:ncol,:)
+   dlf  = 0._r8
    ql   = 0._r8
    rprd = 0._r8
 
-   call physics_ptend_init(ptend_all, state%psetcols, 'convect_deep')
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
+
+   call physics_ptend_dealloc(ptend_loc)
 
 end subroutine conv_intr_jp_tend
 

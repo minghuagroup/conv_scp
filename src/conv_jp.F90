@@ -133,8 +133,8 @@ module conv_jp
     real(r8), parameter :: dn_fac = 0.3_r8
 
 !parameter for prognostics mass flux calculation
-    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
-!    real(r8), parameter :: pmf_alpha =100.e7_r8, pmf_tau=2.e3_r8
+!    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
+    real(r8), parameter :: pmf_alpha =50.e7_r8, pmf_tau=2.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -713,7 +713,7 @@ subroutine conv_jp_tend( &
 #endif
 !        w_up_init = 0.01
         if ( ent_opt == 2 ) then
-            w_up_init = j * 0.3
+            w_up_init = j * 0.5
         else if ( ent_opt == 3 ) then
             w_up_init = j * 0.2
         end if
@@ -797,7 +797,7 @@ subroutine conv_jp_tend( &
         qtendevap =  evaprate
 
         do i=1, inncol
-!            if ( trigdp(i)<1 ) cycle
+            if ( trigdp(i)<1 ) cycle
             massflxbase_p(i,j) = min( 0.1, max( 0., &
                 massflxbase_p(i,j) + dtime*( dilucape(i)/(2*pmf_alpha) &
                 - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
@@ -807,6 +807,7 @@ subroutine conv_jp_tend( &
         massflxbase(:) = massflxbase_p(:,j)
 
         do i=1, inncol
+            if ( trigdp(i)<1 ) massflxbase(i) = 0._r8
             condrate(i,:) = condrate(i,:) * massflxbase(i)  ! 1/s
             rainrate(i,:) = rainrate(i,:) * massflxbase(i)  ! 1/s
             snowrate(i,:) = snowrate(i,:) * massflxbase(i)  ! 1/s
@@ -857,7 +858,7 @@ subroutine conv_jp_tend( &
 !        call stdout3dmix( q, msesatint, t, mse_up )
 !        call stdout3dmix( z, dseint, t, dse_up )
 !        call stdout3dmix( z, qint, t, q_up )
-        call stdout3dmix( t, zint, twet, t_up )
+!        call stdout3dmix( t, zint, twet, t_up )
 !        call stdout3dmix( rh, zint, twet, t_up )
 !        call stdout3dmix( t, zint, rh, t_up )
 !        call stdout3dmix( q, zint, qsat, t_up )
@@ -1498,11 +1499,7 @@ subroutine conv_jp_tend( &
         end do
 
         if( minqcheckf<1._r8 ) then
-            qcheckout(i) = minqcheckf
             massflxbase(i) = minqcheckf*massflxbase(i)
-
-            stend(i,:) = minqcheckf*stend(i,:)
-            qtend(i,:) = minqcheckf*qtend(i,:)
 
             stendcond(i,:) = minqcheckf*stendcond(i,:)
             qtendcond(i,:) = minqcheckf*qtendcond(i,:)
@@ -1520,9 +1517,11 @@ subroutine conv_jp_tend( &
             tmp2qtend(i,:) = minqcheckf*tmp2qtend(i,:)
 
             precrate(i,:) = minqcheckf*precrate(i,:)
+
+            stend(i,:) = minqcheckf*stend(i,:)
+            qtend(i,:) = minqcheckf*qtend(i,:)
             prec(i) = minqcheckf*prec(i)
         end if
-
 
 !!!single level adjustment
         !!minqcheckf = 1._r8
@@ -1542,7 +1541,6 @@ subroutine conv_jp_tend( &
         !!end do
 
         qcheckout(i) = minqcheckf
-
     end do
 
 !clean output.
@@ -1551,6 +1549,14 @@ subroutine conv_jp_tend( &
             mse_up(i,:) = 0._r8
         end if
     end do
+
+    !do i=1, inncol
+        !do k=1, nlev
+            !if ( isnan(stend(i,k)) .or. isnan(qtend(i,k)) ) then
+                !write(*,*) "tendency error"
+            !end if
+        !end do
+    !end do
 
 
     outmb = massflxbase

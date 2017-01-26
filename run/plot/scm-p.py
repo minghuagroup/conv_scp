@@ -16,7 +16,7 @@ xsubcol = range(nsubcol)
 
 ymax = 18
 
-plt.figure( figsize=(20,12) )
+plt.figure( figsize=(22,12) )
 
 cm_subsection = np.linspace(0., 1., nsubcol)
 cm = aplt.read_cmap( 'ncl_default' )
@@ -179,7 +179,7 @@ for itime in range(34, 40):
     plt.subplot(2,5,5)
     plt.bar( xsubcol ,massflxbase )
     plt.ylabel('Base Mass Flux')
-    plt.ylim( 0, 0.2 )
+    plt.ylim( 0, 0.1 )
 
 
     plt.subplot(2,5,6)
@@ -202,12 +202,12 @@ for itime in range(34, 40):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    plt.axvline(x=0, color='grey')
-    plt.plot( q, z, 'k.-')
-    for i in range(nsubcol):
-        q_up_tmp = q_up[:,i]
-        levind = (q_up_tmp > 0)
-        plt.plot( q_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.axvline(x=0, color='grey')
+    #plt.plot( q, z, 'k.-')
+    #for i in range(nsubcol):
+        #q_up_tmp = q_up[:,i]
+        #levind = (q_up_tmp > 0)
+        #plt.plot( q_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
 
     #plt.plot( dse, z, 'k.-')
     #for i in range(nsubcol):
@@ -216,6 +216,15 @@ for itime in range(34, 40):
         #plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
     #plt.xlabel("DSE ^3 J/kg")
     #plt.xlim(290, 360)
+
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
+        ttendtran_tmp = ttendtran[:,i]
+        qtendtran_tmp = qtendtran[:,i]
+        plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
+        plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("tend K/day")
+    plt.xlim(-30, 30)
 
 
 
@@ -231,6 +240,7 @@ for itime in range(34, 40):
         plt.plot( ttendcond_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
         plt.plot( qtendcond_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
     plt.xlabel("tend K/day")
+    plt.xlim(-30, 30)
 
 
     plt.subplot(2,5,9)
