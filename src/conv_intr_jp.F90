@@ -264,7 +264,7 @@ subroutine conv_intr_jp_tend( &
    call conv_jp_tend( &
 !input
        ncol, &
-       2, 15, 1._r8*ztodt, &
+       3, 15, 1._r8*ztodt, &
        state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), &
        state%ps(:ncol), state%pmid(:ncol,:), state%pdel(:ncol,:), &
        zsrf(:ncol), z(:ncol,:), dz(:ncol,:), &
