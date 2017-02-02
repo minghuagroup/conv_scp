@@ -16,7 +16,7 @@ xsubcol = range(nsubcol)
 
 ymax = 18
 
-plt.figure( figsize=(20,12) )
+plt.figure( figsize=(22,12) )
 
 cm_subsection = np.linspace(0., 1., nsubcol)
 cm = aplt.read_cmap( 'ncl_default' )
@@ -24,9 +24,9 @@ colors = [ cm(x) for x in cm_subsection ]
 
 #for itime in range(ntime-1,ntime):
 #for itime in range(ntime-10,ntime):
-for itime in range(34, 40):
+#for itime in range(34, 40):
 #for itime in [97]:
-#for itime in range(ntime):
+for itime in range(ntime):
     print( ('%02i'%(itime+1) ) )
 
     z = f.variables['z'][itime,::-1,0]/1000.
@@ -55,9 +55,9 @@ for itime in range(34, 40):
 
 
     diffdse_up = 0.01*f.variables['diffdse_up'][itime,::-1,0]
-    diffq_up = 1000.*f.variables['diffq_up'][itime,::-1,0]
+    diffq_up = 1000.*f.variables['diffq_up'][itime,::-1,:]
 
-    normassflx = f.variables['normassflx_up'][itime,::-1,0]
+    normassflx = f.variables['normassflx_up'][itime,::-1,:]
     normassflx_mid = f.variables['normassflx_up_mid'][itime,::-1,0]
 
 
@@ -153,13 +153,21 @@ for itime in range(34, 40):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
+    #plt.axvline(x=0, color='grey')
+    #for i in range(nsubcol):
+        #w_up_tmp = w_up[:,i]
+        #levind = (w_up_tmp > 0)
+        #plt.plot( w_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("w(ms-1)")
+    #plt.xlim(-1, 18)
+
     plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
-        w_up_tmp = w_up[:,i]
-        levind = (w_up_tmp > 0)
-        plt.plot( w_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("w(ms-1)")
-    plt.xlim(-1, 18)
+        normassflx_tmp = normassflx[:,i]
+        levind = (normassflx_tmp > 0)
+        plt.plot( normassflx_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("normasssflx")
+    plt.xlim(0, 10)
 
 
     plt.subplot(2,5,4)
@@ -179,7 +187,7 @@ for itime in range(34, 40):
     plt.subplot(2,5,5)
     plt.bar( xsubcol ,massflxbase )
     plt.ylabel('Base Mass Flux')
-    plt.ylim( 0, 0.2 )
+    plt.ylim( 0, 0.1 )
 
 
     plt.subplot(2,5,6)
@@ -187,27 +195,19 @@ for itime in range(34, 40):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    plt.axvline(x=0, color='grey')
-    plt.plot( condrate , z, 'b.-', lw=1)
-    plt.plot( rainrate , z, 'r.-', lw=1)
-    plt.plot( snowrate , z, 'm.-', lw=1)
-    plt.plot( evaprate , z, 'c.-', lw=1)
-    plt.xlabel("g/kg/day cond(b) rain(r)")
-    #plt.xlim(0, 60)
+    #plt.axvline(x=0, color='grey')
+    #plt.plot( condrate , z, 'b.-', lw=1)
+    #plt.plot( rainrate , z, 'r.-', lw=1)
+    #plt.plot( snowrate , z, 'm.-', lw=1)
+    #plt.plot( evaprate , z, 'c.-', lw=1)
+    #plt.xlabel("g/kg/day cond(b) rain(r)")
 
-
-
-    plt.subplot(2,5,7)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
-    plt.axhline(y=zint[kuplcl], lw=1, color='b')
-    plt.ylim(0, ymax)
-
-    plt.axvline(x=0, color='grey')
-    plt.plot( q, z, 'k.-')
-    for i in range(nsubcol):
-        q_up_tmp = q_up[:,i]
-        levind = (q_up_tmp > 0)
-        plt.plot( q_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.axvline(x=0, color='grey')
+    #plt.plot( q, z, 'k.-')
+    #for i in range(nsubcol):
+        #q_up_tmp = q_up[:,i]
+        #levind = (q_up_tmp > 0)
+        #plt.plot( q_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
 
     #plt.plot( dse, z, 'k.-')
     #for i in range(nsubcol):
@@ -216,6 +216,35 @@ for itime in range(34, 40):
         #plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
     #plt.xlabel("DSE ^3 J/kg")
     #plt.xlim(290, 360)
+
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
+        diffq_up_tmp = diffq_up[:,i]
+        plt.plot( diffq_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("diff Q e3")
+    plt.xlim(-10, 10)
+
+    #plt.axvline(x=0, color='grey')
+    #for i in range(nsubcol):
+        #diffdse_up_tmp = diffdse_up[:,i]
+        #plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("diff DSE e3")
+
+
+    plt.subplot(2,5,7)
+    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplcl], lw=1, color='b')
+    plt.ylim(0, ymax)
+
+
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
+        ttendtran_tmp = ttendtran[:,i]
+        qtendtran_tmp = qtendtran[:,i]
+        plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
+        plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("tend K/day")
+    plt.xlim(-20, 20)
 
 
 
@@ -231,6 +260,7 @@ for itime in range(34, 40):
         plt.plot( ttendcond_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
         plt.plot( qtendcond_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
     plt.xlabel("tend K/day")
+    plt.xlim(-20, 20)
 
 
     plt.subplot(2,5,9)
@@ -251,9 +281,22 @@ for itime in range(34, 40):
 
 
     plt.subplot(2,5,10)
-    plt.bar( xsubcol ,dilucape )
-    plt.ylabel('DILUCAPE')
-    plt.ylim( 0, 2000)
+    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplcl], lw=1, color='b')
+    plt.ylim(0, ymax)
+
+    plt.axvline(x=0, color='grey')
+    plt.plot( camttendcond, z, 'r.-' , ms=3.5, mew=1)
+    plt.plot( camqtendcond, z, 'r.--', ms=3.5, mew=1)
+    plt.plot( camttendtranup, z, 'b.-' , ms=3.5, mew=1)
+    plt.plot( camqtendtranup, z, 'b.--', ms=3.5, mew=1)
+    plt.plot( camttend, z, 'k.-' , ms=3.5, mew=1)
+    plt.plot( camqtend, z, 'k.--', ms=3.5, mew=1)
+    plt.xlim(-60, 60)
+
+    #plt.bar( xsubcol ,dilucape )
+    #plt.ylabel('DILUCAPE')
+    #plt.ylim( 0, 2000)
 
     if (itime==0):
         plt.tight_layout(w_pad=0.1, h_pad=0.1)

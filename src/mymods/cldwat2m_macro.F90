@@ -120,6 +120,9 @@
    use constituents,     only : qmin, cnst_get_ind
    use time_manager,     only : is_first_step, get_nstep
    use wv_saturation,    only : findsp_vc
+!xiex
+   use time_manager,  only: get_nstep
+!xiex-end
 
    implicit none
 
@@ -667,7 +670,11 @@
    ! liquid into ice, they can be and only can be expressed        !
    ! in terms of effective condensation.                           !
    ! ------------------------------------------------------------- !
-
+!xiex
+   !if ( get_nstep()==87 ) then
+       !write(iulog,*) "haha time step:", get_nstep(), lchnk
+   !end if
+!xiex-end
    do k = top_lev, pver
       call instratus_condensate( lchnk, ncol, k,                                   &
                                  p(:,k), T1(:,k), qv1(:,k), ql1(:,k), qi1(:,k),    &
@@ -1346,8 +1353,8 @@
       ! Handling of input state !
       ! ----------------------- !
 
-      !write(*,'(a10,f20.10,a10,f20.10,a10,f20.10)') 'ql0', ql0, 'a_dc', a_dc,'ql_dc', ql_dc !xiex
-      !write(*,'(a10,f20.10,a10,f20.10,a10,f20.10)') 'a_sc', a_sc, 'qi_sc', qi_sc !xiex
+      !write(iulog,'(a10,f20.10,a10,f20.10,a10,f20.10)') 'ql0', ql0, 'a_dc', a_dc,'ql_dc', ql_dc !xiex
+      !write(iulog,'(a10,f20.10,a10,f20.10,a10,f20.10)') 'a_sc', a_sc, 'qi_sc', qi_sc !xiex
       ql0_nc  = max(0._r8,ql0-a_dc*ql_dc-a_sc*ql_sc)
       qi0_nc  = max(0._r8,qi0-a_dc*qi_dc-a_sc*qi_sc)
       qc0_nc  = ql0_nc + qi0_nc 

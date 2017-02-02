@@ -302,7 +302,7 @@ subroutine convect_deep_tend( &
    endif
 
    call outfld('OFFT    ',state%t           ,pcols   , state%lchnk   )
-   call outfld('OFFQ    ',state%q(1,1,1)    ,pcols   , state%lchnk )
+   call outfld('OFFQ    ',state%q(:,:,1)    ,pcols   , state%lchnk )
 
    call pbuf_get_field(pbuf, bfls_t_idx, bfls_t)
    call pbuf_get_field(pbuf, bfls_q_idx, bfls_q)
@@ -317,7 +317,7 @@ subroutine convect_deep_tend( &
        bfls_t = state%t
        bfls_q = state%q(:,:,1)
        call outfld('BFLST', state%t           ,pcols   , state%lchnk )
-       call outfld('BFLSQ', state%q(1,1,1)    ,pcols   , state%lchnk )
+       call outfld('BFLSQ', state%q(:,:,1)    ,pcols   , state%lchnk )
 
        massflxbase_p = 0._r8
 
@@ -338,7 +338,6 @@ subroutine convect_deep_tend( &
    select case ( deep_scheme )
    case('off') !    0 ==> no deep convection
       zero = 0     
-
       mcon = 0
       dlf = 0
       pflx = 0
@@ -349,9 +348,7 @@ subroutine convect_deep_tend( &
       jctop = pver
       jcbot = 1._r8
 
-
       call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
-
 !
 ! Associate pointers with physics buffer fields
 !
@@ -385,13 +382,11 @@ subroutine convect_deep_tend( &
   case('SCP') !    2 ==> SCP
       zero = 0     
       mcon = 0
-      cme = 0
-      dlf = 0
+      cme  = 0
+      dlf  = 0
       pflx = 0
-      zdu = 0
+      zdu  = 0
       rliq = 0
-
-      call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
 
       call conv_intr_jp_tend( &
           ztodt, landfrac, lhflx, state &
