@@ -713,7 +713,7 @@ subroutine conv_jp_tend( &
 #endif
 !        w_up_init = 0.01
         if ( ent_opt == 2 ) then
-            w_up_init = j * 0.3
+            w_up_init = j * 0.1
         else if ( ent_opt == 3 ) then
             w_up_init = j * 0.2
         end if
@@ -1991,8 +1991,7 @@ subroutine cal_mse_up( &
                     w_up_mid(i,k) = w_up(i,k+1)
                     buoy_mid(i,k) = buoy(i,k+1)
                     ent_rate_up_mid(i,k) = ent_rate_up(i,k+1)
-                end if
-                if (iteration == 2) then
+                else
                     w_up_mid(i,k) = 0.5 * ( w_up(i,k)+w_up(i,k+1) )
                     buoy_mid(i,k) = 0.5 * ( buoy(i,k)+buoy(i,k+1) )
                     ent_rate_up_mid(i,k) = 0.5 * ( ent_rate_up(i,k) + ent_rate_up(i,k+1) )
@@ -2012,7 +2011,7 @@ subroutine cal_mse_up( &
                 Ek = ( normassflx_up(i,k) - normassflx_up(i,k+1) ) / dz(i,k)
                 
                 mse_up(i,k) = ( normassflx_up(i,k+1)*mse_up(i,k+1) &
-                                + Ek*mse(i,k)*dz(i,k) + mseqi(i,k) ) &
+                                + Ek*mse(i,k)*dz(i,k) + mseqi(i,k)*dz(i,k) ) &
                                 /normassflx_up(i,k)
                 
             !----method 1: bi-section ------------------------------------------------------

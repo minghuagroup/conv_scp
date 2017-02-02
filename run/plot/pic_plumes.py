@@ -27,7 +27,7 @@ def fncread(fn,var):
 #===============================================================================
 if __name__ == '__main__':
 
-    pin = '/Users/Oscar/yhy/Research/ECP/git_test/conv_scp/'
+    pin = '../../'
     fin = pin+'run/scmdiag-output.nc'
 
     lev  = fncread(fin, 'p')[0,:,0]/100.0
@@ -65,7 +65,7 @@ if __name__ == '__main__':
             xlim = [-1, 10]
         if i==6: 
             var  = ['qliq_up','qice_up']
-            fac  = [1e5,1e5,1e5]
+            fac  = [1e2,1e2,1e2]
             icol = [-1,-1,-1]
             xlim = [-0.1, 2]
         if i==7: 
