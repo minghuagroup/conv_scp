@@ -110,13 +110,13 @@ module conv_jp
 !    real(r8), parameter :: greg_ent_a=0.15_r8 !paper default
     !real(r8), parameter :: greg_ent_a=0.167_r8 !paper default, for comparison
 !    real(r8), parameter :: greg_ce=0.6_r8     !paper default
-    real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default
-    real(r8), parameter :: nsj_coef=2.4e-3_r8 !paper default
+!    real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default
+!    real(r8), parameter :: nsj_coef=2.4e-3_r8 !paper default
 
     !real(r8), parameter :: greg_ent_a=0.15_r8  !paper default #2
     !real(r8), parameter :: greg_ce=0.5_r8      !paper default #2
-    !real(r8), parameter :: nsj_ent_a=0.09_r8   !paper default #2
-    !real(r8), parameter :: nsj_coef=1.8e-3_r8  !paper default #2
+    real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default #2
+    real(r8), parameter :: nsj_coef=1.8e-3_r8  !paper default #2
 
     real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default #2
 
@@ -718,6 +718,7 @@ subroutine conv_jp_tend( &
             w_up_init = j * 0.2
         end if
         
+
         normassflx_up_tmp = normassflx_up
         normassflx_dn_tmp = 0._r8
 
@@ -938,7 +939,6 @@ subroutine conv_jp_tend( &
     !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
 
 
-!<<<<<<< HEAD
 !!------------------------------------------------------
 !!------------------------------------------------------
 !!------------------------------------------------------
@@ -1569,12 +1569,6 @@ subroutine conv_jp_tend( &
 
 !    outtmp3d = t
     outtmp3d = massflxbase_p
-!=======
-!    qcheck  = 0._r8
-
-!    outmb = massflxbase
-!    outtmp2d = trigdp
-!>>>>>>> origin/dd_ice_evap
 
     outmse = mse
     outmsesat= msesat
@@ -1874,11 +1868,7 @@ end subroutine cal_launchtolcl
 
 subroutine cal_mse_up( &
 !input
-!<<<<<<< HEAD
-!        ent_opt, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
-!=======
         ent_opt, rho, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
-!>>>>>>> origin/dd_ice_evap
         mse, mseint, msesat, msesatint, kuplaunch, kuplcl, &
         ent_rate_up, det_rate_up, w_up_init, &
 !output
@@ -2041,7 +2031,7 @@ subroutine cal_mse_up( &
 
                 Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kuplcl(i)) - rain_z0)/rain_zp) )
                 qw = (normassflx_up(i,k+1)*(qliq_up(i,k+1)+qice_up(i,k+1)) + &
-                    rho(i,k)*(1-Fp)*condrate(i,k) )/normassflx_up(i,k)
+                    rho(i,k)*(1-Fp)*condrate(i,k)*dz(i,k) )/normassflx_up(i,k)
 
                 Fi = 0.0
                 if (cloud_t1 < t_up(i,k) .and. t_up(i,k) < cloud_t2) then
@@ -2052,6 +2042,7 @@ subroutine cal_mse_up( &
 
                 qliq_up(i,k) = (1.0-Fi) * qw
                 qice_up(i,k) = Fi * qw
+                
                 rainrate(i,k) = (1.0-Fi) * Fp * condrate(i,k)
                 snowrate(i,k) = Fi * Fp * condrate(i,k)
                 precrate(i,k) = rainrate(i,k) + snowrate(i,k)
@@ -2081,6 +2072,7 @@ subroutine cal_mse_up( &
             end if
 
             if ( condrate(i,k)<0 ) then
+                condrate(i,k) = 0
                 exit
             end if
 
@@ -2226,18 +2218,10 @@ subroutine cal_evap( &
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
         do k=kuptop(i), nlev
-!<<<<<<< HEAD
-!            qsat_tmp = 0.622*611.2*exp(5417*(1/273.16-1/min( twet(i,k),t(i,k)) ) )/p(i,k)
-!            evaprate(i,k) = dn_ae* max( 0._r8, qsat_tmp-q(i,k) ) *rho(i,k)*netprec(i)/dn_vt
-!            evaprate(i,k) = evaprate(i,k)/rho(i,k)
-!            netprec(i) = netprec(i) + rho(i,k)*( rainrate(i,k)-evaprate(i,k) ) *dz(i,k)
-!=======
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
             evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt / rho(i,k)
             accuprec(i,k) = max(0._r8, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k) )
-!            write(*,'(i3,10f20.10)') k, evaprate(i,k), accuprec(i,k), t(i,k), twet(i,k), qsat_tmp, q(i,k), rho(i,k)
-!>>>>>>> origin/dd_ice_evap
         end do
         surfprec(i) = accuprec(i,nlev)
     end do
