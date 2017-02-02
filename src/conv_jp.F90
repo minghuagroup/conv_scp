@@ -103,15 +103,15 @@ module conv_jp
     real(r8), parameter :: greg_z0=1.e4_r8 !paper default
 
     real(r8), parameter :: greg_ent_a = 0.15_r8 
-    real(r8), parameter :: greg_ce    = 0.5_r8  
+    real(r8), parameter :: greg_ce    = 0.6_r8  
     !real(r8), parameter :: nsj_ent_a=0.09_r8 
     !real(r8), parameter :: nsj_coef=2.4e-3_r8
 
 !    real(r8), parameter :: greg_ent_a=0.15_r8 !paper default
     !real(r8), parameter :: greg_ent_a=0.167_r8 !paper default, for comparison
 !    real(r8), parameter :: greg_ce=0.6_r8     !paper default
-!    real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default
-!    real(r8), parameter :: nsj_coef=2.4e-3_r8 !paper default
+    !real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default
+    !real(r8), parameter :: nsj_coef=2.4e-3_r8 !paper default
 
     !real(r8), parameter :: greg_ent_a=0.15_r8  !paper default #2
     !real(r8), parameter :: greg_ce=0.5_r8      !paper default #2
@@ -711,9 +711,8 @@ subroutine conv_jp_tend( &
 #ifdef SCMDIAG 
         write(*,"(a10,i3)") "plume:", j
 #endif
-!        w_up_init = 0.01
         if ( ent_opt == 2 ) then
-            w_up_init = j * 0.1
+            w_up_init = j * 0.3
         else if ( ent_opt == 3 ) then
             w_up_init = j * 0.2
         end if
@@ -1994,14 +1993,32 @@ subroutine cal_mse_up( &
                 else
                     w_up_mid(i,k) = 0.5 * ( w_up(i,k)+w_up(i,k+1) )
                     buoy_mid(i,k) = 0.5 * ( buoy(i,k)+buoy(i,k+1) )
+                    
                     ent_rate_up_mid(i,k) = 0.5 * ( ent_rate_up(i,k) + ent_rate_up(i,k+1) )
+
+                    !if ( ent_opt == 2 ) then
+                    !    ent_rate_up_mid(i,k) = &
+                    !            greg_ce*greg_ent_a*buoy_mid(i,k)/w_up_mid(i,k)/w_up_mid(i,k)
+                    !else if ( ent_opt == 3 ) then
+                    !    ent_rate_up_mid(i,k) = nsj_coef/w_up_mid(i,k) 
+                    !else
+                    !    ent_rate_up_mid(i,k) = 0
+                    !end if
+                    !ent_rate_up_mid(i,k) = max(0.0, &
+                    !        min( max_ent_rate,  ent_rate_up_mid(i,k)))
+                    
                 end if
 
                 if ( ent_opt == 2 ) then
-                    w2 = w_up(i,k+1)*w_up(i,k+1)/( 1+dz(i,k)/greg_z0 ) &
-                        + 2*dz(i,k)*greg_ent_a*(1-greg_ce)*buoy_mid(i,k)/( 1+dz(i,k)/greg_z0 )
+                    !w2 = w_up(i,k+1)*w_up(i,k+1)/( 1+dz(i,k)/greg_z0 ) &
+                    !    + 2*dz(i,k)*greg_ent_a*(1-greg_ce)*buoy_mid(i,k)/ &
+                    !    ( 1+dz(i,k)/greg_z0 )
+                    w2 = ( 2*greg_ent_a*(1-greg_ce)*buoy_mid(i,k) + &
+                           w_up(i,k+1)*w_up(i,k+1)/dz(i,k) ) / &
+                           (1.0/dz(i,k) + 1.0/greg_z0)
                 else if ( ent_opt == 3 ) then
-                    w2 = w_up(i,k+1)*w_up(i,k+1) + 2*dz(i,k)*( nsj_ent_a*buoy_mid(i,k)-nsj_coef*w_up(i,k+1) )
+                    w2 = w_up(i,k+1)*w_up(i,k+1) + 2*dz(i,k)*( &
+                            nsj_ent_a*buoy_mid(i,k)-nsj_coef*w_up(i,k+1) )
                 else
                     w2 = w_up(i,k+1)**2
                 end if                
@@ -2015,22 +2032,21 @@ subroutine cal_mse_up( &
                                 /normassflx_up(i,k)
                 
             !----method 1: bi-section ------------------------------------------------------
-            ! call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up_test, stat )
-            ! q_up(i,k) = q_up_test
+            ! call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up(i,k) )
 
             !----method 2: Taylor expanding ------------------------------------------------
-                call cal_mse2tsat(mse_up(i,k), tint(i,k), qsatint(i,k), msesatint(i,k), t_up(i,k) )
+                call cal_mse2tsat(mse_up(i,k), tint(i,k), &
+                        qsatint(i,k), msesatint(i,k), t_up(i,k) )
+                call cal_qsat(t_up(i,k), pint(i,k), q_up(i,k))
             !-------------------------------------------------------------------------------
 
-                call cal_qsat(t_up(i,k), pint(i,k), q_up(i,k))
-
-                condrate(i,k) = 1/rho(i,k)*( Ek*q(i,k) &
+                condrate(i,k) = 1.0/rho(i,k)*( Ek*q(i,k) &
                     -( normassflx_up(i,k)*q_up(i,k) &
                     -normassflx_up(i,k+1)*q_up(i,k+1) )/dz(i,k) )
 
                 Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kuplcl(i)) - rain_z0)/rain_zp) )
                 qw = (normassflx_up(i,k+1)*(qliq_up(i,k+1)+qice_up(i,k+1)) + &
-                    rho(i,k)*(1-Fp)*condrate(i,k)*dz(i,k) )/normassflx_up(i,k)
+                    rho(i,k)*(1.0-Fp)*condrate(i,k)*dz(i,k) )/normassflx_up(i,k)
 
                 Fi = 0.0
                 if (cloud_t1 < t_up(i,k) .and. t_up(i,k) < cloud_t2) then
@@ -2046,10 +2062,8 @@ subroutine cal_mse_up( &
                 snowrate(i,k) = Fi * Fp * condrate(i,k)
                 precrate(i,k) = rainrate(i,k) + snowrate(i,k)
 
-                if (iteration==1) then
-                    mseqi(i,k) = latice * (normassflx_up(i,k)*qice_up(i,k) - &
-                        normassflx_up(i,k+1)*qice_up(i,k+1)) / dz(i,k)                
-                end if
+                mseqi(i,k) = latice * (normassflx_up(i,k)*qice_up(i,k) - &
+                    normassflx_up(i,k+1)*qice_up(i,k+1)) / dz(i,k)                
                 
                 tv = tint(i,k)*(1+tveps*qint(i,k))
                 tv_up = t_up(i,k)*( 1+tveps*q_up(i,k) )
@@ -2065,8 +2079,8 @@ subroutine cal_mse_up( &
                 ent_rate_up(i,k) = max(0.0, min( max_ent_rate,  ent_rate_up(i,k)))                
             end do   ! loop of iteration
             
-            if (buoy(i,k) < 0.0) then
-            !if (w_up(i,k) < 0.1) then
+            !if (buoy(i,k) < 0.0) then
+            if (w_up(i,k) < 0.1) then
                 exit
             end if
 
@@ -2219,7 +2233,8 @@ subroutine cal_evap( &
         do k=kuptop(i), nlev
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
-            evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * accuprec(i,k) / dn_vt / rho(i,k)
+            evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
+                    accuprec(i,k) / dn_vt / rho(i,k)
             accuprec(i,k) = max(0._r8, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k) )
         end do
         surfprec(i) = accuprec(i,nlev)
@@ -2514,7 +2529,7 @@ subroutine cal_tendtransport( &
 end subroutine cal_tendtransport
 
 
-subroutine mse2tsat( mse, z, p, t, q, stat)
+subroutine mse2tsat( mse, z, p, t, q)
 !------------------------------------------------------
 !calculate tempeature and saturated Q given MSE and pressure
 !------------------------------------------------------
@@ -2523,12 +2538,10 @@ subroutine mse2tsat( mse, z, p, t, q, stat)
     real(r8), intent(in) :: p
     real(r8), intent(out) :: t
     real(r8), intent(out) :: q
-    integer, intent(out) :: stat
 !local
     real(r8) :: fc, fa, fb, ta, tb, tc, error, torl, tmp
     integer :: n
 
-    stat = 0
     torl = 0.1
     ta = 10.
     tb = 400.
@@ -2550,7 +2563,6 @@ subroutine mse2tsat( mse, z, p, t, q, stat)
             !write(*,"(a10f25.10)") "tb", tb
             !write(*,"(a10f25.10)") "fb", fb
             !write(*,"(a10f25.10)") "g*z", gravit*z
-            !stat = 1
         !end if
         t = 0.
         q = 0.

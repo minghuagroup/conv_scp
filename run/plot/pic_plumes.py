@@ -27,7 +27,7 @@ def fncread(fn,var):
 #===============================================================================
 if __name__ == '__main__':
 
-    pin = '../../'
+    pin = '/T3/yhy/research/ECP/conv_scp/'
     fin = pin+'run/scmdiag-output.nc'
 
     lev  = fncread(fin, 'p')[0,:,0]/100.0
@@ -80,9 +80,9 @@ if __name__ == '__main__':
             xlim = [-0.1, 1]
         if i==9: 
             var  = ['accuprec']
-            fac  = [86400*1000]
+            fac  = [86400]
             icol = [-1,-1]
-            xlim = [-0.1, 1]
+            xlim = [-0.1, 60]
         if i==10: 
             var  = ['stend','stendcond','stendevap','stendtranup','stendtrandn']
             fac  = np.array([1,1,1,1,1]) /1004.0 * 86400
