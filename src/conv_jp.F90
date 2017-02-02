@@ -1926,9 +1926,10 @@ subroutine cal_mse_up( &
     real(r8), dimension(ncol, nlev)  :: ent_rate_up_mid ! [1]
     real(r8) :: tv, tv_up,  w2, qw, Fp, Fi, Ek
 
-    integer :: i,j,k, iteration
+    integer :: i,j,k, iteration, maxiteration
     integer :: ngbuoy
 
+    maxiteration = 3
 !intialize output.
     qliq_up = 0.0
     qice_up = 0.0
@@ -1985,7 +1986,7 @@ subroutine cal_mse_up( &
 
         do k=kuplcl(i)-1, 1, -1
         
-            do iteration = 1,2,1
+            do iteration = 1, maxiteration, 1
                 if (iteration == 1) then
                     w_up_mid(i,k) = w_up(i,k+1)
                     buoy_mid(i,k) = buoy(i,k+1)
@@ -2062,12 +2063,15 @@ subroutine cal_mse_up( &
                 snowrate(i,k) = Fi * Fp * condrate(i,k)
                 precrate(i,k) = rainrate(i,k) + snowrate(i,k)
 
-                mseqi(i,k) = latice * (normassflx_up(i,k)*qice_up(i,k) - &
-                    normassflx_up(i,k+1)*qice_up(i,k+1)) / dz(i,k)                
-                
+                if (iteration < maxiteration) then
+                    mseqi(i,k) = latice * (normassflx_up(i,k)*qice_up(i,k) - &
+                        normassflx_up(i,k+1)*qice_up(i,k+1)) / dz(i,k)                
+                end if
+
                 tv = tint(i,k)*(1+tveps*qint(i,k))
                 tv_up = t_up(i,k)*( 1+tveps*q_up(i,k) )
-                buoy(i,k) = gravit* ( (tv_up-tv)/tv - qliq_up(i,k) - qice_up(i,k) ) 
+                ! buoy(i,k) = gravit* ( (tv_up-tv)/tv - qliq_up(i,k) - qice_up(i,k) ) 
+                buoy(i,k) = gravit* ( (tv_up-tv)/tv ) 
                 
                 if ( ent_opt == 2 ) then
                     ent_rate_up(i,k) = greg_ce*greg_ent_a*buoy(i,k)/w_up(i,k)/w_up(i,k)
