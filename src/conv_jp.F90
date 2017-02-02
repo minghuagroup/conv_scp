@@ -712,7 +712,7 @@ subroutine conv_jp_tend( &
         write(*,"(a10,i3)") "plume:", j
 #endif
         if ( ent_opt == 2 ) then
-            w_up_init = j * 0.5
+            w_up_init = j * 0.3
         else if ( ent_opt == 3 ) then
             w_up_init = j * 0.2
         end if
