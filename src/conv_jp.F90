@@ -93,7 +93,7 @@ module conv_jp
 !parameter for bulk TOTAL fractional en/detrainment rate depending on vertical velocity
 !old
 
-    integer, parameter :: maxiteration = 3
+    integer, parameter :: maxiteration = 2
     integer, parameter :: ctopflag = 2  ! 1: B<0; 2: w<0
     integer, parameter :: buoyflag = 1  ! 1: B=Tv'/Tv; 2: B=Tv'/Tv - qliq - qice
     integer, parameter :: mse2tsatflag = 1  ! 1: Taylor; 2: bi-section
@@ -2036,15 +2036,15 @@ subroutine cal_mse_up( &
                                 + Ek*mse(i,k)*dz(i,k) + mseqi(i,k)*dz(i,k) ) &
                                 /normassflx_up(i,k)
                 
-            !----method 1: bi-section ------------------------------------------------------
-                if (mse2tsatflag == 2) then
-                    call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up(i,k) )
-                end if
-            !----method 2: Taylor expanding ------------------------------------------------
+            !----method 1: Taylor expanding ------------------------------------------------
                 if (mse2tsatflag == 1) then
                     call cal_mse2tsat(mse_up(i,k), tint(i,k), &
                         qsatint(i,k), msesatint(i,k), t_up(i,k) )
                     call cal_qsat(t_up(i,k), pint(i,k), q_up(i,k))
+                end if
+            !----method 2: bi-section ------------------------------------------------------
+                if (mse2tsatflag == 2) then
+                    call mse2tsat( mse_up(i,k), zint(i,k), pint(i,k), t_up(i,k), q_up(i,k) )
                 end if
             !-------------------------------------------------------------------------------
 
