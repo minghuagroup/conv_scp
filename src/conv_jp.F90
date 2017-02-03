@@ -103,15 +103,15 @@ module conv_jp
     real(r8), parameter :: winit_min = 0.2
     real(r8), parameter :: winit_max = 4.0
     
-    real(r8), parameter :: greg_z0=1.e4_r8 !paper default
-    real(r8), parameter :: greg_ent_a = 0.15_r8 
-    real(r8), parameter :: greg_ce    = 0.5_r8  
+    real(r8), parameter :: greg_z0    = 1.e4_r8 !paper default
+    real(r8), parameter :: greg_ent_a = 0.15_r8 !paper default
+    real(r8), parameter :: greg_ce    = 0.5_r8  !paper default
 
-    real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default #2
-    real(r8), parameter :: nsj_coef=1.8e-3_r8  !paper default #2
+    real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default 
+    real(r8), parameter :: nsj_coef=1.8e-3_r8  !paper default 
 
 
-    real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default #2
+    real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default 
 
     real(r8), parameter :: rain_z0 = 1500._r8
     real(r8), parameter :: rain_zp = 4000._r8
