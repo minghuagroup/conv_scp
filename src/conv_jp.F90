@@ -103,7 +103,7 @@ module conv_jp
     real(r8), parameter :: greg_z0=1.e4_r8 !paper default
 
     real(r8), parameter :: greg_ent_a = 0.15_r8 
-    real(r8), parameter :: greg_ce    = 0.6_r8  
+    real(r8), parameter :: greg_ce    = 0.5_r8  
     !real(r8), parameter :: nsj_ent_a=0.09_r8 
     !real(r8), parameter :: nsj_coef=2.4e-3_r8
 
@@ -133,8 +133,8 @@ module conv_jp
     real(r8), parameter :: dn_fac = 0.3_r8
 
 !parameter for prognostics mass flux calculation
-!    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
-    real(r8), parameter :: pmf_alpha =50.e7_r8, pmf_tau=2.e3_r8
+    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
+!    real(r8), parameter :: pmf_alpha =50.e7_r8, pmf_tau=2.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -712,7 +712,7 @@ subroutine conv_jp_tend( &
         write(*,"(a10,i3)") "plume:", j
 #endif
         if ( ent_opt == 2 ) then
-            w_up_init = j * 0.3
+            w_up_init = j * 0.1
         else if ( ent_opt == 3 ) then
             w_up_init = j * 0.2
         end if
@@ -805,6 +805,11 @@ subroutine conv_jp_tend( &
 
 !        massflxbase = 0.01_r8
         massflxbase(:) = massflxbase_p(:,j)
+
+#ifdef SCMDIAG 
+        write(*,*) "massflxbase = ", massflxbase(:)
+#endif
+        
 
         do i=1, inncol
             if ( trigdp(i)<1 ) massflxbase(i) = 0._r8
@@ -1935,8 +1940,9 @@ subroutine cal_mse_up( &
     integer :: i,j,k, iteration, maxiteration
     integer :: ngbuoy
 
-    maxiteration = 3
-!intialize output.
+    maxiteration = 2
+
+    !intialize output.
     qliq_up = 0.0
     qice_up = 0.0
     mseqi = 0.0
@@ -2017,9 +2023,6 @@ subroutine cal_mse_up( &
                 end if
 
                 if ( ent_opt == 2 ) then
-                    !w2 = w_up(i,k+1)*w_up(i,k+1)/( 1+dz(i,k)/greg_z0 ) &
-                    !    + 2*dz(i,k)*greg_ent_a*(1-greg_ce)*buoy_mid(i,k)/ &
-                    !    ( 1+dz(i,k)/greg_z0 )
                     w2 = ( 2*greg_ent_a*(1-greg_ce)*buoy_mid(i,k) + &
                            w_up(i,k+1)*w_up(i,k+1)/dz(i,k) ) / &
                            (1.0/dz(i,k) + 1.0/greg_z0)
@@ -2076,7 +2079,7 @@ subroutine cal_mse_up( &
 
                 tv = tint(i,k)*(1+tveps*qint(i,k))
                 tv_up = t_up(i,k)*( 1+tveps*q_up(i,k) )
-                ! buoy(i,k) = gravit* ( (tv_up-tv)/tv - qliq_up(i,k) - qice_up(i,k) ) 
+                !buoy(i,k) = gravit* ( (tv_up-tv)/tv - qliq_up(i,k) - qice_up(i,k) ) 
                 buoy(i,k) = gravit* ( (tv_up-tv)/tv ) 
                 
                 if ( ent_opt == 2 ) then
@@ -2089,8 +2092,8 @@ subroutine cal_mse_up( &
                 ent_rate_up(i,k) = max(0.0, min( max_ent_rate,  ent_rate_up(i,k)))                
             end do   ! loop of iteration
             
-            !if (buoy(i,k) < 0.0) then
-            if (w_up(i,k) < 0.1) then
+            if (buoy(i,k) < 0.0) then
+            ! if (w_up(i,k) < 0.1) then
                 exit
             end if
 
