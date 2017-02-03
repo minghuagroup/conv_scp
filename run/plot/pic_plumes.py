@@ -27,8 +27,8 @@ def fncread(fn,var):
 #===============================================================================
 if __name__ == '__main__':
 
-    # pin = '/T3/yhy/research/ECP/conv_scp/'
-    pin = '/Users/Oscar/yhy/Research/ECP/conv_scp/'
+    pin = '/T3/yhy/research/ECP/conv_scp/'
+    #pin = '/Users/Oscar/yhy/Research/ECP/conv_scp/'
     fin = pin+'run/scmdiag-output.nc'
 
     lev  = fncread(fin, 'p')[0,:,0]/100.0
