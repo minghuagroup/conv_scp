@@ -212,10 +212,10 @@ subroutine conv_intr_jp_tend( &
    call pbuf_get_field(pbuf, cldtop_idx, jctop )
    call pbuf_get_field(pbuf, cldbot_idx, jcbot )
 
-   cld = 0._r8
+!   cld = 0._r8
    ql  = 0._r8
    rprd = 0._r8
-   fracis = 0._r8
+!   fracis = 0._r8
    evapcdp = 0._r8
    prec = 0._r8
    snow = 0._r8
@@ -264,7 +264,7 @@ subroutine conv_intr_jp_tend( &
    call conv_jp_tend( &
 !input
        ncol, &
-       3, 15, 1._r8*ztodt, &
+       2, 15, 1._r8*ztodt, &
        state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), &
        state%ps(:ncol), state%pmid(:ncol,:), state%pdel(:ncol,:), &
        zsrf(:ncol), z(:ncol,:), dz(:ncol,:), &
@@ -325,14 +325,32 @@ subroutine conv_intr_jp_tend( &
    call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
    call outfld('BFLSDILUCAPE', bfls_dilucape, pcols, lchnk)   ! RBN - CAPE output
 
+   do i = 1, ncol
+       do k = 1, pver
+           if ( isnan( ptend_loc%s(i,k) ) .or. &
+                isnan( ptend_loc%q(i,k,1) ) ) then
+               write(iulog,*) 'problem in conv_jp', i, k
+               write(iulog,*) 'ptend_loc%s(i,k)'
+               write(iulog,'(5f15.10)') ptend_loc%s(i,:)
+               write(iulog,*) 'ptend_loc%q(i,k,ixcldice)'
+               write(iulog,'(5f15.10)') ptend_loc%q(i,:,1)
+               write(iulog,*) 'stend(i,k)'
+               write(iulog,'(5f15.10)') stend(i,:)
+               write(iulog,*) 'qtend(i,k)'
+               write(iulog,'(5f15.10)') qtend(i,:)
+
+               exit
+           end if
+       end do
+   end do
+
    !ptend_loc%s = 0._r8
    !ptend_loc%q(:,:,1) = 0._r8
 !   prec = 0._r8
 
-!   dlf(:ncol,:) = qliqtend(:ncol,:)
-   dlf  = 0._r8
-   ql   = 0._r8
-   rprd = 0._r8
+   dlf(:ncol,1:pver)  = 0._r8
+   ql(:ncol,1:pver)   = 0._r8
+   rprd(:ncol,1:pver) = 0._r8
 
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
 

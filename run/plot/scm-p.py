@@ -153,21 +153,21 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    #plt.axvline(x=0, color='grey')
-    #for i in range(nsubcol):
-        #w_up_tmp = w_up[:,i]
-        #levind = (w_up_tmp > 0)
-        #plt.plot( w_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
-    #plt.xlabel("w(ms-1)")
-    #plt.xlim(-1, 18)
-
     plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
-        normassflx_tmp = normassflx[:,i]
-        levind = (normassflx_tmp > 0)
-        plt.plot( normassflx_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("normasssflx")
-    plt.xlim(0, 10)
+        w_up_tmp = w_up[:,i]
+        levind = (w_up_tmp > 0)
+        plt.plot( w_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("w(ms-1)")
+    plt.xlim(-1, 18)
+
+    #plt.axvline(x=0, color='grey')
+    #for i in range(nsubcol):
+        #normassflx_tmp = normassflx[:,i]
+        #levind = (normassflx_tmp > 0)
+        #plt.plot( normassflx_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("normasssflx")
+    #plt.xlim(0, 10)
 
 
     plt.subplot(2,5,4)

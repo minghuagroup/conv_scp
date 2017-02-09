@@ -2,7 +2,7 @@
 module conv_jp
 !------------------------------------------------------
 ! Stochastic Convective Parameterization Scheme
-! implemented by Xin Xie
+! contributors: Xin Xie, Haiyang Yu
 !------------------------------------------------------
 ! Convention:
 ! SI unit
@@ -81,13 +81,13 @@ module conv_jp
 !parameter for subcloud entrainment
     real(r8), parameter :: ent_rate_subcld=0._r8
 
-    !parameter for bulk TOTAL fractional en/detrainment rate depending on RH
+!parameter for bulk TOTAL fractional en/detrainment rate depending on RH
     real(r8), parameter :: fe_up_dp=1.0_r8, fe_up_sh=2.0_r8
     real(r8), parameter :: e_up_dp=1.25e-3_r8, d_up_dp=0.5e-4_r8
 !    real(r8), parameter :: e_up_dp=1.75e-3_r8, d_up_dp=0.75e-4_r8 !original
     real(r8), parameter :: e_up_sh=1.75e-3_r8
 
-    integer :: ent_opt ! 0=ec, 2=greg, 3=NSJ
+    integer :: ent_opt ! 0=EC, 2=GREG, 3=NSJ
 
 
 !parameter for bulk TOTAL fractional en/detrainment rate depending on vertical velocity
@@ -100,8 +100,8 @@ module conv_jp
     integer, parameter :: mseqiflag = 1  ! 1: use Qi; 0: Qi=0
     integer, parameter :: entratemidflag = 1  ! 1: averaged; 2: recalculated with B and w
     
-    real(r8), parameter :: winit_min = 0.2
-    real(r8), parameter :: winit_max = 4.0
+    real(r8), parameter :: w_up_init_min = 0.2
+    real(r8), parameter :: w_up_init_max = 4.0
     
     real(r8), parameter :: greg_z0    = 1.e4_r8 !paper default
     real(r8), parameter :: greg_ent_a = 0.15_r8 !paper default
@@ -485,7 +485,7 @@ subroutine conv_jp_tend( &
 
 !for test
     real(r8), dimension(inncol) :: tmp ! [1] number of convective lev
-    real(r8) :: diffz, dwinit
+    real(r8) :: diffz, dw_up_init
     logical :: flag
 
 !setting the internal dimension size same as the input
@@ -614,12 +614,10 @@ subroutine conv_jp_tend( &
 !            rh(i,k) = min( 1., rh(i,k) )
             twet(i,k) = min( t(i,k), twet(i,k) )
         end do
+        zint(i,nlevp) = max(0., zsrf(i) )
     end do
 
-
-
 !estimate z at the interface from z and dz
-    zint(:,nlevp) = zsrf(:)
     do k=nlev,1,-1
         zint(:,k) = zint(:,k+1)+dz(:,k)
     end do
@@ -700,16 +698,16 @@ subroutine conv_jp_tend( &
     !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
 
     if (nplume > 1) then
-        dwinit = (winit_max - winit_min) / (nplume-1)
+        dw_up_init = (w_up_init_max - w_up_init_min) / (nplume-1)
     else
-        dwinit = 0.0
+        dw_up_init = 0.0
     end if
 
     do j = 1, nplume
 
-        w_up_init = winit_min + (j-1) * dwinit
+        w_up_init = w_up_init_min + (j-1) * dw_up_init
 #ifdef SCMDIAG 
-        write(*,*) "plume:", j, ", w = ",w_up_init
+        write(*,'(a10,i5,a10,f10.5)') "plume:", j, ", w = ",w_up_init
 #endif
         
 
@@ -737,17 +735,10 @@ subroutine conv_jp_tend( &
         dse_up = cpair*t_up+gravit*zint
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
-!            if ( (k>kuplcl(i)) .or. (k<kuptop(i)) ) then
             if ( k<kuptop(i) ) then
                 dse_up(i,k) = dseint(i,k)
             end if
         end do
-
-        !write(*,*)
-        !write(*,"(10f20.10)") mse_up(1,kuplcl(1)+1:nlevp)
-        !write(*,"(10f20.10)") q_up(1,kuplcl(1)+1:nlevp)
-        !write(*,"(10f20.10)") t_up(1,kuplcl(1)+1:nlevp)
-        !write(*,"(10f20.10)") dse_up(1,kuplcl(1)+1:nlevp)
 
         mse_up_mid = 0._r8
         t_up_mid = 0._r8
@@ -762,7 +753,6 @@ subroutine conv_jp_tend( &
 
         call cal_evap( &
             ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
-!            rainrate, accuprec, surfprec, evaprate )
             precrate, accuprec, surfprec, evaprate )
 
         call cal_mse_dn( &
@@ -802,7 +792,7 @@ subroutine conv_jp_tend( &
         massflxbase(:) = massflxbase_p(:,j)
 
 #ifdef SCMDIAG 
-        write(*,*) "massflxbase = ", massflxbase(:)
+        write(*,'(a25,f10.5)') "massflxbase = ", massflxbase(:)
 #endif
         
 
