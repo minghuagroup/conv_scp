@@ -235,7 +235,8 @@ subroutine subcol_netcdf_putclm(varname, in_nlev, input, isubcol)
     end if
     if ( output%vartypelist(varind) == "mlev" ) then
         if ( in_nlev .ne. nlev ) then
-            write(*,*) "INCONSISTENT VERTICAL DIMENSION", varname
+            write(*,*) "INCONSISTENT VERTICAL DIMENSION:", varname
+            write(*,*) in_nlev, "given ", nlev, "needed"
             return
         end if
         ndim = 3
@@ -248,7 +249,8 @@ subroutine subcol_netcdf_putclm(varname, in_nlev, input, isubcol)
             count=counts(1:ndim)) )
     else if ( output%vartypelist(varind) == "mlevp" ) then
         if ( in_nlev .ne. nlevp ) then
-            write(*,*) "INCONSISTENT VERTICAL DIMENSION", varname
+            write(*,*) "INCONSISTENT VERTICAL DIMENSION:", varname
+            write(*,*) in_nlev, "given ", nlev, "needed"
             return
         end if
         ndim = 3
@@ -261,7 +263,8 @@ subroutine subcol_netcdf_putclm(varname, in_nlev, input, isubcol)
             count=counts(1:ndim)) )
     else if ( output%vartypelist(varind) == "slev" ) then
         if ( in_nlev .ne. 1 ) then
-            write(*,*) "INCONSISTENT VERTICAL DIMENSION", varname
+            write(*,*) "INCONSISTENT VERTICAL DIMENSION:", varname
+            write(*,*) in_nlev, "given ", nlev, "needed"
             return
         end if
         ndim = 2

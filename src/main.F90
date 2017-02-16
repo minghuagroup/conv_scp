@@ -50,7 +50,8 @@ program test
     real(r8), dimension(:,:,:), allocatable :: qliq, qice
     real(r8), dimension(:,:,:), allocatable :: rainrate, snowrate, precrate
     real(r8), dimension(:,:,:), allocatable :: compstend, compqtend
-    real(r8), dimension(:,:), allocatable   :: dilucape, bfls_dilucape
+    real(r8), dimension(:,:,:), allocatable :: dilucape
+    real(r8), dimension(:,:), allocatable   :: bfls_dilucape
     real(r8), dimension(:,:), allocatable   :: jctop, jcbot
 
     real(r8), dimension(:,:), allocatable ::  outmb
@@ -89,7 +90,7 @@ program test
     integer :: outcamstendvarid, outcamqtendvarid
 
 !local
-    real(r8) :: dtime
+    real(r8) :: dtime, qmin
     logical  :: flag
     integer  :: nplume = 15
 
@@ -99,7 +100,7 @@ program test
 !    call netcdf_check( nf90_open("inputscm_core_select_new.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_core_all.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
-   call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
+    call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
     call netcdf_check( nf90_inq_varid(inncid, "u", uvarid) )
@@ -265,6 +266,10 @@ program test
     call subcol_netcdf_addfld( "stendcomp", "K/s",     "mlev")
     call subcol_netcdf_addfld( "qtendcomp", "kg/kg/s", "mlev")
 
+    call subcol_netcdf_addfld( "stendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "qtendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "precsum",     "1",  "slev")
+
     call subcol_netcdf_addfld( "tmp1stend", "K/s", "mlev")
     call subcol_netcdf_addfld( "tmp1qtend", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "tmp2stend", "K/s", "mlev")
@@ -299,288 +304,290 @@ program test
     call subcol_netcdf_addfld( "trigdp" , "1", "slev")
 #endif
 
-    if ( ntime == 1 ) then
-        dtime = 0.25*24*3600
-    else
-        dtime = (time(2)-time(1))*24*3600
-    end if
+    !if ( ntime == 1 ) then
+        !dtime = 0.25*24*3600
+    !else
+        !dtime = (time(2)-time(1))*24*3600
+    !end if
+    dtime = 1200._r8
+    qmin = 1.E-12_r8
 
-   massflxbase = 0._r8
-   lat = lat/180._r8*3.141592653_r8
+    massflxbase = 0._r8
+    lat = lat/180._r8*3.141592653_r8
 
 !   nrun = 35
-   nrun = ntime
+    nrun = ntime
 !simulation begins
-   do itime=1,nrun
+    do itime=1,nrun
 
-       write(*,"(a12,i5)") "time step:", itime
+        write(*,"(a12,i5)") "time step:", itime
 
 !input 3D fields
       !call netcdf_check( nf90_get_var(inncid, uvarid, u, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
       !call netcdf_check( nf90_get_var(inncid, vvarid, v, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, omegavarid, omega, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, zvarid, z, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, pvarid, p, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, tvarid, t, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, qvarid, q, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, bfls_tvarid, bfls_t, &
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, bfls_qvarid, bfls_q, &
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, omegavarid, omega, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, zvarid, z, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, pvarid, p, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, tvarid, t, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, qvarid, q, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, bfls_tvarid, bfls_t, &
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, bfls_qvarid, bfls_q, &
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
       !call netcdf_check( nf90_get_var(inncid, pivarid, pi, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, dpvarid, dp, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, dzvarid, dz, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, dpvarid, dp, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, dzvarid, dz, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
       !call netcdf_check( nf90_get_var(inncid, rhovarid, rho, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
 
-       call netcdf_check( nf90_get_var(inncid, camstendvarid, camstend,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, camqtendvarid, camqtend,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camstendvarid, camstend,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camqtendvarid, camqtend,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
 
-       call netcdf_check( nf90_get_var(inncid, camstendcondvarid, camstendcond,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, camqtendcondvarid, camqtendcond,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, camstendtranupvarid, camstendtranup,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, camqtendtranupvarid, camqtendtranup,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, camstendtrandnvarid, camstendtrandn,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, camqtendtrandnvarid, camqtendtrandn,&
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camstendcondvarid, camstendcond,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camqtendcondvarid, camqtendcond,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camstendtranupvarid, camstendtranup,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camqtendtranupvarid, camqtendtranup,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camstendtrandnvarid, camstendtrandn,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, camqtendtrandnvarid, camqtendtrandn,&
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
 
 !input 2d variables
-       call netcdf_check( nf90_get_var(inncid, htvarid, ht(:,:),             start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, landfracvarid, landfrac(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, campreccvarid, camprecc(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, psrfvarid, psrf(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
-       call netcdf_check( nf90_get_var(inncid, zsrfvarid, zsrf(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, htvarid, ht(:,:),             start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, landfracvarid, landfrac(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, campreccvarid, camprecc(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, psrfvarid, psrf(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, zsrfvarid, zsrf(:,:), start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
 
 
 !run the scheme here
-       precc = 0._r8
-       stend = 0._r8
-       qtend = 0._r8
-       stend = 0._r8
+        precc = 0._r8
+        stend = 0._r8
+        qtend = 0._r8
+        stend = 0._r8
 
-       pblh = 0._r8
-       tpert = 0._r8
-       lhflx = 0._r8
+        pblh = 0._r8
+        tpert = 0._r8
+        lhflx = 0._r8
        !psrf = 0._r8
        !zsrf = 0._r8
 
-       do j = 1, nlat
-           call conv_jp_tend( nlon &
-              ,2, nplume, dtime &
-              ,lat(j), landfrac(:,j), lhflx(:,j) &
-              ,psrf(:,j), p(:,j,:), dp(:,j,:) &
-              ,ht(:,j), z(:,j,:), dz(:,j,:) &
-              ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
-              ,omega(:,j,:), pblh(:,j), tpert(:,j) &
-!<<<<<<< HEAD
-              ,massflxbase(:,j,:) &
-              ,jctop(:,j), jcbot(:,j) &
-              ,stend(:,j,:), qtend(:,j,:), qliqtend &
-              ,precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
-!=======
+        do j = 1, nlat
+            call conv_jp_tend( nlon &
+                ,2, nplume, dtime, qmin &
+                ,lat(j), landfrac(:,j), lhflx(:,j) &
+                ,psrf(:,j), p(:,j,:), dp(:,j,:) &
+                ,ht(:,j), z(:,j,:), dz(:,j,:) &
+                ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
+                ,omega(:,j,:), pblh(:,j), tpert(:,j) &
+!
+                ,massflxbase(:,j,:) &
+                ,jctop(:,j), jcbot(:,j) &
+                ,stend(:,j,:), qtend(:,j,:), qliqtend &
+                ,precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
+!
 !              ,massflxbase(:,j) &
 !              ,stend(:,j,:), qtend(:,j,:), qliqtend, qicetend &
 !              ,precc(:,j), qliq(:,j,:), qice(:,j,:) & 
 !              ,rainrate(:,j,:), snowrate(:,j,:), precrate(:,j,:) &
-!>>>>>>> origin/dd_ice_evap
-              ,compstend(:,j,:), compqtend(:,j,:) &
-              ,dilucape(:,j), bfls_dilucape(:,j) &
-              ,outtmp2d, outtmp3d &
-              ,outmb, outmse, outmsesat, outmseup &
-              ,outstend, outqtend &
-              ,outstendcond,   outqtendcond &
-              ,outstendtranup, outqtendtranup &
-              ,outstendtrandn, outqtendtrandn &
-              ,outstendevap,   outqtendevap &
-               )
-       end do
+!
+                ,compstend(:,j,:), compqtend(:,j,:) &
+                ,dilucape(:,j,:), bfls_dilucape(:,j) &
+                ,outtmp2d, outtmp3d &
+                ,outmb, outmse, outmsesat, outmseup &
+                ,outstend, outqtend &
+                ,outstendcond,   outqtendcond &
+                ,outstendtranup, outqtendtranup &
+                ,outstendtrandn, outqtendtrandn &
+                ,outstendevap,   outqtendevap &
+                )
+        end do
 
-       do j=1, nlat
-       do i=1, nlon
-           flag = .false.
-           do k=1,nlev
-               if( isnan(stend(i,j,k)) .or. &
-                   isnan(qtend(i,j,k)) .or. &
-                   isnan(qliq(i,j,k)) .or. &
-                   isnan(rainrate(i,j,k)) ) then
-                   flag = .true.
-                   exit
-               end if
-           end do
-           if( flag ) then
-               write(*,*) "NAN error in SCP"
-               write(*,*) "s"
-               write(*,*) stend(i,j,:)
-               write(*,*) "q"
-               write(*,*) qtend(i,j,:)
-               write(*,*) "ql"
-               write(*,*) qliq(i,j,:)
-               write(*,*) "qi"
-               write(*,*) qice(i,j,:)
-               write(*,*) "rprd"
-               write(*,*) rainrate(i,j,:)
-           end if
-       end do
-       end do
+        do j=1, nlat
+            do i=1, nlon
+                flag = .false.
+                do k=1,nlev
+                    if( isnan(stend(i,j,k)) .or. &
+                        isnan(qtend(i,j,k)) .or. &
+                        isnan(qliq(i,j,k)) .or. &
+                        isnan(rainrate(i,j,k)) ) then
+                        flag = .true.
+                        exit
+                    end if
+                end do
+                if( flag ) then
+                    write(*,*) "NAN error in SCP"
+                    write(*,*) "s"
+                    write(*,*) stend(i,j,:)
+                    write(*,*) "q"
+                    write(*,*) qtend(i,j,:)
+                    write(*,*) "ql"
+                    write(*,*) qliq(i,j,:)
+                    write(*,*) "qi"
+                    write(*,*) qice(i,j,:)
+                    write(*,*) "rprd"
+                    write(*,*) rainrate(i,j,:)
+                end if
+            end do
+        end do
 
 !scmdiag output
 #ifdef SCMDIAG
-       call subcol_netcdf_putclm( "camstend", nlev, camstend(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtend", nlev, camqtend(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camstendcond", nlev, camstendcond(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtendcond", nlev, camqtendcond(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camstendtranup", nlev, camstendtranup(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtendtranup", nlev, camqtendtranup(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camstendtrandn", nlev, camstendtrandn(1,1,:), 1 )
-       call subcol_netcdf_putclm( "camqtendtrandn", nlev, camqtendtrandn(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camstend", nlev, camstend(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camqtend", nlev, camqtend(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camstendcond", nlev, camstendcond(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camqtendcond", nlev, camqtendcond(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camstendtranup", nlev, camstendtranup(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camqtendtranup", nlev, camqtendtranup(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camstendtrandn", nlev, camstendtrandn(1,1,:), 1 )
+        call subcol_netcdf_putclm( "camqtendtrandn", nlev, camqtendtrandn(1,1,:), 1 )
 #endif
 
 
 
 
 !output SCP 2D fields
-       call netcdf_check( nf90_put_var(outncid, outpreccvarid, precc, &
-           start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
-       call netcdf_check( nf90_put_var(outncid, outcampreccvarid, camprecc, &
-           start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
+        call netcdf_check( nf90_put_var(outncid, outpreccvarid, precc, &
+            start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
+        call netcdf_check( nf90_put_var(outncid, outcampreccvarid, camprecc, &
+            start=(/1,1,itime/), count=(/nlon,nlat,1/) ) )
 !output SCP 3D fields
-       call netcdf_check( nf90_put_var(outncid, outpvarid, p, &
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_put_var(outncid, outstendvarid, stend, &
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_put_var(outncid, outqtendvarid, qtend, &
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_put_var(outncid, outpvarid, p, &
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_put_var(outncid, outstendvarid, stend, &
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_put_var(outncid, outqtendvarid, qtend, &
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
 
-       call netcdf_check( nf90_put_var(outncid, outcamstendvarid, camstend, &
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-       call netcdf_check( nf90_put_var(outncid, outcamqtendvarid, camqtend, &
-           start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_put_var(outncid, outcamstendvarid, camstend, &
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_put_var(outncid, outcamqtendvarid, camqtend, &
+            start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
 
-   end do
+    end do
 
 
 #ifdef SCMDIAG
 !end subcol_netcdf
-   call subcol_netcdf_end
+    call subcol_netcdf_end
 #endif
 
 
 !output lat and lon dimension information
-   call netcdf_check( nf90_put_var(outncid, outlonvarid, lon, &
-       start=(/1/), count=(/nlon/) ) )
-   call netcdf_check( nf90_put_var(outncid, outlatvarid, lat, &
-       start=(/1/), count=(/nlat/) ) )
-   call netcdf_check( nf90_put_var(outncid, outtimevarid, time, &
-       start=(/1/), count=(/nrun/) ) )
+    call netcdf_check( nf90_put_var(outncid, outlonvarid, lon, &
+        start=(/1/), count=(/nlon/) ) )
+    call netcdf_check( nf90_put_var(outncid, outlatvarid, lat, &
+        start=(/1/), count=(/nlat/) ) )
+    call netcdf_check( nf90_put_var(outncid, outtimevarid, time, &
+        start=(/1/), count=(/nrun/) ) )
 
 
 !close the input and output NETCDF
-   call netcdf_check( nf90_close(inncid) )
-   call netcdf_check( nf90_close(outncid) )
+    call netcdf_check( nf90_close(inncid) )
+    call netcdf_check( nf90_close(outncid) )
 
 
-   contains
+    contains
 
-   subroutine netcdf_check( status )
-       integer, intent ( in) :: status
+    subroutine netcdf_check( status )
+        integer, intent ( in) :: status
 
-       if(status /= nf90_noerr) then
-           print *, trim(nf90_strerror(status))
-           stop "Stopped"
-       end if
-   end subroutine netcdf_check
+        if(status /= nf90_noerr) then
+            print *, trim(nf90_strerror(status))
+            stop "Stopped"
+        end if
+    end subroutine netcdf_check
 
 
-   subroutine init(innlon, innlat, innlev, inntime)
-       integer, intent(in) :: innlon, innlat, innlev, inntime
+    subroutine init(innlon, innlat, innlev, inntime)
+        integer, intent(in) :: innlon, innlat, innlev, inntime
 !for dimension info
-       allocate( lon(innlon) )
-       allocate( lat(innlat) )
-       allocate( time(inntime) )
+        allocate( lon(innlon) )
+        allocate( lat(innlat) )
+        allocate( time(inntime) )
 !for input
-       allocate( p(innlon, innlat, innlev) )
-       allocate( dp(innlon, innlat, innlev) )
-       allocate( z(innlon, innlat, innlev) )
-       allocate( dz(innlon, innlat, innlev) )
+        allocate( p(innlon, innlat, innlev) )
+        allocate( dp(innlon, innlat, innlev) )
+        allocate( z(innlon, innlat, innlev) )
+        allocate( dz(innlon, innlat, innlev) )
       !allocate( u(innlon, innlat, innlev) )
       !allocate( v(innlon, innlat, innlev) )
-       allocate( omega(innlon, innlat, innlev) )
-       allocate( t(innlon, innlat, innlev) )
-       allocate( q(innlon, innlat, innlev) )
+        allocate( omega(innlon, innlat, innlev) )
+        allocate( t(innlon, innlat, innlev) )
+        allocate( q(innlon, innlat, innlev) )
 
-       allocate( bfls_t(innlon, innlat, innlev) )
-       allocate( bfls_q(innlon, innlat, innlev) )
+        allocate( bfls_t(innlon, innlat, innlev) )
+        allocate( bfls_q(innlon, innlat, innlev) )
 
-       allocate( ht(innlon, innlat) )
-       allocate( landfrac(innlon, innlat) )
-       allocate( pblh(innlon, innlat) )
-       allocate( lhflx(innlon, innlat) )
-       allocate( tpert(innlon, innlat) )
-       allocate( psrf(innlon, innlat) )
-       allocate( zsrf(innlon, innlat) )
+        allocate( ht(innlon, innlat) )
+        allocate( landfrac(innlon, innlat) )
+        allocate( pblh(innlon, innlat) )
+        allocate( lhflx(innlon, innlat) )
+        allocate( tpert(innlon, innlat) )
+        allocate( psrf(innlon, innlat) )
+        allocate( zsrf(innlon, innlat) )
 
-       allocate( camprecc(innlon, innlat) )
-       allocate( camstend(innlon, innlat, innlev) )
-       allocate( camqtend(innlon, innlat, innlev) )
-       allocate( camstendcond(innlon, innlat, innlev) )
-       allocate( camqtendcond(innlon, innlat, innlev) )
-       allocate( camstendtranup(innlon, innlat, innlev) )
-       allocate( camqtendtranup(innlon, innlat, innlev) )
-       allocate( camstendtrandn(innlon, innlat, innlev) )
-       allocate( camqtendtrandn(innlon, innlat, innlev) )
+        allocate( camprecc(innlon, innlat) )
+        allocate( camstend(innlon, innlat, innlev) )
+        allocate( camqtend(innlon, innlat, innlev) )
+        allocate( camstendcond(innlon, innlat, innlev) )
+        allocate( camqtendcond(innlon, innlat, innlev) )
+        allocate( camstendtranup(innlon, innlat, innlev) )
+        allocate( camqtendtranup(innlon, innlat, innlev) )
+        allocate( camstendtrandn(innlon, innlat, innlev) )
+        allocate( camqtendtrandn(innlon, innlat, innlev) )
 
-       allocate( outmb(innlon, innlat) )
-       allocate( outtmp2d(innlon, innlat) )
-       allocate( outtmp3d(innlon, innlat, innlev) )
-       allocate( outmse(innlon, innlat, innlev) )
-       allocate( outmsesat(innlon, innlat, innlev) )
-       allocate( outmseup(innlon, innlat, innlev) )
+        allocate( outmb(innlon, innlat) )
+        allocate( outtmp2d(innlon, innlat) )
+        allocate( outtmp3d(innlon, innlat, innlev) )
+        allocate( outmse(innlon, innlat, innlev) )
+        allocate( outmsesat(innlon, innlat, innlev) )
+        allocate( outmseup(innlon, innlat, innlev) )
 
-       allocate( outstend(innlon, innlat, innlev) )
-       allocate( outqtend(innlon, innlat, innlev) )
-       allocate( outstendcond(innlon, innlat, innlev) )
-       allocate( outqtendcond(innlon, innlat, innlev) )
-       allocate( outstendtranup(innlon, innlat, innlev) )
-       allocate( outqtendtranup(innlon, innlat, innlev) )
-       allocate( outstendtrandn(innlon, innlat, innlev) )
-       allocate( outqtendtrandn(innlon, innlat, innlev) )
-       allocate( outstendevap(innlon, innlat, innlev) )
-       allocate( outqtendevap(innlon, innlat, innlev) )
+        allocate( outstend(innlon, innlat, innlev) )
+        allocate( outqtend(innlon, innlat, innlev) )
+        allocate( outstendcond(innlon, innlat, innlev) )
+        allocate( outqtendcond(innlon, innlat, innlev) )
+        allocate( outstendtranup(innlon, innlat, innlev) )
+        allocate( outqtendtranup(innlon, innlat, innlev) )
+        allocate( outstendtrandn(innlon, innlat, innlev) )
+        allocate( outqtendtrandn(innlon, innlat, innlev) )
+        allocate( outstendevap(innlon, innlat, innlev) )
+        allocate( outqtendevap(innlon, innlat, innlev) )
 
 !for in/output
-       allocate( massflxbase(innlon, innlat, innlev) )
+        allocate( massflxbase(innlon, innlat, innlev) )
 
 !for output
-       allocate( jctop(innlon, innlat) )
-       allocate( jcbot(innlon, innlat) )
+        allocate( jctop(innlon, innlat) )
+        allocate( jcbot(innlon, innlat) )
 
-       allocate( stend(innlon, innlat, innlev) )
-       allocate( qtend(innlon, innlat, innlev) )
-       allocate( qliqtend(innlon, innlat, innlev) )
-       allocate( qicetend(innlon, innlat, innlev) )
-       allocate( precc(innlon, innlat) )
-       allocate( qliq(innlon, innlat, innlev) )
-       allocate( qice(innlon, innlat, innlev) )
-       allocate( rainrate(innlon, innlat, innlev) )
-       allocate( snowrate(innlon, innlat, innlev) )
-       allocate( precrate(innlon, innlat, innlev) )
-       allocate( compstend(innlon, innlat, innlev) )
-       allocate( compqtend(innlon, innlat, innlev) )
+        allocate( stend(innlon, innlat, innlev) )
+        allocate( qtend(innlon, innlat, innlev) )
+        allocate( qliqtend(innlon, innlat, innlev) )
+        allocate( qicetend(innlon, innlat, innlev) )
+        allocate( precc(innlon, innlat) )
+        allocate( qliq(innlon, innlat, innlev) )
+        allocate( qice(innlon, innlat, innlev) )
+        allocate( rainrate(innlon, innlat, innlev) )
+        allocate( snowrate(innlon, innlat, innlev) )
+        allocate( precrate(innlon, innlat, innlev) )
+        allocate( compstend(innlon, innlat, innlev) )
+        allocate( compqtend(innlon, innlat, innlev) )
 
-       allocate( dilucape(innlon, innlat) )
-       allocate( bfls_dilucape(innlon, innlat) )
+        allocate( dilucape(innlon, innlat, innlev) )
+        allocate( bfls_dilucape(innlon, innlat) )
 
 !for local
 !       allocate( stend(innlon, innlat, innlev) )
 
-   end subroutine init
+    end subroutine init
 
 
-   end program test
+    end program test
 

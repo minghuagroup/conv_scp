@@ -8,6 +8,9 @@ use physconst,    only: cpair, gravit
 use physics_types, only: physics_state, physics_ptend
 use physics_types, only: physics_ptend_init, physics_ptend_sum
 use physics_types, only: physics_update, physics_ptend_dealloc
+use physics_types, only: physics_state_copy, physics_state_dealloc
+
+use constituents,   only: pcnst, qmin
 
 use cam_history,  only: outfld, addfld, add_default, phys_decomp
 
@@ -99,7 +102,7 @@ subroutine conv_intr_jp_init
    bfls_q_idx = pbuf_get_index('BFLS_Q')
 
    call conv_jp_init( pver )
-   massflxbase_p_idx = pbuf_get_index('MASSFLXBASE_P')
+   massflxbase_p_idx = pbuf_get_index('MBCONVDP_P')
 
 end subroutine conv_intr_jp_init
 
@@ -131,6 +134,7 @@ subroutine conv_intr_jp_tend( &
    integer  :: itim 
 
    type(physics_ptend) :: ptend_loc     ! package tendencies
+   type(physics_state) :: state_loc
 
 ! physics buffer fields
    real(r8), pointer, dimension(:,:) :: cld
@@ -157,7 +161,7 @@ subroutine conv_intr_jp_tend( &
 
    real(r8), pointer, dimension(:,:) :: massflxbase_p
 
-   real(r8) dilucape(pcols) !thickness in [m]
+   real(r8) dilucape(pcols,pver) !thickness in [m]
    real(r8) bfls_dilucape(pcols) !thickness in [m]
 
    real(r8) zsrf(pcols)    ! model lowest interface Z
@@ -174,7 +178,7 @@ subroutine conv_intr_jp_tend( &
    real(r8) :: stendcomp(pcols,pver)    ! s tend but calculated from compensation
    real(r8) :: qtendcomp(pcols,pver)    ! q tend but calculated from compensation
 
-   real(r8) :: outmb(pcols)       ! scattrd version of the detraining cld h2o tend
+   real(r8) :: outmb(pcols)       ! base mass flux total
    real(r8) :: outtmp2d(pcols)    ! temp 2D output
    real(r8) :: outtmp3d(pcols,pver)  ! temp 3D output
    real(r8) :: outmse(pcols,pver)    ! MSE
@@ -196,6 +200,7 @@ subroutine conv_intr_jp_tend( &
 
    integer :: i, j, k
    logical :: flag
+   real(r8) :: tmp
 
    lchnk = state%lchnk
    ncol  = state%ncol
@@ -241,6 +246,8 @@ subroutine conv_intr_jp_tend( &
    call pbuf_get_field(pbuf, bfls_q_idx, bfls_q)
 
 
+   call physics_state_copy(state, state_loc)
+
    lq(:) = .false.
    lq(1) = .true.
    call physics_ptend_init(ptend_all, state%psetcols, 'convect_deep')
@@ -264,7 +271,7 @@ subroutine conv_intr_jp_tend( &
    call conv_jp_tend( &
 !input
        ncol, &
-       2, 15, 1._r8*ztodt, &
+       3, 15, 1._r8*ztodt, qmin(1), &
        state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), &
        state%ps(:ncol), state%pmid(:ncol,:), state%pdel(:ncol,:), &
        zsrf(:ncol), z(:ncol,:), dz(:ncol,:), &
@@ -279,7 +286,7 @@ subroutine conv_intr_jp_tend( &
        qliqtend(:ncol,:), &
        prec(:ncol), ql(:ncol,:), rprd(:ncol,:), &
        stendcomp(:ncol,:), qtendcomp(:ncol,:), &
-       dilucape(:ncol), bfls_dilucape(:ncol), &
+       dilucape(:ncol,:), bfls_dilucape(:ncol), &
 !diagnostics
        outtmp2d(:ncol), outtmp3d(:ncol,:), &
        outmb(:ncol), outmse(:ncol,:), outmsesat(:ncol,:), outmseup(:ncol,:), &
@@ -299,9 +306,9 @@ subroutine conv_intr_jp_tend( &
    call outfld('TMP2D', outtmp2d, pcols, state%lchnk )
    call outfld('TMP3D', outtmp3d, pcols, state%lchnk )
 
-   call outfld('MASSFLXBASE_P', massflxbase_p, pcols, state%lchnk )
+   call outfld('MBCONVDP_P', massflxbase_p, pcols, state%lchnk )
+   call outfld('MBCONVDP', outmb, pcols, state%lchnk )
 
-   call outfld('CONVDPMB', outmb, pcols, state%lchnk )
    call outfld('MSE', outmse, pcols, state%lchnk )
    call outfld('MSESAT', outmsesat, pcols, state%lchnk )
    call outfld('MSEUP', outmseup, pcols, state%lchnk )
@@ -322,7 +329,7 @@ subroutine conv_intr_jp_tend( &
    call outfld('STENDCONVDPCOMP', stendcomp, pcols, lchnk)
    call outfld('QTENDCONVDPCOMP', qtendcomp, pcols, lchnk)
 
-   call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
+!   call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
    call outfld('BFLSDILUCAPE', bfls_dilucape, pcols, lchnk)   ! RBN - CAPE output
 
    do i = 1, ncol
@@ -352,8 +359,29 @@ subroutine conv_intr_jp_tend( &
    ql(:ncol,1:pver)   = 0._r8
    rprd(:ncol,1:pver) = 0._r8
 
+   !do i = 1, ncol
+       !do k = 1, pver
+           !tmp = state_loc%q(i,k,1) + ptend_loc%q(i,k,1)*ztodt
+           !if ( tmp<qmin(1) ) then
+               !write(iulog,*) 'qmin', qmin(1)
+               !write(iulog,*) 'problem in neg Q', i, k
+               !write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
+               !do j = 1, pver
+                   !write(iulog,'(i3,2f30.20,l3)') j, state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
+                   !state_loc%q(i,j,1)>qmin(1)
+               !end do
+
+               !exit
+           !end if
+       !end do
+   !end do
+
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
 
+   call physics_update(state_loc, ptend_loc, ztodt)
+
+
+   call physics_state_dealloc(state_loc)
    call physics_ptend_dealloc(ptend_loc)
 
 end subroutine conv_intr_jp_tend

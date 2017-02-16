@@ -79,9 +79,12 @@ for itime in range(ntime):
     ttend     = qcheck*fc/cp*f.variables['stend'][itime,::-1,:]
     ttendcond = qcheck*fc/cp*f.variables['stendcond'][itime,::-1,:]
     ttendtran = qcheck*fc/cp*f.variables['stendtranup'][itime,::-1,:]
+    ttendsum  = qcheck*fc/cp*f.variables['stendsum'][itime,::-1,0]
+
     qtend     = qcheck*lat/cp*fc*f.variables['qtend'][itime,::-1,:]
     qtendcond = qcheck*lat/cp*fc*f.variables['qtendcond'][itime,::-1,:]
     qtendtran = qcheck*lat/cp*fc*f.variables['qtendtranup'][itime,::-1,:]
+    qtendsum  = qcheck*lat/cp*fc*f.variables['qtendsum'][itime,::-1,0]
 
     ttend_avg = np.mean( ttend, axis=1 )
     qtend_avg = np.mean( qtend, axis=1 )
@@ -274,8 +277,10 @@ for itime in range(ntime):
         qtend_tmp = qtend[:,i]
         plt.plot( ttend_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
         plt.plot( qtend_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    plt.plot( ttend_avg, z, 'b-' , lw=2)
-    plt.plot( qtend_avg, z, 'b--', lw=2)
+    #plt.plot( ttend_avg, z, 'b-' , lw=2)
+    #plt.plot( qtend_avg, z, 'b--', lw=2)
+    plt.plot( ttendsum, z, 'b-' , lw=2)
+    plt.plot( qtendsum, z, 'b--', lw=2)
     plt.xlabel("total tend K/day")
     plt.xlim(-60, 60)
 

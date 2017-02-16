@@ -108,7 +108,7 @@ subroutine convect_deep_register
   call pbuf_add_field('PREC_DP',    'physpkg',dtype_r8,(/pcols/),     prec_dp_idx)
   call pbuf_add_field('SNOW_DP',   'physpkg',dtype_r8,(/pcols/),      snow_dp_idx)
 !xiex
-  call pbuf_add_field('MASSFLXBASE_P', 'physpkg', dtype_r8, (/pcols,pver/), massflxbase_p_idx)
+  call pbuf_add_field('MBCONVDP_P', 'physpkg', dtype_r8, (/pcols,pver/), massflxbase_p_idx)
 !xiex over
 
 end subroutine convect_deep_register
@@ -170,9 +170,9 @@ subroutine convect_deep_init(pref_edge)
   call addfld ('MSEUP','J/kg     ',pver, 'I','MSEUP - SCP', phys_decomp)
 
 !xiex
-  call addfld ('MASSFLXBASE_P', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('MBCONVDP_P', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('MBCONVDP'  , 'K/s',          1, 'A', 'T tendency - zm cond tendt',phys_decomp)
 
-  call addfld ('CONVDPMB', 'J/kg',                1, 'A', 'T tendency - zm cond tendt',phys_decomp)
   call addfld ('STENDCONVDP', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
   call addfld ('QTENDCONVDP', 'kg/kg/s',   pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
 

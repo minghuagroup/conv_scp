@@ -438,7 +438,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
 !xiex
    !call outfld('TMP3D', outmu, pcols, lchnk)        ! RBN - CAPE output
-   !call outfld('CONVDPMB', outmb, pcols, lchnk)        ! RBN - CAPE output
    !call outfld('CONVDPSU', outsu, pcols, lchnk)        ! RBN - CAPE output
    !call outfld('CONVDPQU', outqu, pcols, lchnk)        ! RBN - CAPE output
 

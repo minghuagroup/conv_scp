@@ -75,9 +75,6 @@ module conv_jp
     real(r8), parameter :: rhofw  = 1000. ! liquid water density ~ J/K/kg
     real(r8), parameter :: tveps  = 1.0/epsilo - 1
 
-!    real(r8), parameter :: min_q=1.e-12
-    real(r8), parameter :: min_q=1.e-8
-
 !parameter for subcloud entrainment
     real(r8), parameter :: ent_rate_subcld=0._r8
 
@@ -94,7 +91,7 @@ module conv_jp
 !old
 
     integer, parameter :: maxiteration = 2
-    integer, parameter :: ctopflag = 2  ! 1: B<0; 2: w<0
+    integer, parameter :: ctopflag = 1  ! 1: B<0; 2: w<0
     integer, parameter :: buoyflag = 1  ! 1: B=Tv'/Tv; 2: B=Tv'/Tv - qliq - qice
     integer, parameter :: mse2tsatflag = 1  ! 1: Taylor; 2: bi-section
     integer, parameter :: mseqiflag = 1  ! 1: use Qi; 0: Qi=0
@@ -126,7 +123,7 @@ module conv_jp
     real(r8), parameter :: dn_fac = 0.3_r8
 
 !parameter for prognostics mass flux calculation
-    real(r8), parameter :: pmf_alpha =5.e7_r8, pmf_tau=1.e3_r8 !paper default
+    real(r8), parameter :: pmf_alpha = 5.e7_r8, pmf_tau = 1.e3_r8 !paper default
 !    real(r8), parameter :: pmf_alpha =50.e7_r8, pmf_tau=2.e3_r8
 
 
@@ -232,7 +229,7 @@ end subroutine conv_jp_init
 subroutine conv_jp_tend( &
 !input
         inncol, &
-        in_ent_opt, nplume, dtime, &
+        in_ent_opt, nplume, dtime, qmin, &
         lat, landfrac, lhflx, &
         psrf, p, dp, zsrf, z, dz, &
         t, q, bfls_t, bfls_q, &
@@ -266,6 +263,7 @@ subroutine conv_jp_tend( &
     integer , intent(in) :: in_ent_opt ! 0=ec, 1=greg
     integer , intent(in) :: nplume !
     real(r8), intent(in) :: dtime  ! [s] time step
+    real(r8), intent(in) :: qmin   ! [kg/kg] minimum Q
     real(r8), dimension(inncol), intent(in) :: lat, landfrac, lhflx
     real(r8), dimension(inncol), intent(in) :: psrf, zsrf
     real(r8), dimension(inncol, nlev), intent(in) :: p, dp, z, dz ! [Pa] ; [m]
@@ -325,11 +323,9 @@ subroutine conv_jp_tend( &
     integer, dimension(inncol) :: kuplaunch ! [1] cloud launching level
     integer, dimension(inncol) :: kuplcl    ! [1] cloud base
     integer, dimension(inncol) :: kupbase   ! [1] cloud base
-    integer, dimension(inncol) :: kuptopmax ! [1] maximum cloud top, lift without entrainment
 
     integer, dimension(inncol) :: kuptop ! [1] cloud top where buoyancy is zero
     real(r8),dimension(inncol) :: zuptop ! [m] exact z at kuptop
-    integer, dimension(inncol) :: knbtop ! [1] cloud top where overshooting or negative buoyance ends
 
     real(r8), dimension(inncol, nlev) :: convallmask_up ! [1] mask from launching point to cloud top
 
@@ -416,7 +412,6 @@ subroutine conv_jp_tend( &
     integer, dimension(inncol) :: kupbase_closure   ! [1] cloud base
     integer, dimension(inncol) :: kuptop_closure ! [1] cloud top where buoyancy is zero
     real(r8),dimension(inncol) :: zuptop_closure ! [m] exact kuptop
-    integer, dimension(inncol) :: kuptopmax_closure ! [1] cloud top where buoyancy is zero
 
     real(r8),dimension(inncol, nlev) :: mse_up_closure
     real(r8),dimension(inncol, nlev) :: t_up_closure
@@ -437,7 +432,7 @@ subroutine conv_jp_tend( &
     real(r8),dimension(inncol, nlev) :: w         ! [m/s] environment vertical velocity
     real(r8),dimension(inncol) :: mconv           ! [1] moisture convergence
     real(r8),dimension(inncol) :: conv            ! [1] wind convergence
-    real(r8),dimension(inncol) :: dilucape        ! [1] CAPE cloud work function
+    real(r8),dimension(inncol, nlev) :: dilucape        ! [1] CAPE cloud work function
     real(r8),dimension(inncol) :: bfls_dilucape   ! [1] CAPE cloud work function before LS forcing
     real(r8),dimension(inncol) :: dilucape_closure
 
@@ -479,6 +474,7 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: stendsum
     real(r8), dimension(inncol, nlev) :: qtendsum
     real(r8), dimension(inncol) :: precsum
+    real(r8), dimension(inncol) :: massflxbasesum
 
     real(r8), dimension(inncol, nlev) :: tmp1stend, tmp1qtend
     real(r8), dimension(inncol, nlev) :: tmp2stend, tmp2qtend
@@ -559,8 +555,7 @@ subroutine conv_jp_tend( &
     stendsum = 0._r8
     qtendsum = 0._r8
     precsum = 0._r8
-
-    knbtop = nlev
+    massflxbasesum = 0._r8
 
     massflxbase = 0._r8
     massflxbase_w = 0._r8
@@ -747,9 +742,8 @@ subroutine conv_jp_tend( &
 
         call cal_cape( &
             dz, buoy_mid, kuplcl, kuptop, &
-            dilucape, &
+            dilucape(:,j), &
             trigdp)
-
 
         call cal_evap( &
             ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
@@ -784,7 +778,7 @@ subroutine conv_jp_tend( &
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
             massflxbase_p(i,j) = min( 0.1, max( 0., &
-                massflxbase_p(i,j) + dtime*( dilucape(i)/(2*pmf_alpha) &
+                massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
                 - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
         end do
 
@@ -793,6 +787,7 @@ subroutine conv_jp_tend( &
 
 #ifdef SCMDIAG 
         write(*,'(a25,f10.5)') "massflxbase = ", massflxbase(:)
+!        write(*,'(10f20.10)') dtime, dilucape(1,j), pmf_alpha, dtime*dilucape(1,j)/(2*pmf_alpha)
 #endif
         
 
@@ -824,6 +819,7 @@ subroutine conv_jp_tend( &
             stendsum(i,:) = stendsum(i,:)+stend(i,:)
             qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
             precsum(i) = precsum(i)+surfprec(i)
+            massflxbasesum(i) = massflxbasesum(i)+massflxbase(i)
         end do
 
         diffdse_up = 0._r8
@@ -837,6 +833,7 @@ subroutine conv_jp_tend( &
         end do
 
 
+!        write(*,*) 'plume', j, kuplcl(1), kuptop(1), trigdp(1)
 #ifdef SCMDIAG
 !        call stdout3dmix( z, zint, t, t_up )
 !        call stdout3dmix( z, zint, t, tint )
@@ -877,7 +874,7 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "mse_dn", nlevp, mse_dn(1,:), j )
         call subcol_netcdf_putclm( "normassflx_dn", nlevp, normassflx_dn_tmp(1,:), j )
 
-        call subcol_netcdf_putclm( "dilucape", 1, dilucape(1), j )
+        call subcol_netcdf_putclm( "dilucape", 1, dilucape(1,j), j )
         call subcol_netcdf_putclm( "mseqi", nlev, mseqi(1,:), j )
         call subcol_netcdf_putclm( "condrate", nlev, condrate(1,:), j )
         call subcol_netcdf_putclm( "rainrate", nlev, rainrate(1,:), j )
@@ -920,13 +917,19 @@ subroutine conv_jp_tend( &
         end do
     end do
 
-!use average as ouput
-    prec = precsum/nplume
-    stend = stendsum/nplume
-    qtend = qtendsum/nplume
+!use sum as ouput
+    prec = precsum
+    stend = stendsum
+    qtend = qtendsum
 
     !write(*,*) "after:"
     !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
+
+#ifdef SCMDIAG
+    call subcol_netcdf_putclm( "stendsum", nlev, stendsum(1,:), 1 )
+    call subcol_netcdf_putclm( "qtendsum", nlev, qtendsum(1,:), 1 )
+    call subcol_netcdf_putclm( "precsum", 1, precsum(1), 1 )
+#endif
 
 
 !!------------------------------------------------------
@@ -1468,23 +1471,37 @@ subroutine conv_jp_tend( &
 !------------------------------------------------------
 !make sure no negative q
 !------------------------------------------------------
-    !qcheckout = 1._r8
+
+    qcheckout = 1._r8
+    minqcheckf = 1._r8
     !qcheck  = 0._r8
     !qcheck  = q + dtime*qtend
 
-    minqcheckf = 1._r8
     do i=1, inncol
         if ( trigdp(i)<1 ) cycle
 
 !whole column adjustment
         minqcheckf = 1._r8
         do k=nlev, 1, -1
-            if( (qtend(i,k)<0.) .and. (q(i,k)>0.) ) then
-                qcheckf = (min_q-q(i,k))/dtime/qtend(i,k)
-                if( (qcheckf<minqcheckf) .and. (qcheckf>0._r8) ) then
+
+            if ( (q(i,k)<=qmin) .and. (qtend(i,k)<0.) ) then
+#ifdef SCMDIAG 
+                write(*,*) 'too small Q'
+#endif
+                minqcheckf = 0._r8
+                trigdp(i) = -91
+                exit
+            end if
+
+            qcheckf = q(i,k)+qtend(i,k)*dtime
+
+            if( qcheckf<qmin ) then
+                qcheckf = (qmin-q(i,k))/dtime/qtend(i,k)
+                if( qcheckf<minqcheckf ) then
                     minqcheckf = qcheckf
                 end if
             end if
+
         end do
 
         if( minqcheckf<1._r8 ) then
@@ -1515,9 +1532,9 @@ subroutine conv_jp_tend( &
 !!!single level adjustment
         !!minqcheckf = 1._r8
         !!do k=nlev, 1, -1
-            !!if( qcheck(i,k)<=min_q ) then
-!!!                qtend(i,k) = (min_q-q(i,k))/dtime
-                !!qcheckf = (min_q-q(i,k))/dtime/qtend(i,k)
+            !!if( qcheck(i,k)<=qmin ) then
+!!!                qtend(i,k) = (qmin-q(i,k))/dtime
+                !!qcheckf = (qmin-q(i,k))/dtime/qtend(i,k)
 !!!                stend(i,k) = qcheckf*stend(i,k)
 !!!                stendcomp(i,k) = qcheckf*stendcomp(i,k)
                 !!qtend(i,k) = qcheckf*qtend(i,k)
@@ -1531,6 +1548,7 @@ subroutine conv_jp_tend( &
 
         qcheckout(i) = minqcheckf
     end do
+
 
 !clean output.
     do i=1, inncol
@@ -1548,8 +1566,9 @@ subroutine conv_jp_tend( &
     !end do
 
 
-    outmb = massflxbase
+    outmb = massflxbasesum
 
+    outtmp2d = qcheckout
 !    outtmp2d = lat_coef
 !    outtmp2d = capeclm
 !    outtmp2d = dilucape
@@ -1587,18 +1606,17 @@ subroutine conv_jp_tend( &
     write(*,"(a20,f20.10)") "dtime:", dtime
     write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "psrf:", psrf
     write(*,"(a20,i4,a20,i4)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
-    write(*,"(a20,i4)") "uptopmax:", kuptopmax
-    write(*,"(a20,i4,a20,i4)") "uptop:", kuptop,  "knbtop:", knbtop
+    write(*,"(a20,i4,a20,i4)") "uptop:", kuptop
     write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp, "trigsh:", trigsh
     write(*,"(a20,f20.10)") "zsrf:",zsrf 
     write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
-    write(*,"(a20,f20.10)") "dilucape:", dilucape
+    write(*,"(a20,50f20.10)") "dilucape:", dilucape(1,1:nplume)
     write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
     write(*,"(a20,f20.10)") "capefc:", capefc
     write(*,"(a20,f20.10)") "capeclm:", capeclm
     write(*,"(a20,f20.10)") "mconv:", mconv
 !    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p
-    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,:)
+    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume)
     write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape
     write(*,"(a20,f20.10)") "massflxbase_dcape:", massflxbase_dcape
     write(*,"(a20,f20.10)") "massflxbase_clm:", massflxbase_clm
@@ -2119,6 +2137,14 @@ subroutine cal_mse_up( &
             ent_rate_up(i,k) = 0._r8
             det_rate_up(i,k) = 0._r8
             normassflx_up(i,k) = 0._r8
+
+            condrate(i,k) = 0._r8
+            rainrate(i,k) = 0._r8
+            snowrate(i,k) = 0._r8
+            precrate(i,k) = 0._r8
+            mseqi(i,k) = 0._r8
+            qliq_up(i,k) = 0._r8
+            qice_up(i,k) = 0._r8
 
             ent_rate_up(i,kuplcl(i) ) = 0._r8
 
