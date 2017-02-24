@@ -54,7 +54,7 @@ for itime in range(ntime):
     dse_up = fcmse*f.variables['dse_up'][itime,::-1,:]
 
 
-    diffdse_up = 0.01*f.variables['diffdse_up'][itime,::-1,0]
+    diffdse_up = 0.01*f.variables['diffdse_up'][itime,::-1,:]
     diffq_up = 1000.*f.variables['diffq_up'][itime,::-1,:]
 
     normassflx = f.variables['normassflx_up'][itime,::-1,:]
@@ -220,18 +220,18 @@ for itime in range(ntime):
     #plt.xlabel("DSE ^3 J/kg")
     #plt.xlim(290, 360)
 
-    plt.axvline(x=0, color='grey')
-    for i in range(nsubcol):
-        diffq_up_tmp = diffq_up[:,i]
-        plt.plot( diffq_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("diff Q e3")
-    plt.xlim(-10, 10)
-
     #plt.axvline(x=0, color='grey')
     #for i in range(nsubcol):
-        #diffdse_up_tmp = diffdse_up[:,i]
-        #plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
-    #plt.xlabel("diff DSE e3")
+        #diffq_up_tmp = diffq_up[:,i]
+        #plt.plot( diffq_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("diff Q e3")
+    #plt.xlim(-10, 10)
+
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
+        diffdse_up_tmp = diffdse_up[:,i]
+        plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("diff DSE e3")
 
 
     plt.subplot(2,5,7)
@@ -243,9 +243,11 @@ for itime in range(ntime):
     plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
         ttendtran_tmp = ttendtran[:,i]
-        qtendtran_tmp = qtendtran[:,i]
+        #qtendtran_tmp = qtendtran[:,i]
         plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
-        plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+        #plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+
+
     plt.xlabel("tend K/day")
     plt.xlim(-20, 20)
 

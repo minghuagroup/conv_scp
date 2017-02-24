@@ -271,7 +271,7 @@ subroutine conv_intr_jp_tend( &
    call conv_jp_tend( &
 !input
        ncol, &
-       3, 15, 1._r8*ztodt, qmin(1), &
+       2, 15, ztodt, qmin(1), &
        state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), &
        state%ps(:ncol), state%pmid(:ncol,:), state%pdel(:ncol,:), &
        zsrf(:ncol), z(:ncol,:), dz(:ncol,:), &
@@ -359,22 +359,31 @@ subroutine conv_intr_jp_tend( &
    ql(:ncol,1:pver)   = 0._r8
    rprd(:ncol,1:pver) = 0._r8
 
-   !do i = 1, ncol
-       !do k = 1, pver
-           !tmp = state_loc%q(i,k,1) + ptend_loc%q(i,k,1)*ztodt
-           !if ( tmp<qmin(1) ) then
-               !write(iulog,*) 'qmin', qmin(1)
-               !write(iulog,*) 'problem in neg Q', i, k
-               !write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
-               !do j = 1, pver
-                   !write(iulog,'(i3,2f30.20,l3)') j, state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
+   do i = 1, ncol
+       do k = 1, pver
+!           tmp = state_loc%q(i,k,1) + ptend_loc%q(i,k,1)*ztodt
+           tmp = state_loc%q(i,k,1) + qtend(i,k)*ztodt
+           if ( tmp<qmin(1) ) then
+               write(iulog,'(a10,f30.25)') 'qmin', qmin(1)
+               write(iulog,'(a10,f30.25)') 'tmp', tmp
+               write(iulog,'(a10,f30.25)') 'dtime', ztodt
+               write(iulog,'(a10,f30.25)') 'minqcheckf', outtmp2d(i)
+               write(iulog,*) tmp<qmin(1), tmp-qmin(1)
+               write(iulog,*) 'problem in neg Q', i, k
+               write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
+               do j = 1, pver
+                   !write(iulog,'(i3,f10.5,3f30.25,l3)') j, &
+                       !state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
                    !state_loc%q(i,j,1)>qmin(1)
-               !end do
+                   write(iulog,'(i3,f10.5,3f30.25,l3)') j, state_loc%pmid(i,j)/100., &
+                       state_loc%q(i,j,1), qtend(i,j)*ztodt, outqtend(i,j)*ztodt, &
+                   state_loc%q(i,j,1)>qmin(1)
+               end do
 
-               !exit
-           !end if
-       !end do
-   !end do
+               exit
+           end if
+       end do
+   end do
 
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
 

@@ -240,8 +240,8 @@
   end if
 
 !xiex
-  call addfld ('CONVSHSTEND', 'K/s',      pver, 'A', 'T tendency - uw tends',phys_decomp)
-  call addfld ('CONVSHQTEND', 'kg/kg/s',  pver, 'A', 'Q tendency - uw tendq',phys_decomp)
+  call addfld ('STENDCONVSH', 'K/s',      pver, 'A', 'T tendency - uw tends',phys_decomp)
+  call addfld ('QTENDCONVSH', 'kg/kg/s',  pver, 'A', 'Q tendency - uw tendq',phys_decomp)
 
 
   call phys_getopts( eddy_scheme_out = eddy_scheme      , &
@@ -716,8 +716,8 @@
 
 !xiex
    if( shallow_scheme /= 'off' ) then
-       call outfld('CONVSHSTEND    ', ptend_loc%s          ,pcols   , state%lchnk   )
-       call outfld('CONVSHQTEND    ', ptend_loc%q(:,:,1)   ,pcols   , state%lchnk   )
+       call outfld('STENDCONVSH    ', ptend_loc%s          ,pcols   , state%lchnk   )
+       call outfld('QTENDCONVSH    ', ptend_loc%q(:,:,1)   ,pcols   , state%lchnk   )
    end if
 
    if( shallow_scheme .eq. 'UW' ) then

@@ -123,8 +123,8 @@ module conv_jp
     real(r8), parameter :: dn_fac = 0.3_r8
 
 !parameter for prognostics mass flux calculation
-    real(r8), parameter :: pmf_alpha = 5.e7_r8, pmf_tau = 1.e3_r8 !paper default
-!    real(r8), parameter :: pmf_alpha =50.e7_r8, pmf_tau=2.e3_r8
+!    real(r8), parameter :: pmf_alpha = 5.e7_r8, pmf_tau = 1.e3_r8 !paper default
+    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=4000.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -464,10 +464,10 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlevp) :: diffq_up   ! [1]  Delta Q
     real(r8), dimension(inncol, nlev) :: stendcond  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: qtendcond  ! [K/s] Q tendency
-    real(r8), dimension(inncol, nlev) :: transtend_up  ! [K/s] DSE tendency
-    real(r8), dimension(inncol, nlev) :: tranqtend_up  ! [K/s] Q tendency
-    real(r8), dimension(inncol, nlev) :: transtend_dn  ! [K/s] DSE tendency
-    real(r8), dimension(inncol, nlev) :: tranqtend_dn  ! [K/s] Q tendency
+    real(r8), dimension(inncol, nlev) :: stendtran_up  ! [K/s] DSE tendency
+    real(r8), dimension(inncol, nlev) :: qtendtran_up  ! [K/s] Q tendency
+    real(r8), dimension(inncol, nlev) :: stendtran_dn  ! [K/s] DSE tendency
+    real(r8), dimension(inncol, nlev) :: qtendtran_dn  ! [K/s] Q tendency
     real(r8), dimension(inncol, nlev) :: stendevap  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: qtendevap  ! [K/s] Q tendency
 
@@ -475,9 +475,20 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: qtendsum
     real(r8), dimension(inncol) :: precsum
     real(r8), dimension(inncol) :: massflxbasesum
+    real(r8), dimension(inncol, nlev) :: precratesum
 
     real(r8), dimension(inncol, nlev) :: tmp1stend, tmp1qtend
     real(r8), dimension(inncol, nlev) :: tmp2stend, tmp2qtend
+
+    real(r8), dimension(inncol) :: bg_q
+    real(r8), dimension(inncol) :: bg_qtend
+    real(r8), dimension(inncol) :: bg_qtendcond
+    real(r8), dimension(inncol) :: bg_qtendup
+    real(r8), dimension(inncol) :: bg_qtenddn
+    real(r8), dimension(inncol) :: bg_qtendevap
+    real(r8), dimension(inncol) :: bg_precrate
+    real(r8), dimension(inncol) :: bg_qtendsum
+    real(r8), dimension(inncol) :: bg_factor
 
 !for test
     real(r8), dimension(inncol) :: tmp ! [1] number of convective lev
@@ -545,10 +556,10 @@ subroutine conv_jp_tend( &
 
     stendcond = 0._r8
     qtendcond = 0._r8
-    transtend_up = 0._r8
-    tranqtend_up = 0._r8
-    transtend_dn = 0._r8
-    tranqtend_dn = 0._r8
+    stendtran_up = 0._r8
+    qtendtran_up = 0._r8
+    stendtran_dn = 0._r8
+    qtendtran_dn = 0._r8
     stendevap = 0._r8
     qtendevap = 0._r8
 
@@ -556,6 +567,7 @@ subroutine conv_jp_tend( &
     qtendsum = 0._r8
     precsum = 0._r8
     massflxbasesum = 0._r8
+    precratesum = 0._r8
 
     massflxbase = 0._r8
     massflxbase_w = 0._r8
@@ -722,7 +734,7 @@ subroutine conv_jp_tend( &
 
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
-            if ( kuptop(i)>jctop(i) ) then
+            if ( kuptop(i)<jctop(i) ) then
                 jctop(i) = kuptop(i)
             end if
         end do
@@ -760,14 +772,14 @@ subroutine conv_jp_tend( &
             dz, kuplcl, kuptop, &
             rho, dseint, qint, dse_up, q_up, &
             normassflx_up_tmp,  &
-            transtend_up, tranqtend_up, &
+            stendtran_up, qtendtran_up, &
             trigdp)
 
         call cal_tendtransport( &
             dz, kuplcl, kuptop, &
             rho, dseint, qint, dse_dn, q_dn, &
             normassflx_dn_tmp,  &
-            transtend_dn, tranqtend_dn, &
+            stendtran_dn, qtendtran_dn, &
             trigdp)
         
         stendcond =  latvap*condrate
@@ -780,13 +792,18 @@ subroutine conv_jp_tend( &
             massflxbase_p(i,j) = min( 0.1, max( 0., &
                 massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
                 - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
+!            write(*,*) rh(i,nlev)
+            !if ( rh(i,nlev)<0.8_r8 ) then
+                !trigdp(i) = -20
+            !end if
         end do
 
 !        massflxbase = 0.01_r8
         massflxbase(:) = massflxbase_p(:,j)
 
 #ifdef SCMDIAG 
-        write(*,'(a25,f10.5)') "massflxbase = ", massflxbase(:)
+        write(*,'(a25,f10.5,a25,i5)') "massflxbase = ", massflxbase(1), "trigdp = ", trigdp(1)
+        write(*,'(a25,i5)') "kuptop = ", kuptop(1)
 !        write(*,'(10f20.10)') dtime, dilucape(1,j), pmf_alpha, dtime*dilucape(1,j)/(2*pmf_alpha)
 #endif
         
@@ -801,11 +818,11 @@ subroutine conv_jp_tend( &
             evaprate(i,:) = evaprate(i,:) * massflxbase(i)  ! 1/s
             surfprec(i) = surfprec(i) * massflxbase(i) / rhofw  ! m/s
 
-            transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
-            tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
+            stendtran_up(i,:) = stendtran_up(i,:)*massflxbase(i)
+            qtendtran_up(i,:) = qtendtran_up(i,:)*massflxbase(i)
 
-            transtend_dn(i,:) = transtend_dn(i,:) * massflxbase(i) * dn_fac
-            tranqtend_dn(i,:) = tranqtend_dn(i,:) * massflxbase(i) * dn_fac
+            stendtran_dn(i,:) = stendtran_dn(i,:) * massflxbase(i) * dn_fac
+            qtendtran_dn(i,:) = qtendtran_dn(i,:) * massflxbase(i) * dn_fac
 
             stendcond(i,:) = stendcond(i,:)*massflxbase(i)
             qtendcond(i,:) = qtendcond(i,:)*massflxbase(i)
@@ -813,14 +830,63 @@ subroutine conv_jp_tend( &
             stendevap(i,:) = stendevap(i,:)*massflxbase(i)
             qtendevap(i,:) = qtendevap(i,:)*massflxbase(i)
 
-            stend(i,:) = stendcond(i,:)+stendevap(i,:)+transtend_up(i,:)+transtend_dn(i,:)
-            qtend(i,:) = qtendcond(i,:)+qtendevap(i,:)+tranqtend_up(i,:)+tranqtend_dn(i,:)
 
+            stend(i,:) = stendcond(i,:) + stendevap(i,:) &
+                + stendtran_up(i,:) + stendtran_dn(i,:)
+            qtend(i,:) = qtendcond(i,:) + qtendevap(i,:) &
+                + qtendtran_up(i,:) + qtendtran_dn(i,:)
+
+        end do
+
+
+!water budget adjustment
+        bg_q = 0._r8
+        bg_qtend = 0._r8
+        bg_qtendcond = 0._r8
+        bg_qtendup = 0._r8
+        bg_qtenddn = 0._r8
+        bg_qtendevap = 0._r8
+        bg_precrate = 0._r8
+        bg_qtendsum = 0._r8
+        bg_factor = 0._r8
+        do i=1, ncol
+            do k=1, nlev
+
+                bg_q(i) = bg_q(i) + q(i,k)*rho(i,k)*dz(i,k)
+
+                bg_qtend(i) = bg_qtend(i) + qtend(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtendcond(i) = bg_qtendcond(i) + qtendcond(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtendup(i)   = bg_qtendup(i) + qtendtran_up(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtenddn(i)   = bg_qtenddn(i) + qtendtran_dn(i,k)*dtime*rho(i,k)*dz(i,k)
+
+                bg_precrate(i) = bg_precrate(i) + precrate(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtendevap(i)   = bg_qtendevap(i) + qtendevap(i,k)*dtime*rho(i,k)*dz(i,k)
+
+                bg_qtendsum(i) = bg_qtendup(i) + bg_qtenddn(i) + bg_qtendevap(i) + bg_precrate(i)
+
+            end do
+            if( bg_qtend(i)<0 ) then
+                bg_factor(i) = ( bg_qtend(i)+bg_precrate(i) ) / bg_qtendcond(i)
+            end if
+
+            if ( bg_factor(i)>0 ) then
+                stend(i,:) = stend(i,:) - bg_factor(i)*stendcond(i,:)
+                qtend(i,:) = qtend(i,:) - bg_factor(i)*qtendcond(i,:)
+                stendcond(i,:) = stendcond(i,:) - bg_factor(i)*stendcond(i,:)
+                qtendcond(i,:) = qtendcond(i,:) - bg_factor(i)*qtendcond(i,:)
+            end if
+
+        end do
+
+
+        do i=1, inncol
             stendsum(i,:) = stendsum(i,:)+stend(i,:)
             qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
             precsum(i) = precsum(i)+surfprec(i)
             massflxbasesum(i) = massflxbasesum(i)+massflxbase(i)
+            precratesum(i,:) = precratesum(i,:)+precrate(i,:)
         end do
+
 
         diffdse_up = 0._r8
         diffq_up = 0._r8
@@ -832,6 +898,8 @@ subroutine conv_jp_tend( &
             end do
         end do
 
+
+!        write(*,*) j, trigdp(1)
 
 !        write(*,*) 'plume', j, kuplcl(1), kuptop(1), trigdp(1)
 #ifdef SCMDIAG
@@ -889,10 +957,10 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "qtendcond", nlev, qtendcond(1,:), j )
         call subcol_netcdf_putclm( "stendevap", nlev, stendevap(1,:), j )
         call subcol_netcdf_putclm( "qtendevap", nlev, qtendevap(1,:), j )
-        call subcol_netcdf_putclm( "stendtranup", nlev, transtend_up(1,:), j )
-        call subcol_netcdf_putclm( "qtendtranup", nlev, tranqtend_up(1,:), j )
-        call subcol_netcdf_putclm( "stendtrandn", nlev, transtend_dn(1,:), j )
-        call subcol_netcdf_putclm( "qtendtrandn", nlev, tranqtend_dn(1,:), j )
+        call subcol_netcdf_putclm( "stendtranup", nlev, stendtran_up(1,:), j )
+        call subcol_netcdf_putclm( "qtendtranup", nlev, qtendtran_up(1,:), j )
+        call subcol_netcdf_putclm( "stendtrandn", nlev, stendtran_dn(1,:), j )
+        call subcol_netcdf_putclm( "qtendtrandn", nlev, qtendtran_dn(1,:), j )
 
         call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
         call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
@@ -902,6 +970,9 @@ subroutine conv_jp_tend( &
 
         tmp2d = trigdp
         call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
+
+
+
 #endif
     end do     ! loop of plume
 
@@ -992,7 +1063,7 @@ subroutine conv_jp_tend( &
         !z, kuplaunch, kuplcl, kupbase, kuptop, &
         !rho, dse, q, dse_up, q_up, &
         !normassflx_up,  &
-        !transtend_up, tranqtend_up, &
+        !stendtran_up, qtendtran_up, &
         !trigdp)
     !!stendcond = latvap*condrate/rho
     !!qtendcond = -condrate/rho
@@ -1032,8 +1103,8 @@ subroutine conv_jp_tend( &
 
     !dilucape_closure = 0._r8
 
-    !q_closure = q + adjdt*( qtendcond+tranqtend_up )
-    !t_closure = t + adjdt*( stendcond+transtend_up )/cpair
+    !q_closure = q + adjdt*( qtendcond+qtendtran_up )
+    !t_closure = t + adjdt*( stendcond+stendtran_up )/cpair
     !tv_closure = t_closure*( 1+0.61*q_closure )
 
 !!------------------------------------------------------
@@ -1339,14 +1410,14 @@ subroutine conv_jp_tend( &
 
         !stendcond(i,:) = stendcond(i,:)*massflxbase(i)
         !qtendcond(i,:) = qtendcond(i,:)*massflxbase(i)
-        !transtend_up(i,:) = transtend_up(i,:)*massflxbase(i)
-        !tranqtend_up(i,:) = tranqtend_up(i,:)*massflxbase(i)
+        !stendtran_up(i,:) = stendtran_up(i,:)*massflxbase(i)
+        !qtendtran_up(i,:) = qtendtran_up(i,:)*massflxbase(i)
 
         !if ( trigdp(i)<1 ) cycle
 
 !! Final Tendencies
-        !stend(i,:) = stendcond(i,:)+transtend_up(i,:)
-        !qtend(i,:) = qtendcond(i,:)+tranqtend_up(i,:)
+        !stend(i,:) = stendcond(i,:)+stendtran_up(i,:)
+        !qtend(i,:) = qtendcond(i,:)+qtendtran_up(i,:)
         !qliq(i,:)  = qliq_up(i,:)
         !rainrate_out(i,:) = rainrate(i,:)
 
@@ -1477,14 +1548,15 @@ subroutine conv_jp_tend( &
     !qcheck  = 0._r8
     !qcheck  = q + dtime*qtend
 
+    outtmp3d = qtend
+
     do i=1, inncol
-        if ( trigdp(i)<1 ) cycle
 
 !whole column adjustment
         minqcheckf = 1._r8
         do k=nlev, 1, -1
 
-            if ( (q(i,k)<=qmin) .and. (qtend(i,k)<0.) ) then
+            if ( (q(i,k)<=qmin*1.001) .and. (qtend(i,k)<0.) ) then
 #ifdef SCMDIAG 
                 write(*,*) 'too small Q'
 #endif
@@ -1496,9 +1568,15 @@ subroutine conv_jp_tend( &
             qcheckf = q(i,k)+qtend(i,k)*dtime
 
             if( qcheckf<qmin ) then
-                qcheckf = (qmin-q(i,k))/dtime/qtend(i,k)
+                qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
                 if( qcheckf<minqcheckf ) then
                     minqcheckf = qcheckf
+!                    qcheckf = qtend(i,k)*dtime*minqcheckf
+!                    write(*,'(a10,f30.25)') 'qtend ', qcheckf
+!                    qcheckf = q(i,k) + qcheckf - qmin
+!                    qcheckf = q(i,k) + qtend(i,k)*dtime*minqcheckf - qmin
+                    !write(*,'(a10,f30.25)') 'qtend ', qtend(i,k)*minqcheckf*dtime
+                    !write(*,*) k, qcheckf
                 end if
             end if
 
@@ -1509,10 +1587,17 @@ subroutine conv_jp_tend( &
 
             stendcond(i,:) = minqcheckf*stendcond(i,:)
             qtendcond(i,:) = minqcheckf*qtendcond(i,:)
-            transtend_up(i,:) = minqcheckf*transtend_up(i,:)
-            tranqtend_up(i,:) = minqcheckf*tranqtend_up(i,:)
+            stendtran_up(i,:) = minqcheckf*stendtran_up(i,:)
+            qtendtran_up(i,:) = minqcheckf*qtendtran_up(i,:)
             stendevap(i,:) = minqcheckf*stendevap(i,:)
             qtendevap(i,:) = minqcheckf*qtendevap(i,:)
+
+
+            stend(i,:) = minqcheckf*stend(i,:)
+            qtend(i,:) = minqcheckf*qtend(i,:)
+            prec(i) = minqcheckf*prec(i)
+            precrate(i,:) = minqcheckf*precrate(i,:)
+
 
             stendcomp(i,:) = minqcheckf*stendcomp(i,:)
             qtendcomp(i,:) = minqcheckf*qtendcomp(i,:)
@@ -1521,12 +1606,6 @@ subroutine conv_jp_tend( &
             tmp1qtend(i,:) = minqcheckf*tmp1qtend(i,:)
             tmp2stend(i,:) = minqcheckf*tmp2stend(i,:)
             tmp2qtend(i,:) = minqcheckf*tmp2qtend(i,:)
-
-            precrate(i,:) = minqcheckf*precrate(i,:)
-
-            stend(i,:) = minqcheckf*stend(i,:)
-            qtend(i,:) = minqcheckf*qtend(i,:)
-            prec(i) = minqcheckf*prec(i)
         end if
 
 !!!single level adjustment
@@ -1582,7 +1661,7 @@ subroutine conv_jp_tend( &
 !    outtmp2d = massflxbase
 
 !    outtmp3d = t
-    outtmp3d = massflxbase_p
+!    outtmp3d = massflxbase_p
 
     outmse = mse
     outmsesat= msesat
@@ -1592,14 +1671,15 @@ subroutine conv_jp_tend( &
     outqtend = qtend
     outstendcond = stendcond
     outqtendcond = qtendcond
-    outstendtranup = transtend_up
-    outqtendtranup = tranqtend_up
-    outstendtrandn = transtend_dn
-    outqtendtrandn = tranqtend_dn
+    outstendtranup = stendtran_up
+    outqtendtranup = qtendtran_up
+    outstendtrandn = stendtran_dn
+    outqtendtrandn = qtendtran_dn
     outstendtrandn = 0._r8
     outqtendtrandn = 0._r8
     outstendevap = stendevap
     outqtendevap = qtendevap
+
 
 
 #ifdef SCMDIAG 
@@ -1615,7 +1695,6 @@ subroutine conv_jp_tend( &
     write(*,"(a20,f20.10)") "capefc:", capefc
     write(*,"(a20,f20.10)") "capeclm:", capeclm
     write(*,"(a20,f20.10)") "mconv:", mconv
-!    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p
     write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume)
     write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape
     write(*,"(a20,f20.10)") "massflxbase_dcape:", massflxbase_dcape
@@ -1626,6 +1705,7 @@ subroutine conv_jp_tend( &
     write(*,"(a20,f20.10)") "prec:", prec*3600*24*1000
     write(*,"(a20,f20.10)") "surfprec:", surfprec*3600*24*1000
     write(*,"(a20,f20.10)") "minqcheckf:", minqcheckf
+
 
 !netcdf output
     call subcol_netcdf_putclm( "mse", nlev, mse(1,:), 1 )
@@ -1683,8 +1763,8 @@ subroutine conv_jp_tend( &
     !call subcol_netcdf_putclm( "qtend", qtend(1,:), 1 )
     !call subcol_netcdf_putclm( "stendcond", stendcond(1,:), 1 )
     !call subcol_netcdf_putclm( "qtendcond", qtendcond(1,:), 1 )
-    !call subcol_netcdf_putclm( "stendtran", transtend_up(1,:), 1 )
-    !call subcol_netcdf_putclm( "qtendtran", tranqtend_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "stendtran", stendtran_up(1,:), 1 )
+    !call subcol_netcdf_putclm( "qtendtran", qtendtran_up(1,:), 1 )
     !call subcol_netcdf_putclm( "stendcomp", stendcomp(1,:), 1 )
     !call subcol_netcdf_putclm( "qtendcomp", qtendcomp(1,:), 1 )
 
@@ -2566,6 +2646,16 @@ subroutine cal_tendtransport( &
                 - normassflx_up(i,k+1)*( q_up(i,k+1)-qint(i,k+1) )&
                 )/dz(i,k)/rho(i,k)
         end do
+
+        k = kuptop(i)-1
+        if ( k>=1 ) then
+            stend(i,k) = -( &
+                - normassflx_up(i,k+1)*( dse_up(i,k+1)-dseint(i,k+1) )&
+                )/dz(i,k)/rho(i,k)
+            qtend(i,k) = -( &
+                - normassflx_up(i,k+1)*( q_up(i,k+1)-qint(i,k+1) )&
+                )/dz(i,k)/rho(i,k)
+        end if
 
     end do
 
