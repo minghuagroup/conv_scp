@@ -96,11 +96,11 @@ program test
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
-    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
+!    call netcdf_check( nf90_open("inputscm_core_paper.nc", NF90_NOWRITE, inncid) )
 !    call netcdf_check( nf90_open("inputscm_core_select_new.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm_core_all.nc", NF90_NOWRITE, inncid) )
 !   call netcdf_check( nf90_open("inputscm.nc", NF90_NOWRITE, inncid) )
-!    call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
+    call netcdf_check( nf90_open("inputscm_clean.nc", NF90_NOWRITE, inncid) )
 
 !get dimension information
     call netcdf_check( nf90_inq_varid(inncid, "u", uvarid) )

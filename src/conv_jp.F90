@@ -385,7 +385,9 @@ subroutine conv_jp_tend( &
 !for evaporation
     real(r8), dimension(inncol, nlev) :: accuprec  ! [1]  bulk precipitation production
     real(r8), dimension(inncol, nlev) :: evaprate  ! [1]  bulk evaporation production
-    real(r8), dimension(inncol) :: surfprec        ! [1]  bulk evaporation production
+
+    real(r8), dimension(inncol) :: surfprec       ! [1]  bulk evaporation production
+    real(r8), dimension(inncol) :: netprec        ! [1]  bulk evaporation production
 
 !for EC en/detrainment rate depending on RH
     real(r8), dimension(inncol, nlev) :: fscale_up ! [1]
@@ -468,6 +470,7 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: qtendtran_up  ! [K/s] Q tendency
     real(r8), dimension(inncol, nlev) :: stendtran_dn  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: qtendtran_dn  ! [K/s] Q tendency
+    real(r8), dimension(inncol, nlev) :: qliqtend_det  ! [K/s] liq tendency due to detrainment
     real(r8), dimension(inncol, nlev) :: stendevap  ! [K/s] DSE tendency
     real(r8), dimension(inncol, nlev) :: qtendevap  ! [K/s] Q tendency
 
@@ -486,7 +489,6 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol) :: bg_qtendup
     real(r8), dimension(inncol) :: bg_qtenddn
     real(r8), dimension(inncol) :: bg_qtendevap
-    real(r8), dimension(inncol) :: bg_precrate
     real(r8), dimension(inncol) :: bg_qtendsum
     real(r8), dimension(inncol) :: bg_factor
 
@@ -543,7 +545,9 @@ subroutine conv_jp_tend( &
     precrate = 0._r8
     accuprec = 0._r8
     evaprate = 0._r8
+
     surfprec = 0._r8
+    netprec = 0._r8
 
     w = 0._r8
     tv_closure = 0._r8
@@ -562,6 +566,7 @@ subroutine conv_jp_tend( &
     qtendtran_dn = 0._r8
     stendevap = 0._r8
     qtendevap = 0._r8
+    qliqtend_det = 0._r8
 
     stendsum = 0._r8
     qtendsum = 0._r8
@@ -781,7 +786,15 @@ subroutine conv_jp_tend( &
             normassflx_dn_tmp,  &
             stendtran_dn, qtendtran_dn, &
             trigdp)
-        
+
+        do i=1, inncol
+            if ( trigdp(i)<1 ) cycle
+            k = kuptop(i)-1
+            qliqtend_det(i,k) = -( &
+                - normassflx_up(i,k+1)*( qliq_up(i,k+1)+qice_up(i,k+1) )&
+                )/dz(i,k)/rho(i,k)
+        end do
+
         stendcond =  latvap*condrate
         qtendcond = -condrate
         stendevap = -latvap*evaprate
@@ -792,10 +805,12 @@ subroutine conv_jp_tend( &
             massflxbase_p(i,j) = min( 0.1, max( 0., &
                 massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
                 - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
+
 !            write(*,*) rh(i,nlev)
             !if ( rh(i,nlev)<0.8_r8 ) then
                 !trigdp(i) = -20
             !end if
+
         end do
 
 !        massflxbase = 0.01_r8
@@ -830,59 +845,63 @@ subroutine conv_jp_tend( &
             stendevap(i,:) = stendevap(i,:)*massflxbase(i)
             qtendevap(i,:) = qtendevap(i,:)*massflxbase(i)
 
+            qliqtend_det(i,:) = qliqtend_det(i,:)*massflxbase(i)
+
 
             stend(i,:) = stendcond(i,:) + stendevap(i,:) &
                 + stendtran_up(i,:) + stendtran_dn(i,:)
             qtend(i,:) = qtendcond(i,:) + qtendevap(i,:) &
                 + qtendtran_up(i,:) + qtendtran_dn(i,:)
 
+            do k=1, nlev
+                netprec(i) = netprec(i) - qtend(i,k)*rho(i,k)*dz(i,k)
+            end do
+            netprec(i) = netprec(i)/rhofw
+
         end do
 
 
 !water budget adjustment
-        bg_q = 0._r8
-        bg_qtend = 0._r8
-        bg_qtendcond = 0._r8
-        bg_qtendup = 0._r8
-        bg_qtenddn = 0._r8
-        bg_qtendevap = 0._r8
-        bg_precrate = 0._r8
-        bg_qtendsum = 0._r8
-        bg_factor = 0._r8
-        do i=1, ncol
-            do k=1, nlev
+        !bg_q = 0._r8
+        !bg_qtend = 0._r8
+        !bg_qtendcond = 0._r8
+        !bg_qtendup = 0._r8
+        !bg_qtenddn = 0._r8
+        !bg_qtendevap = 0._r8
+        !bg_qtendsum = 0._r8
+        !bg_factor = 0._r8
+        !do i=1, ncol
+            !do k=1, nlev
 
-                bg_q(i) = bg_q(i) + q(i,k)*rho(i,k)*dz(i,k)
+                !bg_q(i) = bg_q(i) + q(i,k)*rho(i,k)*dz(i,k)
 
-                bg_qtend(i) = bg_qtend(i) + qtend(i,k)*dtime*rho(i,k)*dz(i,k)
-                bg_qtendcond(i) = bg_qtendcond(i) + qtendcond(i,k)*dtime*rho(i,k)*dz(i,k)
-                bg_qtendup(i)   = bg_qtendup(i) + qtendtran_up(i,k)*dtime*rho(i,k)*dz(i,k)
-                bg_qtenddn(i)   = bg_qtenddn(i) + qtendtran_dn(i,k)*dtime*rho(i,k)*dz(i,k)
+                !bg_qtend(i) = bg_qtend(i) + qtend(i,k)*dtime*rho(i,k)*dz(i,k)
+                !bg_qtendcond(i) = bg_qtendcond(i) + qtendcond(i,k)*dtime*rho(i,k)*dz(i,k)
+                !bg_qtendup(i)   = bg_qtendup(i) + qtendtran_up(i,k)*dtime*rho(i,k)*dz(i,k)
+                !bg_qtenddn(i)   = bg_qtenddn(i) + qtendtran_dn(i,k)*dtime*rho(i,k)*dz(i,k)
 
-                bg_precrate(i) = bg_precrate(i) + precrate(i,k)*dtime*rho(i,k)*dz(i,k)
-                bg_qtendevap(i)   = bg_qtendevap(i) + qtendevap(i,k)*dtime*rho(i,k)*dz(i,k)
+                !bg_qtendevap(i) = bg_qtendevap(i) + qtendevap(i,k)*dtime*rho(i,k)*dz(i,k)
+            !end do
 
-                bg_qtendsum(i) = bg_qtendup(i) + bg_qtenddn(i) + bg_qtendevap(i) + bg_precrate(i)
+            !if( bg_qtend(i)<0 ) then
+                !bg_factor(i) = ( bg_qtend(i)+bg_precrate(i) ) / bg_qtendcond(i)
+            !end if
 
-            end do
-            if( bg_qtend(i)<0 ) then
-                bg_factor(i) = ( bg_qtend(i)+bg_precrate(i) ) / bg_qtendcond(i)
-            end if
+            !if ( bg_factor(i)>0 ) then
+                !stend(i,:) = stend(i,:) - bg_factor(i)*stendcond(i,:)
+                !qtend(i,:) = qtend(i,:) - bg_factor(i)*qtendcond(i,:)
+                !stendcond(i,:) = stendcond(i,:) - bg_factor(i)*stendcond(i,:)
+                !qtendcond(i,:) = qtendcond(i,:) - bg_factor(i)*qtendcond(i,:)
+            !end if
 
-            if ( bg_factor(i)>0 ) then
-                stend(i,:) = stend(i,:) - bg_factor(i)*stendcond(i,:)
-                qtend(i,:) = qtend(i,:) - bg_factor(i)*qtendcond(i,:)
-                stendcond(i,:) = stendcond(i,:) - bg_factor(i)*stendcond(i,:)
-                qtendcond(i,:) = qtendcond(i,:) - bg_factor(i)*qtendcond(i,:)
-            end if
-
-        end do
+        !end do
 
 
         do i=1, inncol
             stendsum(i,:) = stendsum(i,:)+stend(i,:)
             qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
-            precsum(i) = precsum(i)+surfprec(i)
+!            precsum(i) = precsum(i)+surfprec(i)
+            precsum(i) = precsum(i)+netprec(i)
             massflxbasesum(i) = massflxbasesum(i)+massflxbase(i)
             precratesum(i,:) = precratesum(i,:)+precrate(i,:)
         end do
@@ -1441,48 +1460,6 @@ subroutine conv_jp_tend( &
     !end do
 !!    qliqtend = 0._r8
 
-!!------------------------------------------------------
-!! Evaporation Calculation
-!!------------------------------------------------------
-    !do i=1, inncol
-        !if ( trigdp(i)<1 ) cycle
-!!        do k=kuptop(i), kuplcl(i)
-        !do k=kuptop(i), nlev 
-            !evaprate(i,k) = evapke*max( 1-rh(i,k), 0._r8 )*sqrt( netprec(i) )
-            !evaplimit = max(0._r8, (qsat(i,k)-q(i,k))/dtime )
-            !evaplimit = min(evaplimit, netprec(i) / (rho(i,k)*dz(i,k)) )
-!!            evaplimit = min(evaplimit, (prec(i) - evaprateflx(i))/(rho(i,k)*dz(i,k))  )
-            !evaprate(i,k) = min( evaplimit, evaprate(i,k) )
-
-            !stendevap(i,k) = -evaprate(i,k)*latvap
-            !qtendevap(i,k) = evaprate(i,k)
-
-            !netprec(i) = netprec(i) + rho(i,k)*( rainrate(i,k)-evaprate(i,k) )*dz(i,k)
-
-            !if ( netprec(i)<=0. ) then
-                !netprec(i) = 0._r8
-            !end if
-
-!!            write(*,*) netprec(i), evaplimit, evaprate(i,k), rainrate(i,k)
-
-!!            evaprateflx(i) = evaprateflx(i) + rho(i,k)*evaprate(i,k)*dz(i,k)
-
-        !end do
-
-        !stendevap = 0._r8
-        !qtendevap = 0._r8
-
-        !stend(i,:) = stend(i,:)+stendevap(i,:)
-        !qtend(i,:) = qtend(i,:)+qtendevap(i,:)
-
-    !end do
-    !netprec = netprec/rhofw
-!!    prec = netprec
-
-    !prec = prec/rhofw
-
-    !!qliq = 0._r8
-    !!rainrate = 0._r8
 
 !!------------------------------------------------------
 !! Another Way of Calculating Output Tendencies
@@ -1644,10 +1621,10 @@ subroutine conv_jp_tend( &
         !end do
     !end do
 
-
     outmb = massflxbasesum
 
     outtmp2d = qcheckout
+!    outtmp2d = bg_qtendsum
 !    outtmp2d = lat_coef
 !    outtmp2d = capeclm
 !    outtmp2d = dilucape
@@ -2356,9 +2333,14 @@ subroutine cal_evap( &
         do k=kuptop(i), nlev
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
-            evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
-                    accuprec(i,k) / dn_vt / rho(i,k)
-            accuprec(i,k) = max(0._r8, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k) )
+            !evaprate(i,k) = dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
+                    !accuprec(i,k) / dn_vt / rho(i,k)
+            !accuprec(i,k) = max(0._r8, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k) )
+
+            evaprate(i,k) = min( dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
+                    accuprec(i,k) / dn_vt / rho(i,k), accuprec(i,k)/rho(i,k)/dz(i,k) )
+            accuprec(i,k) = accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k)
+
         end do
         surfprec(i) = accuprec(i,nlev)
     end do
