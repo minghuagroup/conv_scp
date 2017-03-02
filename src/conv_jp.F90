@@ -897,13 +897,13 @@ subroutine conv_jp_tend( &
             !end if
 
         end do
-        write(*,'(a20,f20.10)') 'bg_qtend', bg_qtend(1)
-        write(*,'(a20,f20.10)') 'bg_qtendcond', bg_qtendcond(1)
-        write(*,'(a20,f20.10)') 'bg_precrate', bg_precrate(1)
-        write(*,'(a20,f20.10)') 'bg_qtendup', bg_qtendup(1)
-        write(*,'(a20,f20.10)') 'bg_qtenddn', bg_qtenddn(1)
-        write(*,'(a20,f20.10)') 'bg_qtendevap', bg_qtendevap(1)
-        write(*,'(a20,f20.10)') 'bg_qliqtenddet', bg_qliqtenddet(1)
+        !write(*,'(a20,f20.10)') 'bg_qtend', bg_qtend(1)
+        !write(*,'(a20,f20.10)') 'bg_qtendcond', bg_qtendcond(1)
+        !write(*,'(a20,f20.10)') 'bg_precrate', bg_precrate(1)
+        !write(*,'(a20,f20.10)') 'bg_qtendup', bg_qtendup(1)
+        !write(*,'(a20,f20.10)') 'bg_qtenddn', bg_qtenddn(1)
+        !write(*,'(a20,f20.10)') 'bg_qtendevap', bg_qtendevap(1)
+        !write(*,'(a20,f20.10)') 'bg_qliqtenddet', bg_qliqtenddet(1)
 
 
         do i=1, inncol
