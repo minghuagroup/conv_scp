@@ -24,9 +24,9 @@ colors = [ cm(x) for x in cm_subsection ]
 
 #for itime in range(ntime-1,ntime):
 #for itime in range(ntime-10,ntime):
-#for itime in range(34, 40):
+for itime in range(34, 40):
 #for itime in [97]:
-for itime in range(ntime):
+#for itime in range(ntime):
     print( ('%02i'%(itime+1) ) )
 
     z = f.variables['z'][itime,::-1,0]/1000.
@@ -86,8 +86,7 @@ for itime in range(ntime):
     qtendtran = qcheck*lat/cp*fc*f.variables['qtendtranup'][itime,::-1,:]
     qtendsum  = qcheck*lat/cp*fc*f.variables['qtendsum'][itime,::-1,0]
 
-    ttend_avg = np.mean( ttend, axis=1 )
-    qtend_avg = np.mean( qtend, axis=1 )
+    qliqtend_det = qcheck*lat/cp*fc*f.variables['qliqtenddet'][itime,::-1,:]
 
     #ttendevap     = fc/cp*f.variables['stendevap'][itime,::-1,0]
     #qtendevap     = lat/cp*fc*f.variables['qtendevap'][itime,::-1,0]
@@ -96,6 +95,9 @@ for itime in range(ntime):
     condrate = qcheck*1000*fc*f.variables['condrate'][itime,::-1,:]
     evaprate = qcheck*1000*fc*f.variables['evaprate'][itime,::-1,:]
     snowrate = qcheck*1000*fc*f.variables['snowrate'][itime,::-1,:]
+
+    qliq_up = f.variables['qliq_up'][itime,::-1,:]
+    qice_up = f.variables['qice_up'][itime,::-1,:]
 
     massflxbase = f.variables['massflxbase'][itime,:]
     dilucape    = f.variables['dilucape'][itime,:]
@@ -205,6 +207,11 @@ for itime in range(ntime):
     #plt.plot( evaprate , z, 'c.-', lw=1)
     #plt.xlabel("g/kg/day cond(b) rain(r)")
 
+    for i in range(nsubcol):
+        qwat_up_tmp = qliq_up[:,i]+qice_up[:,i]
+        levind = (qwat_up_tmp > 0)
+        plt.plot( qwat_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+
     #plt.axvline(x=0, color='grey')
     #plt.plot( q, z, 'k.-')
     #for i in range(nsubcol):
@@ -227,11 +234,11 @@ for itime in range(ntime):
     #plt.xlabel("diff Q e3")
     #plt.xlim(-10, 10)
 
-    plt.axvline(x=0, color='grey')
-    for i in range(nsubcol):
-        diffdse_up_tmp = diffdse_up[:,i]
-        plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("diff DSE e3")
+    #plt.axvline(x=0, color='grey')
+    #for i in range(nsubcol):
+        #diffdse_up_tmp = diffdse_up[:,i]
+        #plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("diff DSE e3")
 
 
     plt.subplot(2,5,7)
@@ -239,18 +246,19 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-
     plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
         ttendtran_tmp = ttendtran[:,i]
-        #qtendtran_tmp = qtendtran[:,i]
         plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
-        #plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-
-
-    plt.xlabel("tend K/day")
+    plt.xlabel("T TRANS tend K/day")
     plt.xlim(-20, 20)
 
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
+        qtendtran_tmp = qtendtran[:,i]
+        plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("Q TRANS tend K/day")
+    plt.xlim(-20, 20)
 
 
     plt.subplot(2,5,8)
@@ -264,8 +272,13 @@ for itime in range(ntime):
         qtendcond_tmp = qtendcond[:,i]
         plt.plot( ttendcond_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
         plt.plot( qtendcond_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("tend K/day")
+    plt.xlabel("COND tend K/day")
     plt.xlim(-20, 20)
+
+    plt.axvline(x=0, color='grey')
+    plt.plot( qliqtend_det, z, 'k.-')
+    plt.xlabel("QLIQTEND_DET tend K/day")
+    #plt.xlim(-20, 20)
 
 
     plt.subplot(2,5,9)
@@ -279,8 +292,6 @@ for itime in range(ntime):
         qtend_tmp = qtend[:,i]
         plt.plot( ttend_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
         plt.plot( qtend_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    #plt.plot( ttend_avg, z, 'b-' , lw=2)
-    #plt.plot( qtend_avg, z, 'b--', lw=2)
     plt.plot( ttendsum, z, 'b-' , lw=2)
     plt.plot( qtendsum, z, 'b--', lw=2)
     plt.xlabel("total tend K/day")

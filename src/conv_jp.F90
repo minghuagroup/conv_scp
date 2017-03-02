@@ -124,7 +124,9 @@ module conv_jp
 
 !parameter for prognostics mass flux calculation
 !    real(r8), parameter :: pmf_alpha = 5.e7_r8, pmf_tau = 1.e3_r8 !paper default
-    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=4000.e3_r8
+!    real(r8), parameter :: pmf_alpha =2000.e7_r8, pmf_tau=20000.e3_r8
+!    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=200.e3_r8
+    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=400.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -387,7 +389,6 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: evaprate  ! [1]  bulk evaporation production
 
     real(r8), dimension(inncol) :: surfprec       ! [1]  bulk evaporation production
-    real(r8), dimension(inncol) :: netprec        ! [1]  bulk evaporation production
 
 !for EC en/detrainment rate depending on RH
     real(r8), dimension(inncol, nlev) :: fscale_up ! [1]
@@ -486,9 +487,11 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol) :: bg_q
     real(r8), dimension(inncol) :: bg_qtend
     real(r8), dimension(inncol) :: bg_qtendcond
+    real(r8), dimension(inncol) :: bg_precrate
     real(r8), dimension(inncol) :: bg_qtendup
     real(r8), dimension(inncol) :: bg_qtenddn
     real(r8), dimension(inncol) :: bg_qtendevap
+    real(r8), dimension(inncol) :: bg_qliqtenddet
     real(r8), dimension(inncol) :: bg_qtendsum
     real(r8), dimension(inncol) :: bg_factor
 
@@ -547,7 +550,6 @@ subroutine conv_jp_tend( &
     evaprate = 0._r8
 
     surfprec = 0._r8
-    netprec = 0._r8
 
     w = 0._r8
     tv_closure = 0._r8
@@ -791,7 +793,7 @@ subroutine conv_jp_tend( &
             if ( trigdp(i)<1 ) cycle
             k = kuptop(i)-1
             qliqtend_det(i,k) = -( &
-                - normassflx_up(i,k+1)*( qliq_up(i,k+1)+qice_up(i,k+1) )&
+                - normassflx_up_tmp(i,k+1)*( qliq_up(i,k+1)+qice_up(i,k+1) )&
                 )/dz(i,k)/rho(i,k)
         end do
 
@@ -853,35 +855,35 @@ subroutine conv_jp_tend( &
             qtend(i,:) = qtendcond(i,:) + qtendevap(i,:) &
                 + qtendtran_up(i,:) + qtendtran_dn(i,:)
 
-            do k=1, nlev
-                netprec(i) = netprec(i) - qtend(i,k)*rho(i,k)*dz(i,k)
-            end do
-            netprec(i) = netprec(i)/rhofw
-
         end do
 
 
 !water budget adjustment
-        !bg_q = 0._r8
-        !bg_qtend = 0._r8
-        !bg_qtendcond = 0._r8
-        !bg_qtendup = 0._r8
-        !bg_qtenddn = 0._r8
-        !bg_qtendevap = 0._r8
-        !bg_qtendsum = 0._r8
-        !bg_factor = 0._r8
-        !do i=1, ncol
-            !do k=1, nlev
+        bg_q = 0._r8
+        bg_qtend = 0._r8
+        bg_qtendcond = 0._r8
+        bg_precrate= 0._r8
+        bg_qtendup = 0._r8
+        bg_qtenddn = 0._r8
+        bg_qtendevap = 0._r8
+        bg_qliqtenddet = 0._r8
+        bg_factor = 0._r8
+        do i=1, ncol
+            do k=1, nlev
 
-                !bg_q(i) = bg_q(i) + q(i,k)*rho(i,k)*dz(i,k)
+                bg_q(i) = bg_q(i) + q(i,k)*rho(i,k)*dz(i,k)
 
-                !bg_qtend(i) = bg_qtend(i) + qtend(i,k)*dtime*rho(i,k)*dz(i,k)
-                !bg_qtendcond(i) = bg_qtendcond(i) + qtendcond(i,k)*dtime*rho(i,k)*dz(i,k)
-                !bg_qtendup(i)   = bg_qtendup(i) + qtendtran_up(i,k)*dtime*rho(i,k)*dz(i,k)
-                !bg_qtenddn(i)   = bg_qtenddn(i) + qtendtran_dn(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtend(i) = bg_qtend(i) + qtend(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtendcond(i) = bg_qtendcond(i) + qtendcond(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtendup(i)   = bg_qtendup(i) + qtendtran_up(i,k)*dtime*rho(i,k)*dz(i,k)
+                bg_qtenddn(i)   = bg_qtenddn(i) + qtendtran_dn(i,k)*dtime*rho(i,k)*dz(i,k)
 
-                !bg_qtendevap(i) = bg_qtendevap(i) + qtendevap(i,k)*dtime*rho(i,k)*dz(i,k)
-            !end do
+                bg_precrate(i) = bg_precrate(i) + ( precrate(i,k)-evaprate(i,k) ) *dtime*rho(i,k)*dz(i,k)
+
+                bg_qtendevap(i) = bg_qtendevap(i) + qtendevap(i,k)*dtime*rho(i,k)*dz(i,k)
+
+                bg_qliqtenddet(i) = bg_qliqtenddet(i) + qliqtend_det(i,k)*dtime*rho(i,k)*dz(i,k)
+            end do
 
             !if( bg_qtend(i)<0 ) then
                 !bg_factor(i) = ( bg_qtend(i)+bg_precrate(i) ) / bg_qtendcond(i)
@@ -894,14 +896,22 @@ subroutine conv_jp_tend( &
                 !qtendcond(i,:) = qtendcond(i,:) - bg_factor(i)*qtendcond(i,:)
             !end if
 
-        !end do
+        end do
+        write(*,'(a20,f20.10)') 'bg_qtend', bg_qtend(1)
+        write(*,'(a20,f20.10)') 'bg_qtendcond', bg_qtendcond(1)
+        write(*,'(a20,f20.10)') 'bg_precrate', bg_precrate(1)
+        write(*,'(a20,f20.10)') 'bg_qtendup', bg_qtendup(1)
+        write(*,'(a20,f20.10)') 'bg_qtenddn', bg_qtenddn(1)
+        write(*,'(a20,f20.10)') 'bg_qtendevap', bg_qtendevap(1)
+        write(*,'(a20,f20.10)') 'bg_qliqtenddet', bg_qliqtenddet(1)
 
 
         do i=1, inncol
             stendsum(i,:) = stendsum(i,:)+stend(i,:)
             qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
-!            precsum(i) = precsum(i)+surfprec(i)
-            precsum(i) = precsum(i)+netprec(i)
+
+            precsum(i) = precsum(i)+surfprec(i)
+
             massflxbasesum(i) = massflxbasesum(i)+massflxbase(i)
             precratesum(i,:) = precratesum(i,:)+precrate(i,:)
         end do
@@ -924,6 +934,7 @@ subroutine conv_jp_tend( &
 #ifdef SCMDIAG
 !        call stdout3dmix( z, zint, t, t_up )
 !        call stdout3dmix( z, zint, t, tint )
+!        call stdout3dmix( qliqtend_det, normassflx_up_tmp, qliqtend_det, qice_up )
         !call stdout3dmix( stendcond, zint, stendevap, zint )
 !        call stdout3dmix( condrate, zint, evaprate, zint )
 !        call stdout3dmix( precrate, zint, evaprate, zint )
@@ -980,6 +991,7 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "qtendtranup", nlev, qtendtran_up(1,:), j )
         call subcol_netcdf_putclm( "stendtrandn", nlev, stendtran_dn(1,:), j )
         call subcol_netcdf_putclm( "qtendtrandn", nlev, qtendtran_dn(1,:), j )
+        call subcol_netcdf_putclm( "qliqtenddet", nlev, qliqtend_det(1,:), j )
 
         call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
         call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
@@ -2117,7 +2129,8 @@ subroutine cal_mse_up( &
                     -( normassflx_up(i,k)*q_up(i,k) &
                     -normassflx_up(i,k+1)*q_up(i,k+1) )/dz(i,k) )
 
-                Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kuplcl(i)) - rain_z0)/rain_zp) )
+!                Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kuplcl(i)) - rain_z0)/rain_zp) )
+                fp = 1._r8
                 qw = (normassflx_up(i,k+1)*(qliq_up(i,k+1)+qice_up(i,k+1)) + &
                     rho(i,k)*(1.0-Fp)*condrate(i,k)*dz(i,k) )/normassflx_up(i,k)
 
