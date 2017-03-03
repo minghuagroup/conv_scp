@@ -355,7 +355,8 @@ subroutine conv_intr_jp_tend( &
    !ptend_loc%q(:,:,1) = 0._r8
 !   prec = 0._r8
 
-   dlf(:ncol,1:pver)  = 0._r8
+!   dlf(:ncol,1:pver)  = 0._r8
+   dlf(:ncol,1:pver)  = qliqtend(:ncol,1:pver)
    ql(:ncol,1:pver)   = 0._r8
    rprd(:ncol,1:pver) = 0._r8
 
