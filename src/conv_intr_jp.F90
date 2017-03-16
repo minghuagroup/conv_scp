@@ -362,7 +362,6 @@ subroutine conv_intr_jp_tend( &
 
    do i = 1, ncol
        do k = 1, pver
-!           tmp = state_loc%q(i,k,1) + ptend_loc%q(i,k,1)*ztodt
            tmp = state_loc%q(i,k,1) + qtend(i,k)*ztodt
            if ( tmp<qmin(1) ) then
                write(iulog,'(a10,f30.25)') 'qmin', qmin(1)

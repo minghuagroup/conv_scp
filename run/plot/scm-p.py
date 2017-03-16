@@ -79,11 +79,13 @@ for itime in range(34, 40):
     ttend     = qcheck*fc/cp*f.variables['stend'][itime,::-1,:]
     ttendcond = qcheck*fc/cp*f.variables['stendcond'][itime,::-1,:]
     ttendtran = qcheck*fc/cp*f.variables['stendtranup'][itime,::-1,:]
+    ttendtrandn = qcheck*fc/cp*f.variables['stendtrandn'][itime,::-1,:]
     ttendsum  = qcheck*fc/cp*f.variables['stendsum'][itime,::-1,0]
 
     qtend     = qcheck*lat/cp*fc*f.variables['qtend'][itime,::-1,:]
     qtendcond = qcheck*lat/cp*fc*f.variables['qtendcond'][itime,::-1,:]
     qtendtran = qcheck*lat/cp*fc*f.variables['qtendtranup'][itime,::-1,:]
+    qtendtrandn = qcheck*lat/cp*fc*f.variables['qtendtrandn'][itime,::-1,:]
     qtendsum  = qcheck*lat/cp*fc*f.variables['qtendsum'][itime,::-1,0]
 
     qliqtend_det = qcheck*lat/cp*fc*f.variables['qliqtenddet'][itime,::-1,:]
@@ -207,10 +209,10 @@ for itime in range(34, 40):
     #plt.plot( evaprate , z, 'c.-', lw=1)
     #plt.xlabel("g/kg/day cond(b) rain(r)")
 
-    for i in range(nsubcol):
-        qwat_up_tmp = qliq_up[:,i]+qice_up[:,i]
-        levind = (qwat_up_tmp > 0)
-        plt.plot( qwat_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #for i in range(nsubcol):
+        #qwat_up_tmp = qliq_up[:,i]+qice_up[:,i]
+        #levind = (qwat_up_tmp > 0)
+        #plt.plot( qwat_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
 
     #plt.axvline(x=0, color='grey')
     #plt.plot( q, z, 'k.-')
@@ -219,13 +221,13 @@ for itime in range(34, 40):
         #levind = (q_up_tmp > 0)
         #plt.plot( q_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
 
-    #plt.plot( dse, z, 'k.-')
-    #for i in range(nsubcol):
-        #dse_up_tmp = dse_up[:,i]
-        #levind = (dse_up_tmp > 0)
-        #plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
-    #plt.xlabel("DSE ^3 J/kg")
-    #plt.xlim(290, 360)
+    plt.plot( dse, z, 'k.-')
+    for i in range(nsubcol):
+        dse_up_tmp = dse_up[:,i]
+        levind = (dse_up_tmp > 0)
+        plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("DSE ^3 J/kg")
+    plt.xlim(290, 360)
 
     #plt.axvline(x=0, color='grey')
     #for i in range(nsubcol):
@@ -249,15 +251,12 @@ for itime in range(34, 40):
     plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
         ttendtran_tmp = ttendtran[:,i]
-        plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("T TRANS tend K/day")
-    plt.xlim(-20, 20)
-
-    plt.axvline(x=0, color='grey')
-    for i in range(nsubcol):
         qtendtran_tmp = qtendtran[:,i]
+        plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
         plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("Q TRANS tend K/day")
+    #plt.plot( ttendtrandn, z, 'k.-')
+    #plt.plot( qtendtrandn, z, 'g.-')
+    plt.xlabel("T/Q TRANS K/day")
     plt.xlim(-20, 20)
 
 
@@ -275,10 +274,10 @@ for itime in range(34, 40):
     plt.xlabel("COND tend K/day")
     plt.xlim(-20, 20)
 
-    plt.axvline(x=0, color='grey')
-    plt.plot( qliqtend_det, z, 'k.-')
-    plt.xlabel("QLIQTEND_DET tend K/day")
-    #plt.xlim(-20, 20)
+    #plt.axvline(x=0, color='grey')
+    #plt.plot( qliqtend_det, z, 'k.-')
+    #plt.xlabel("QLIQTEND_DET tend K/day")
+    ##plt.xlim(-20, 20)
 
 
     plt.subplot(2,5,9)

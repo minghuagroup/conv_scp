@@ -84,8 +84,8 @@ module conv_jp
 !    real(r8), parameter :: e_up_dp=1.75e-3_r8, d_up_dp=0.75e-4_r8 !original
     real(r8), parameter :: e_up_sh=1.75e-3_r8
 
-    integer :: ent_opt ! 0=EC, 2=GREG, 3=NSJ
 
+    integer :: ent_opt ! 0=EC, 2=GREG, 3=NSJ
 
 !parameter for bulk TOTAL fractional en/detrainment rate depending on vertical velocity
 !old
@@ -97,14 +97,21 @@ module conv_jp
     integer, parameter :: mseqiflag = 1  ! 1: use Qi; 0: Qi=0
     integer, parameter :: entratemidflag = 1  ! 1: averaged; 2: recalculated with B and w
     
-    real(r8), parameter :: w_up_init_min = 0.2
-    real(r8), parameter :: w_up_init_max = 4.0
+    real(r8), parameter :: w_up_init_min = 0.2 ! cntr
+    real(r8), parameter :: w_up_init_max = 4.0 ! cntr
+
+    !real(r8), parameter :: w_up_init_min = 0.2
+    !real(r8), parameter :: w_up_init_max = 1.6
     
     real(r8), parameter :: greg_z0    = 1.e4_r8 !paper default
     real(r8), parameter :: greg_ent_a = 0.15_r8 !paper default
     real(r8), parameter :: greg_ce    = 0.5_r8  !paper default
 
-    real(r8), parameter :: nsj_ent_a=0.9_r8   !paper default 
+    !real(r8), parameter :: greg_z0    = 1.e4_r8
+    !real(r8), parameter :: greg_ent_a = 0.3_r8
+    !real(r8), parameter :: greg_ce    = 0.8_r8
+
+    real(r8), parameter :: nsj_ent_a=0.9_r8    !paper default 
     real(r8), parameter :: nsj_coef=1.8e-3_r8  !paper default 
 
 
@@ -128,7 +135,8 @@ module conv_jp
 !    real(r8), parameter :: pmf_alpha = 5.e7_r8, pmf_tau = 1.e3_r8 !paper default
 !    real(r8), parameter :: pmf_alpha =2000.e7_r8, pmf_tau=20000.e3_r8
 !    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=200.e3_r8
-    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=400.e3_r8
+    real(r8), parameter :: pmf_alpha =4000.e7_r8, pmf_tau=800.e3_r8 ! good for deep
+!    real(r8), parameter :: pmf_alpha =6000.e7_r8, pmf_tau=1000.e3_r8
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -754,9 +762,10 @@ subroutine conv_jp_tend( &
         dse_up = cpair*t_up+gravit*zint
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
-            if ( k<kuptop(i) ) then
+            do k=1,kuptop(i)-1
                 dse_up(i,k) = dseint(i,k)
-            end if
+                q_up(i,k) = qint(i,k)
+            end do
         end do
 
         mse_up_mid = 0._r8
@@ -2055,10 +2064,10 @@ subroutine cal_mse_up( &
         tv_up = t_up(i,k)*(1 + tveps*q_up(i,k) )
         buoy(i,k) = gravit*(tv_up-tv)/tv 
 
-        if ( buoy(i,k)<0. ) then
-            trig(i) = -10
-            cycle
-        end if
+        !if ( buoy(i,k)<0. ) then
+            !trig(i) = -10
+            !cycle
+        !end if
 
         if ( ent_opt == 2 ) then
             ent_rate_up(i,k) = greg_ce*greg_ent_a*buoy(i,k)/w_up(i,k)/w_up(i,k)
@@ -2142,6 +2151,7 @@ subroutine cal_mse_up( &
                     -normassflx_up(i,k+1)*q_up(i,k+1) )/dz(i,k) )
 
                 Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kuplcl(i)) - rain_z0)/rain_zp) )
+!                fp = 1._r8
                 qw = (normassflx_up(i,k+1)*(qliq_up(i,k+1)+qice_up(i,k+1)) + &
                     rho(i,k)*(1.0-Fp)*condrate(i,k)*dz(i,k) )/normassflx_up(i,k)
 
