@@ -75,9 +75,12 @@ module conv_jp
     real(r8), parameter :: rhofw  = 1000. ! liquid water density ~ J/K/kg
     real(r8), parameter :: tveps  = 1.0/epsilo - 1
 
-!parameter for subcloud entrainment
-    real(r8), parameter :: ent_rate_subcld=0._r8
 
+    integer :: ent_opt ! 0=EC, 2=GREG, 3=NSJ
+
+!-------------------------------------
+! EC scheme parameter
+!-------------------------------------
 !parameter for bulk TOTAL fractional en/detrainment rate depending on RH
     real(r8), parameter :: fe_up_dp=1.0_r8, fe_up_sh=2.0_r8
     real(r8), parameter :: e_up_dp=1.25e-3_r8, d_up_dp=0.5e-4_r8
@@ -85,10 +88,12 @@ module conv_jp
     real(r8), parameter :: e_up_sh=1.75e-3_r8
 
 
-    integer :: ent_opt ! 0=EC, 2=GREG, 3=NSJ
+!-------------------------------------
+! GRE and NSJ parameters
+!-------------------------------------
 
-!parameter for bulk TOTAL fractional en/detrainment rate depending on vertical velocity
-!old
+    integer, parameter :: nplume = 15 ! paper default, good for deep
+!    integer, parameter :: nplume = 5
 
     integer, parameter :: maxiteration = 2
     integer, parameter :: ctopflag = 1  ! 1: B<0; 2: w<0
@@ -97,46 +102,56 @@ module conv_jp
     integer, parameter :: mseqiflag = 1  ! 1: use Qi; 0: Qi=0
     integer, parameter :: entratemidflag = 1  ! 1: averaged; 2: recalculated with B and w
     
+! updraft launching veritcal velocity parameters
     real(r8), parameter :: w_up_init_min = 0.2 ! cntr
     real(r8), parameter :: w_up_init_max = 4.0 ! cntr
-
-    !real(r8), parameter :: w_up_init_min = 0.2
+    !real(r8), parameter :: w_up_init_min = 0.1
     !real(r8), parameter :: w_up_init_max = 1.6
     
-    real(r8), parameter :: greg_z0    = 1.e4_r8 !paper default
-    real(r8), parameter :: greg_ent_a = 0.15_r8 !paper default
-    real(r8), parameter :: greg_ce    = 0.5_r8  !paper default
 
+! updraft lifting formula parameters
+    real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default 
+
+    real(r8), parameter :: greg_z0    = 1.e4_r8 !cntr deep
+    real(r8), parameter :: greg_ent_a = 0.15_r8 !cntr deep
+    real(r8), parameter :: greg_ce    = 0.5_r8  !cntr deep
     !real(r8), parameter :: greg_z0    = 1.e4_r8
     !real(r8), parameter :: greg_ent_a = 0.3_r8
     !real(r8), parameter :: greg_ce    = 0.8_r8
 
-    real(r8), parameter :: nsj_ent_a=0.9_r8    !paper default 
-    real(r8), parameter :: nsj_coef=1.8e-3_r8  !paper default 
+    real(r8), parameter :: nsj_ent_a = 0.9_r8     ! cntr deep
+    real(r8), parameter :: nsj_coef  = 1.8e-3_r8  ! cntr deep
 
 
-    real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default 
-
+! rain fraction parameters
     !real(r8), parameter :: rain_z0 = 1500._r8 !paper default
     !real(r8), parameter :: rain_zp = 4000._r8 !paper default
-    real(r8), parameter :: rain_z0 = 0._r8
-    real(r8), parameter :: rain_zp = 1500._r8
+    real(r8), parameter :: rain_z0 = 0._r8     ! cntr deep
+    real(r8), parameter :: rain_zp = 1500._r8  ! cntr deep
 
+! cloud ice fraction parameters
     real(r8), parameter :: cloud_t1 = 258.15
     real(r8), parameter :: cloud_t2 = 273.15
     
+! downdraft parameters
     real(r8), parameter :: dn_be = 5.e-4_r8
     real(r8), parameter :: dn_ae = 0.3_r8
     real(r8), parameter :: dn_vt = 10._r8
     
+! downdraft base massflux ratio to updraft
     real(r8), parameter :: dn_fac = 0.3_r8
 
-!parameter for prognostics mass flux calculation
+! parameter for prognostics mass flux calculation
 !    real(r8), parameter :: pmf_alpha = 5.e7_r8, pmf_tau = 1.e3_r8 !paper default
 !    real(r8), parameter :: pmf_alpha =2000.e7_r8, pmf_tau=20000.e3_r8
 !    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=200.e3_r8
-    real(r8), parameter :: pmf_alpha =4000.e7_r8, pmf_tau=800.e3_r8 ! good for deep
-!    real(r8), parameter :: pmf_alpha =6000.e7_r8, pmf_tau=1000.e3_r8
+
+    real(r8), parameter :: pmf_alpha =4000.e7_r8, pmf_tau=800.e3_r8 ! cntr deep
+!    real(r8), parameter :: pmf_alpha =20000.e7_r8, pmf_tau=2000.e3_r8
+
+
+
+
 
 
     real(r8), parameter :: adjdt = 100._r8
@@ -150,8 +165,7 @@ module conv_jp
 
     real(r8), parameter :: evapke = 0.2e-5_r8
 
-!    real(r8), parameter :: w_up_param = 1.5_r8
-    real(r8), parameter :: w_up_param = 3._r8
+
 
 
 
@@ -241,7 +255,7 @@ end subroutine conv_jp_init
 subroutine conv_jp_tend( &
 !input
         inncol, &
-        in_ent_opt, nplume, dtime, qmin, &
+        in_ent_opt, dtime, qmin, &
         lat, landfrac, lhflx, &
         psrf, p, dp, zsrf, z, dz, &
         t, q, bfls_t, bfls_q, &
@@ -273,7 +287,6 @@ subroutine conv_jp_tend( &
     integer , intent(in) :: inncol ! size of column dimension
 
     integer , intent(in) :: in_ent_opt ! 0=ec, 1=greg
-    integer , intent(in) :: nplume !
     real(r8), intent(in) :: dtime  ! [s] time step
     real(r8), intent(in) :: qmin   ! [kg/kg] minimum Q
     real(r8), dimension(inncol), intent(in) :: lat, landfrac, lhflx
@@ -339,8 +352,6 @@ subroutine conv_jp_tend( &
     integer, dimension(inncol) :: kuptop ! [1] cloud top where buoyancy is zero
     real(r8),dimension(inncol) :: zuptop ! [m] exact z at kuptop
 
-    real(r8), dimension(inncol, nlev) :: convallmask_up ! [1] mask from launching point to cloud top
-
 
     real(r8), dimension(inncol, nlev)  :: lvmid !
     real(r8), dimension(inncol, nlevp) :: lvint !
@@ -398,11 +409,9 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: accuprec  ! [1]  bulk precipitation production
     real(r8), dimension(inncol, nlev) :: evaprate  ! [1]  bulk evaporation production
 
-    real(r8), dimension(inncol) :: surfprec       ! [1]  bulk evaporation production
+    real(r8), dimension(inncol) :: surfprec      ! [1]  bulk evaporation production
     real(r8), dimension(inncol) :: netprec       ! [1]  bulk evaporation production
 
-!for EC en/detrainment rate depending on RH
-    real(r8), dimension(inncol, nlev) :: fscale_up ! [1]
 !calculated w from Grell's en/detrainment rate scheme
     real(r8), dimension(inncol) :: w_up_init  ! [J/kg]  bulk in-cloud vertical velocity
     real(r8), dimension(inncol, nlev)  :: w_up_mid ! [J/kg]  bulk in-cloud vertical velocity
@@ -433,7 +442,6 @@ subroutine conv_jp_tend( &
     real(r8),dimension(inncol, nlev) :: tv_up_closure
     real(r8),dimension(inncol, nlev) :: normassflx_up_closure
 
-    real(r8),dimension(inncol, nlev) :: fscale_up_closure ! [1]
     real(r8),dimension(inncol, nlev) :: ent_rate_bulk_up_closure
     real(r8),dimension(inncol, nlev) :: det_rate_bulk_up_closure
 
@@ -490,6 +498,7 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: qtendsum
     real(r8), dimension(inncol) :: precsum
     real(r8), dimension(inncol) :: massflxbasesum
+    real(r8), dimension(inncol, nlevp) :: massflxsum
     real(r8), dimension(inncol, nlev) :: precratesum
 
     real(r8), dimension(inncol, nlev) :: tmp1stend, tmp1qtend
@@ -587,6 +596,7 @@ subroutine conv_jp_tend( &
     qtendsum = 0._r8
     precsum = 0._r8
     massflxbasesum = 0._r8
+    massflxsum = 0._r8
     precratesum = 0._r8
 
     massflxbase = 0._r8
@@ -678,37 +688,25 @@ subroutine conv_jp_tend( &
 !------------------------------------------------------
 !Different methods to calculate entrainment rate
 !------------------------------------------------------
-    fscale_up = 0._r8
-    convallmask_up = 0._r8
 
-    w_up = 0._r8
-    buoy = 0._r8
+! do some variable cleaning here
+! variables w_up, buoy
     mse_up = 0._r8
     dse_up = 0._r8
     t_up = 0._r8
-    tv_up = 0._r8
     q_up = 0._r8
-
     ent_rate_bulk_up = 0._r8
     det_rate_bulk_up = 0._r8
-
-    w_up_mid = 0._r8
-    buoy_mid = 0._r8
     normassflx_up = 0._r8
-
-    mse_up_mid = 0._r8
-    t_up_mid = 0._r8
-    q_up_mid = 0._r8
-
-
-    normassflx_dn = 0._r8
-    ent_rate_bulk_dn = 0._r8
-    det_rate_bulk_dn = 0._r8
 
     mse_dn = 0._r8
     dse_dn = 0._r8
     t_dn = 0._r8
     q_dn = 0._r8
+    ent_rate_bulk_dn = 0._r8
+    det_rate_bulk_dn = 0._r8
+    normassflx_dn = 0._r8
+
 
     call cal_launchtolcl( z, zint, p, pint, t, tint, q, qsat, qsatint, &
         mse, msesat, msesatint, landfrac, lhflx, tpert, &
@@ -736,13 +734,20 @@ subroutine conv_jp_tend( &
 #ifdef SCMDIAG 
         write(*,'(a10,i5,a10,f10.5)') "plume:", j, ", w = ",w_up_init
 #endif
-        
+
+        do i=1, inncol
+            if ( trigdp(i)<1 ) cycle
+            mse_up(i, 1:kuplcl(i)-1) = mseint(i, 1:kuplcl(i)-1)
+            t_up(i, 1:kuplcl(i)-1) = tint(i, 1:kuplcl(i)-1)
+            q_up(i, 1:kuplcl(i)-1) = qint(i, 1:kuplcl(i)-1)
+        end do
 
         normassflx_up_tmp = normassflx_up
         normassflx_dn_tmp = 0._r8
 
         trigdp = 1
 
+!updraft properties
         call cal_mse_up( &
             ent_opt, rho, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
             mse, mseint, msesat, msesatint, &
@@ -760,28 +765,9 @@ subroutine conv_jp_tend( &
         end do
 
         dse_up = cpair*t_up+gravit*zint
-        do i=1, inncol
-            if ( trigdp(i)<1 ) cycle
-            do k=1,kuptop(i)-1
-                dse_up(i,k) = dseint(i,k)
-                q_up(i,k) = qint(i,k)
-            end do
-        end do
 
-        mse_up_mid = 0._r8
-        t_up_mid = 0._r8
-        q_up_mid = 0._r8
-        normassflx_up_mid = 0._r8
 
-        call cal_cape( &
-            dz, buoy_mid, kuplcl, kuptop, &
-            dilucape(:,j), &
-            trigdp)
-
-        call cal_evap( &
-            ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
-            precrate, accuprec, surfprec, evaprate )
-
+!downdraft properties
         call cal_mse_dn( &
             ent_opt, kuptop, trigdp, dz, p, rho, t, twet, lvmid, &
             qint, dseint, accuprec, evaprate, &
@@ -789,6 +775,7 @@ subroutine conv_jp_tend( &
 
         mse_dn = dse_dn + lvint*q_dn
 
+!updraft transport tendency
         call cal_tendtransport( &
             dz, kuplcl, kuptop, &
             rho, dseint, qint, dse_up, q_up, &
@@ -796,6 +783,7 @@ subroutine conv_jp_tend( &
             stendtran_up, qtendtran_up, &
             trigdp)
 
+!downdraft transport tendency
         call cal_tendtransport( &
             dz, kuplcl, kuptop, &
             rho, dseint, qint, dse_dn, q_dn, &
@@ -803,6 +791,7 @@ subroutine conv_jp_tend( &
             stendtran_dn, qtendtran_dn, &
             trigdp)
 
+!liquid detrainment tendency
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
             k = kuptop(i)-1
@@ -811,10 +800,20 @@ subroutine conv_jp_tend( &
                 )/dz(i,k)/rho(i,k)
         end do
 
+!evaporation tendency
+        call cal_evap( &
+            ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
+            precrate, accuprec, surfprec, evaprate )
+
         stendcond =  latvap*condrate
         qtendcond = -condrate
         stendevap = -latvap*evaprate
         qtendevap =  evaprate
+
+        call cal_cape( &
+            dz, buoy_mid, kuplcl, kuptop, &
+            dilucape(:,j), &
+            trigdp)
 
         do i=1, inncol
             if ( trigdp(i)<1 ) cycle
@@ -872,7 +871,6 @@ subroutine conv_jp_tend( &
 
             do k=1, nlev
                 netprec(i) = netprec(i) - ( qtend(i,k) + qliqtend_det(i,k) )*rho(i,k)*dz(i,k)
-!                netprec(i) = netprec(i) - ( qtend(i,k)  )*rho(i,k)*dz(i,k)
             end do
             netprec(i) = netprec(i)/rhofw
 
@@ -927,10 +925,10 @@ subroutine conv_jp_tend( &
             stendsum(i,:) = stendsum(i,:)+stend(i,:)
             qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
 
-!            precsum(i) = precsum(i)+surfprec(i)
             precsum(i) = precsum(i)+netprec(i)
 
             massflxbasesum(i) = massflxbasesum(i)+massflxbase(i)
+            massflxsum(i,:) = massflxsum(i,:)+normassflx_up_tmp(i,:)*massflxbase(i)
             precratesum(i,:) = precratesum(i,:)+precrate(i,:)
         end do
 
@@ -970,10 +968,6 @@ subroutine conv_jp_tend( &
 
         call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), j )
         call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), j )
-        call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), j )
-        call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), j )
-        call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), j )
-        call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), j )
 
         call subcol_netcdf_putclm( "w_up_init", 1, w_up_init(1), j )
         call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
@@ -1021,21 +1015,31 @@ subroutine conv_jp_tend( &
         call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
 
 
+!for diag only
+        mse_up_mid = 0._r8
+        t_up_mid = 0._r8
+        q_up_mid = 0._r8
+        normassflx_up_mid = 0._r8
+
+        do i=1, inncol
+            do k=nlev, 1, -1
+                if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
+                    mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
+                    t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
+                    q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
+                end if
+                normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
+            end do
+        end do
+
+        !call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), j )
+        !call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), j )
+        !call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), j )
+        !call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), j )
 
 #endif
     end do     ! loop of plume
 
-
-    do i=1, inncol
-        do k=nlev, 1, -1
-            if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
-                mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
-                !t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
-                !q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
-            end if
-            !normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
-        end do
-    end do
 
 !use sum as ouput
     prec = precsum
@@ -1049,6 +1053,7 @@ subroutine conv_jp_tend( &
     call subcol_netcdf_putclm( "stendsum", nlev, stendsum(1,:), 1 )
     call subcol_netcdf_putclm( "qtendsum", nlev, qtendsum(1,:), 1 )
     call subcol_netcdf_putclm( "precsum", 1, precsum(1), 1 )
+    call subcol_netcdf_putclm( "massflxsum", nlevp, massflxsum(1,:), 1 )
 #endif
 
 
@@ -1130,7 +1135,6 @@ subroutine conv_jp_tend( &
 !!this needs to rerun all the calculations again!!
 !!add _closure naming for difference
 !!------------------------------------------------------
-    !fscale_up = 0._r8
     !convallmask_up = 0._r8
 
     !trig_closure = 1
@@ -1974,10 +1978,9 @@ subroutine cal_mse_up( &
         ent_opt, rho, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
         mse, mseint, msesat, msesatint, kuplaunch, kuplcl, &
         ent_rate_up, det_rate_up, w_up_init, &
-!output
+!in/output
         mse_up, t_up, q_up, qliq_up, qice_up, mseqi, condrate, rainrate, snowrate, precrate, &
         normassflx_up, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
-!in/out
         trig)
 
 !input
@@ -2013,6 +2016,7 @@ subroutine cal_mse_up( &
     integer , dimension(ncol), intent(out) :: kuptop
     real(r8), dimension(ncol), intent(out) :: zuptop  ! [m]
 !input/output
+    real(r8), dimension(ncol, nlevp), intent(inout) :: mse_up  ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(inout) :: t_up  ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(inout) :: q_up  ! 
     real(r8), dimension(ncol, nlevp), intent(inout) :: qliq_up  ! [kg/kg]
@@ -2023,7 +2027,6 @@ subroutine cal_mse_up( &
     real(r8), dimension(ncol, nlev ), intent(inout) :: snowrate  ! [m2/kg]
     real(r8), dimension(ncol, nlev ), intent(inout) :: precrate  ! [m2/kg]
 
-    real(r8), dimension(ncol, nlevp), intent(inout) :: mse_up  ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(inout) :: normassflx_up  ! [J/kg]
     integer , dimension(ncol), intent(inout) :: trig     ! [1]
 !local

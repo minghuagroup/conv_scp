@@ -271,7 +271,7 @@ subroutine conv_intr_jp_tend( &
    call conv_jp_tend( &
 !input
        ncol, &
-       2, 15, ztodt, qmin(1), &
+       2, ztodt, qmin(1), &
        state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), &
        state%ps(:ncol), state%pmid(:ncol,:), state%pdel(:ncol,:), &
        zsrf(:ncol), z(:ncol,:), dz(:ncol,:), &

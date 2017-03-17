@@ -40,6 +40,7 @@ for itime in range(34, 40):
     mse = fcmse*f.variables['mse'][itime,::-1,0]
     msesat = fcmse*f.variables['msesat'][itime,::-1,0]
     mse_closure = fcmse*f.variables['mse_closure'][itime,::-1,0]
+    mseint = fcmse*f.variables['mseint'][itime,::-1,0]
 
     ent_rate = 1000*f.variables['ent_rate'][itime,::-1,:]
     w_up = f.variables['w_up'][itime,::-1,:]
@@ -59,6 +60,7 @@ for itime in range(34, 40):
 
     normassflx = f.variables['normassflx_up'][itime,::-1,:]
     normassflx_mid = f.variables['normassflx_up_mid'][itime,::-1,0]
+    massflxsum = f.variables['massflxsum'][itime,::-1,0]
 
 
     cp = 1004
@@ -135,6 +137,7 @@ for itime in range(34, 40):
 
     plt.plot( mse, z, 'k.-')
     plt.plot( msesat, z, 'k.:')
+    plt.plot( mseint, zint, 'kx-')
     plt.xlabel("MSE (10^3J/kg)")
     plt.ylabel("Z")
     plt.xlim(330, 365)
@@ -192,9 +195,17 @@ for itime in range(34, 40):
 
 
     plt.subplot(2,5,5)
-    plt.bar( xsubcol ,massflxbase )
-    plt.ylabel('Base Mass Flux')
-    plt.ylim( 0, 0.1 )
+    #plt.bar( xsubcol ,massflxbase )
+    #plt.ylabel('Base Mass Flux')
+    #plt.ylim( 0, 0.1 )
+
+    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplcl], lw=1, color='b')
+    plt.ylim(0, ymax)
+    plt.axvline(x=0, color='grey')
+    plt.plot( massflxsum, zint, 'b-' , lw=2)
+    plt.xlabel("massflux")
+    #plt.xlim(-1, 6)
 
 
     plt.subplot(2,5,6)

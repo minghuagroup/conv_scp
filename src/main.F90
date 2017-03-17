@@ -270,6 +270,7 @@ program test
     call subcol_netcdf_addfld( "stendsum",    "K/s",  "mlev")
     call subcol_netcdf_addfld( "qtendsum",    "K/s",  "mlev")
     call subcol_netcdf_addfld( "precsum",     "1",  "slev")
+    call subcol_netcdf_addfld( "massflxsum",  "1",  "mlevp")
 
     call subcol_netcdf_addfld( "tmp1stend", "K/s", "mlev")
     call subcol_netcdf_addfld( "tmp1qtend", "kg/kg/s", "mlev")
@@ -380,7 +381,7 @@ program test
 
         do j = 1, nlat
             call conv_jp_tend( nlon &
-                ,2, nplume, dtime, qmin &
+                ,2, dtime, qmin &
                 ,lat(j), landfrac(:,j), lhflx(:,j) &
                 ,psrf(:,j), p(:,j,:), dp(:,j,:) &
                 ,ht(:,j), z(:,j,:), dz(:,j,:) &
