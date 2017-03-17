@@ -61,6 +61,7 @@ for itime in range(34, 40):
     normassflx = f.variables['normassflx_up'][itime,::-1,:]
     normassflx_mid = f.variables['normassflx_up_mid'][itime,::-1,0]
     massflxsum = f.variables['massflxsum'][itime,::-1,0]
+    massflx = f.variables['massflx'][itime,::-1,:]
 
 
     cp = 1004
@@ -133,13 +134,15 @@ for itime in range(34, 40):
             label=("w0={:4.1f}".format( w_up_init[i] ) )
         if ( i==(nsubcol-1) ):
             label=("w0={:4.1f}".format( w_up_init[i] ) )
-        plt.plot( mse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+        plt.plot( mse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1, \
+                label=label)
 
     plt.plot( mse, z, 'k.-')
     plt.plot( msesat, z, 'k.:')
     plt.plot( mseint, zint, 'kx-')
     plt.xlabel("MSE (10^3J/kg)")
     plt.ylabel("Z")
+    plt.legend( loc=2 )
     plt.xlim(330, 365)
 
 
@@ -171,13 +174,6 @@ for itime in range(34, 40):
     plt.xlabel("w(ms-1)")
     plt.xlim(-1, 18)
 
-    #plt.axvline(x=0, color='grey')
-    #for i in range(nsubcol):
-        #normassflx_tmp = normassflx[:,i]
-        #levind = (normassflx_tmp > 0)
-        #plt.plot( normassflx_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
-    #plt.xlabel("normasssflx")
-    #plt.xlim(0, 10)
 
 
     plt.subplot(2,5,4)
@@ -198,6 +194,14 @@ for itime in range(34, 40):
     #plt.bar( xsubcol ,massflxbase )
     #plt.ylabel('Base Mass Flux')
     #plt.ylim( 0, 0.1 )
+
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
+        massflx_tmp = massflx[:,i]
+        levind = (massflx_tmp > 0)
+        plt.plot( massflx_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("normasssflx")
+    #plt.xlim(0, 10)
 
     plt.axhline(y=z[kuplaunch], lw=1, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
