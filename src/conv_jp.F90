@@ -103,24 +103,34 @@ module conv_jp
     integer, parameter :: entratemidflag = 1  ! 1: averaged; 2: recalculated with B and w
     
 ! updraft launching veritcal velocity parameters
-    real(r8), parameter :: w_up_init_min = 0.2 ! cntr
-    real(r8), parameter :: w_up_init_max = 4.0 ! cntr
-    !real(r8), parameter :: w_up_init_min = 0.1
-    !real(r8), parameter :: w_up_init_max = 1.6
-    
+    real(r8), parameter :: w_up_init_min_dp = 0.2 ! cntr
+    real(r8), parameter :: w_up_init_max_dp = 4.0 ! cntr
+    real(r8), parameter :: w_up_init_min_sh = 0.1
+    real(r8), parameter :: w_up_init_max_sh = 1.6
+    real(r8) :: w_up_init_min = 0.2 ! cntr
+    real(r8) :: w_up_init_max = 4.0 ! cntr
+   
 
 ! updraft lifting formula parameters
     real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default 
 
-    real(r8), parameter :: greg_z0    = 1.e4_r8 !cntr deep
-    real(r8), parameter :: greg_ent_a = 0.15_r8 !cntr deep
-    real(r8), parameter :: greg_ce    = 0.5_r8  !cntr deep
-    !real(r8), parameter :: greg_z0    = 1.e4_r8
-    !real(r8), parameter :: greg_ent_a = 0.3_r8
-    !real(r8), parameter :: greg_ce    = 0.8_r8
+    real(r8), parameter :: greg_z0_dp    = 1.e4_r8 !cntr deep
+    real(r8), parameter :: greg_ent_a_dp = 0.15_r8 !cntr deep
+    real(r8), parameter :: greg_ce_dp    = 0.5_r8  !cntr deep
 
-    real(r8), parameter :: nsj_ent_a = 0.9_r8     ! cntr deep
-    real(r8), parameter :: nsj_coef  = 1.8e-3_r8  ! cntr deep
+    real(r8), parameter :: greg_z0_sh    = 1.e4_r8
+    real(r8), parameter :: greg_ent_a_sh = 0.3_r8
+    real(r8), parameter :: greg_ce_sh    = 0.8_r8
+
+    real(r8) :: greg_z0    = 1.e4_r8 !cntr deep
+    real(r8) :: greg_ent_a = 0.15_r8 !cntr deep
+    real(r8) :: greg_ce    = 0.5_r8  !cntr deep
+
+
+    real(r8), parameter :: nsj_ent_a_dp = 0.9_r8     ! cntr deep
+    real(r8), parameter :: nsj_coef_dp  = 1.8e-3_r8  ! cntr deep
+    real(r8) :: nsj_ent_a = 0.9_r8     ! cntr deep
+    real(r8) :: nsj_coef  = 1.8e-3_r8  ! cntr deep
 
 
 ! rain fraction parameters
@@ -146,8 +156,9 @@ module conv_jp
 !    real(r8), parameter :: pmf_alpha =2000.e7_r8, pmf_tau=20000.e3_r8
 !    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=200.e3_r8
 
-    real(r8), parameter :: pmf_alpha =4000.e7_r8, pmf_tau=800.e3_r8 ! cntr deep
-!    real(r8), parameter :: pmf_alpha =20000.e7_r8, pmf_tau=2000.e3_r8
+    real(r8), parameter :: pmf_alpha_dp = 4000.e7_r8, pmf_tau_dp = 800.e3_r8 ! cntr deep
+    real(r8), parameter :: pmf_alpha_sh =20000.e7_r8, pmf_tau_sh = 2000.e3_r8
+    real(r8) :: pmf_alpha = 4000.e7_r8, pmf_tau = 800.e3_r8 ! cntr deep
 
 
 
@@ -727,6 +738,22 @@ subroutine conv_jp_tend( &
         dw_up_init = 0.0
     end if
 
+    greg_z0 = greg_z0_dp
+    greg_ent_a = greg_ent_a_dp
+    greg_ce = greg_ce_dp
+    pmf_alpha = pmf_alpha_dp
+    pmf_tau   = pmf_tau_dp
+    w_up_init_min = w_up_init_min_dp
+    w_up_init_max = w_up_init_max_dp
+
+    !greg_z0 = greg_z0_sh
+    !greg_ent_a = greg_ent_a_sh
+    !greg_ce = greg_ce_sh
+    !pmf_alpha = pmf_alpha_sh
+    !pmf_tau   = pmf_tau_sh
+    !w_up_init_min = w_up_init_min_sh
+    !w_up_init_max = w_up_init_max_sh
+
     do j = 1, nplume
 
         w_up_init = w_up_init_min + (j-1) * dw_up_init
@@ -1014,32 +1041,31 @@ subroutine conv_jp_tend( &
         tmp2d = trigdp
         call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
 
+#endif
+    end do     ! loop of plume
+
 
 !for diag only
-        mse_up_mid = 0._r8
-        t_up_mid = 0._r8
-        q_up_mid = 0._r8
-        normassflx_up_mid = 0._r8
+    mse_up_mid = 0._r8
+    t_up_mid = 0._r8
+    q_up_mid = 0._r8
+    normassflx_up_mid = 0._r8
 
-        do i=1, inncol
-            do k=nlev, 1, -1
-                if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
-                    mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
-                    t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
-                    q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
-                end if
-                normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
-            end do
+    do i=1, inncol
+        do k=nlev, 1, -1
+            if ( (mse_up(i,k)>0._r8) .and. (mse_up(i,k+1)>0._r8) ) then
+                mse_up_mid(i,k) = 0.5*( mse_up(i,k) + mse_up(i,k+1) )
+                t_up_mid(i,k) = 0.5*( t_up(i,k) + t_up(i,k+1) )
+                q_up_mid(i,k) = 0.5*( q_up(i,k) + q_up(i,k+1) )
+            end if
+            normassflx_up_mid(i,k) = 0.5*( normassflx_up(i,k) + normassflx_up(i,k+1) )
         end do
+    end do
 
         !call subcol_netcdf_putclm( "mse_up_mid", nlev, mse_up_mid(1,:), j )
         !call subcol_netcdf_putclm( "t_up_mid", nlev, t_up_mid(1,:), j )
         !call subcol_netcdf_putclm( "q_up_mid", nlev, q_up_mid(1,:), j )
         !call subcol_netcdf_putclm( "normassflx_up_mid", nlev, normassflx_up_mid(1,:), j )
-
-#endif
-    end do     ! loop of plume
-
 
 !use sum as ouput
     prec = precsum

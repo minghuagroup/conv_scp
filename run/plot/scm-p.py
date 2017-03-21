@@ -24,9 +24,9 @@ colors = [ cm(x) for x in cm_subsection ]
 
 #for itime in range(ntime-1,ntime):
 #for itime in range(ntime-10,ntime):
-for itime in range(34, 40):
+#for itime in range(34, 40):
 #for itime in [97]:
-#for itime in range(ntime):
+for itime in range(ntime):
     print( ('%02i'%(itime+1) ) )
 
     z = f.variables['z'][itime,::-1,0]/1000.
