@@ -120,7 +120,7 @@ for itime in range(ntime):
     mse_up = fcmse*f.variables['mse_up'][itime,::-1,:]
 
     plt.subplot(2,5,1)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
     plt.title( "time {:d}".format(itime+1) )
@@ -147,7 +147,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,2)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
     plt.title( 'qcheck:{:8.3f} trigdp:{:1.0f}'.format(qcheck, trigdp) )
@@ -162,7 +162,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,3)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
@@ -177,7 +177,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,4)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
@@ -203,7 +203,7 @@ for itime in range(ntime):
     #plt.xlabel("normasssflx")
     #plt.xlim(0, 10)
 
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
     plt.axvline(x=0, color='grey')
@@ -213,7 +213,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,6)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
@@ -259,7 +259,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,7)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
@@ -276,7 +276,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,8)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
@@ -296,7 +296,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,9)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
@@ -313,7 +313,7 @@ for itime in range(ntime):
 
 
     plt.subplot(2,5,10)
-    plt.axhline(y=z[kuplaunch], lw=1, color='g')
+    plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 

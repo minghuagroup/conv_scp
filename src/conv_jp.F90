@@ -103,8 +103,8 @@ module conv_jp
 
     !integer,  parameter :: nplume_sh = 0  ! cntr
     !integer,  parameter :: nplume_dp = 15 ! cntr
-    integer,  parameter :: nplume_sh = 0
-    integer,  parameter :: nplume_dp = 15
+    integer,  parameter :: nplume_sh = 6
+    integer,  parameter :: nplume_dp = 9
 
     real(r8), parameter :: greg_z0_sh    = 1.e4_r8 !cntr deep
 
@@ -220,7 +220,7 @@ module conv_jp
     real(r8) :: zuplaunchtop  ! max cloud parcel launch height [m]
     real(r8) :: zuplaunchlow  ! min cloud parcel launch height [m]
 
-    real(r8) :: capelmt
+    real(r8), parameter :: capelmt = 50._r8
 
     real(r8) :: f_dcape
     real(r8) :: f_cape
@@ -415,7 +415,7 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlevp) :: normassflx_up ! [1]  bulk normalized updraft mass flux
     real(r8), dimension(inncol, nlevp) :: normassflx_up_tmp ! [1]  bulk normalized updraft mass flux
     real(r8), dimension(inncol, nlev)  :: ent_rate_bulk_up ! [1] solved PARCEL fractional entrainment rates
-    real(r8), dimension(inncol, nlevp) :: det_rate_bulk_up ! [1] solved PARCEL fractional entrainment rates
+    real(r8), dimension(inncol, nlev)  :: det_rate_bulk_up ! [1] solved PARCEL fractional entrainment rates
 
     real(r8), dimension(inncol, nlev) :: ent_fc ! [1] an entrainment rate modifier
 
@@ -655,13 +655,6 @@ subroutine conv_jp_tend( &
     massflxbase_clm  = 0._r8
     massflxbase_dcape = 0._r8
 
-
-!init some local variables
-    trigdp = 1
-    trigsh = 1
-!setting parameter
-!   ent_rate_bulk_up_dp = 0.0001916885_r8
-
 !Calculation begins
 #ifdef SCMDIAG
     write(*,*) "[conv_jp_tend]"
@@ -679,26 +672,8 @@ subroutine conv_jp_tend( &
 !qsat:saturated water vapor mixing ratio
 !msesat:saturated water vapor moist static energy
 !------------------------------------------------------
-    lvmid = latvap - (cpliq-cpwv) * (t-273.15)
-    call cal_qsat2d(t(:,:), p(:,:), qsat(:,:))
-
-    dse = cpair*t + gravit*z
-    mse = dse + lvmid*q
-    msesat = dse + lvmid*qsat
-    rh  = q/qsat
-    rho = p/t/rair
-    w = -omega/rho/gravit
-
-
-    twet = (t-273.16)*atan( 0.151977*(rh*100.+8.313659)**0.5 ) + atan(t-273.16+rh*100.) &
-        - atan(rh*100.-1.676331) + 0.00391838*((rh*100.)**1.5)*atan(0.023101*rh*100.) - 4.686035 &
-        + 273.16
 
     do i=1, inncol
-        do k=1, nlev
-!            rh(i,k) = min( 1., rh(i,k) )
-            twet(i,k) = min( t(i,k), twet(i,k) )
-        end do
         zint(i,nlevp) = max(0., zsrf(i) )
     end do
 
@@ -710,6 +685,29 @@ subroutine conv_jp_tend( &
     pint(:,nlevp) = psrf(:)
     do k=nlev,1,-1
         pint(:,k) = pint(:,k+1)-dp(:,k)
+    end do
+
+
+
+
+    lvmid = latvap - (cpliq-cpwv) * (t-273.15)
+    call cal_qsat2d(t(:,:), p(:,:), qsat(:,:))
+
+    dse = cpair*t + gravit*z
+    mse = dse + lvmid*q
+    msesat = dse + lvmid*qsat
+    rh  = q/qsat
+    rho = p/t/rair
+    w = -omega/rho/gravit
+
+    twet = (t-273.16)*atan( 0.151977*(rh*100.+8.313659)**0.5 ) + atan(t-273.16+rh*100.) &
+        - atan(rh*100.-1.676331) + 0.00391838*((rh*100.)**1.5)*atan(0.023101*rh*100.) - 4.686035 &
+        + 273.16
+
+    do i=1, inncol
+        do k=1, nlev
+            twet(i,k) = min( t(i,k), twet(i,k) )
+        end do
     end do
 
 !estimate t at the interface from z and dz
@@ -768,8 +766,8 @@ subroutine conv_jp_tend( &
 
         if ( iconv == 1 ) then
 
-            call cal_launchtolcl( z, zint, p, pint, t, tint, q, qsat, qsatint, &
-                mse, msesat, msesatint, landfrac, lhflx, tpert, &
+            call cal_launchtocldbase( 2, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+                mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
 
             greg_z0 = greg_z0_sh
@@ -787,10 +785,12 @@ subroutine conv_jp_tend( &
             nplume = nplume_sh
             ind_offset = 0
 
+            kupbase = kuplaunch
+
         else if ( iconv == 2 ) then
 
-            call cal_launchtolcl( z, zint, p, pint, t, tint, q, qsat, qsatint, &
-                mse, msesat, msesatint, landfrac, lhflx, tpert, &
+            call cal_launchtocldbase( 1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+                mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
 
             greg_z0 = greg_z0_dp
@@ -808,12 +808,18 @@ subroutine conv_jp_tend( &
             nplume = nplume_dp
             ind_offset = nplume_sh
 
-        end if
+            kupbase = kuplcl
 
-        kupbase = kuplcl
+!            kupbase = kuplaunch
+
+        end if
 
         jcbot = kupbase
         jctop = kupbase
+
+        !write(*,*) "iconv:", iconv
+        !call stdout3dmix( z, normassflx_up, z, zint )
+        !write(*,'(a25,i10,a25,i10)') "kupbase = ", kupbase(1), "kuplaunch = ", kuplaunch(1)
 
         dse_up = cpair*t_up+gravit*zint
 
@@ -839,17 +845,20 @@ subroutine conv_jp_tend( &
             write(*,'(a10,i5,a10,f10.5)') "plume:", j, ", w = ",w_up_init
 #endif
 
-            do i=1, inncol
-                if ( trigdp(i)<1 ) cycle
-                mse_up(i, 1:kupbase(i)-1) = mseint(i, 1:kupbase(i)-1)
-                t_up(i, 1:kupbase(i)-1) = tint(i, 1:kupbase(i)-1)
-                q_up(i, 1:kupbase(i)-1) = qint(i, 1:kupbase(i)-1)
-            end do
+            !do i=1, inncol
+                !if ( trigdp(i)<1 ) cycle
+                !mse_up(i, 1:kupbase(i)-1) = mseint(i, 1:kupbase(i)-1)
+                !t_up(i, 1:kupbase(i)-1) = tint(i, 1:kupbase(i)-1)
+                !q_up(i, 1:kupbase(i)-1) = qint(i, 1:kupbase(i)-1)
+            !end do
 
             normassflx_up_tmp = normassflx_up
             normassflx_dn_tmp = 0._r8
 
             trigdp = 1
+
+!            write(*,'(a25,i10)') "kupbase ", kupbase(1)
+!        call stdout3dmix( z, mseint, z, mse_up )
 
 !updraft properties
             call cal_mse_up( &
@@ -923,6 +932,7 @@ subroutine conv_jp_tend( &
                 if ( trigdp(i)<1 ) cycle
                 massflxbase_p(i,j) = min( 0.1, max( 0., &
                     massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
+!                    massflxbase_p(i,j) + dtime*( max( (dilucape(i,j) - capelmt), 0._r8 )/(2*pmf_alpha) &
                     - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
 
 !            write(*,*) rh(i,nlev)
@@ -936,8 +946,8 @@ subroutine conv_jp_tend( &
             massflxbase(:) = massflxbase_p(:,j)
 
 #ifdef SCMDIAG 
-            write(*,'(a25,f10.5,a25,i5)') "massflxbase = ", massflxbase(1), "trigdp = ", trigdp(1)
-            write(*,'(a25,i5)') "kuptop = ", kuptop(1)
+            write(*,'(a25,f10.5,a25,i10)') "massflxbase = ", massflxbase(1), "trigdp = ", trigdp(1)
+!            write(*,'(a25,i10,a25,f10.5)') "kuptop = ", kuptop(1), "dilucape=", dilucape(1,j)
 !        write(*,'(10f20.10)') dtime, dilucape(1,j), pmf_alpha, dtime*dilucape(1,j)/(2*pmf_alpha)
 #endif
 
@@ -1294,7 +1304,7 @@ subroutine conv_jp_tend( &
     !msesat_closure = cpair*t_closure+gravit*z+latvap*qsat_closure
     !rh_closure  = q_closure/qsat_closure
 
-    !call cal_launchtolcl( z, p, t_closure, q_closure, mse_closure, landfrac, lhflx, tpert, &
+    !call cal_launchtocldbase( z, p, t_closure, q_closure, mse_closure, landfrac, lhflx, tpert, &
         !kuplaunch_closure, kuplcl_closure, mse_up_closure, t_up_closure, q_up_closure, &
         !normassflx_up_closure, trig_closure)
 
@@ -1909,9 +1919,9 @@ end subroutine conv_jp_tend
 
 
 
-subroutine cal_launchtolcl( &
+subroutine cal_launchtocldbase( &
 !input
-        z, zint, p, pint, t, tint, q, qsat, qsatint, mse, msesat, msesatint, landfrac, lhflx, tpert, &
+        opt, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
 !output
         kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up,  &
 !in/out
@@ -1920,17 +1930,20 @@ subroutine cal_launchtolcl( &
 !launch to LCL, no entrainment up, in-cloud properties
 !------------------------------------------------------
 !input
-    real(r8), dimension(ncol, nlev), intent(in) :: z   ! [m]
+    integer, intent(in) :: opt ! 1:LCL  2:launch point
+    real(r8), dimension(ncol, nlev),  intent(in) :: z     ! [m]
     real(r8), dimension(ncol, nlevp), intent(in) :: zint  ! [m]
-    real(r8), dimension(ncol, nlev), intent(in) :: p   ! [m]
-    real(r8), dimension(ncol, nlevp), intent(in) :: pint   ! [m]
-    real(r8), dimension(ncol, nlev), intent(in) :: t   ! [m]
-    real(r8), dimension(ncol, nlevp), intent(in) :: tint   ! [m]
-    real(r8), dimension(ncol, nlev), intent(in) :: q   ! [m]
-    real(r8), dimension(ncol, nlev), intent(in) :: qsat! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: p     ! [m]
+    real(r8), dimension(ncol, nlevp), intent(in) :: pint  ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: t     ! [m]
+    real(r8), dimension(ncol, nlevp), intent(in) :: tint  ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: q     ! [m]
+    real(r8), dimension(ncol, nlevp), intent(in) :: qint  ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: qsat  ! [m]
     real(r8), dimension(ncol, nlevp), intent(in) :: qsatint! [m]
-    real(r8), dimension(ncol, nlev), intent(in) :: mse ! [J/kg]
-    real(r8), dimension(ncol, nlev), intent(in) :: msesat ! [J/kg]
+    real(r8), dimension(ncol, nlev),  intent(in) :: mse   ! [J/kg]
+    real(r8), dimension(ncol, nlevp), intent(in) :: mseint ! [J/kg]
+    real(r8), dimension(ncol, nlev),  intent(in) :: msesat ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(in) :: msesatint ! [J/kg]
     real(r8), dimension(ncol), intent(in) :: landfrac ! [J/kg]
     real(r8), dimension(ncol), intent(in) :: lhflx    ! [J/kg]
@@ -1962,14 +1975,14 @@ subroutine cal_launchtolcl( &
 
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
-        do k=nlev, 1, -1
-            if ( z(i,k) >= zuplaunchlow ) then
+        do k=nlevp, 1, -1
+            if ( zint(i,k) >= zuplaunchlow ) then
                 kuplaunchmin(i) = k
                 exit
             end if
         end do
-        do k=nlev, 1, -1
-            if ( z(i,k) >= zuplaunchtop ) then
+        do k=nlevp, 1, -1
+            if ( zint(i,k) >= zuplaunchtop ) then
                 kuplaunchmax(i) = k
                 exit
             end if
@@ -1982,8 +1995,8 @@ subroutine cal_launchtolcl( &
         if ( trig(i) < 1 ) cycle
         msemax = 0._r8
         do k=kuplaunchmin(i), kuplaunchmax(i), -1
-            if ( mse(i,k) >= msemax ) then
-                msemax = mse(i,k)
+            if ( mseint(i,k) >= msemax ) then
+                msemax = mseint(i,k)
                 kuplaunch(i) = k
             end if
         end do
@@ -1991,9 +2004,9 @@ subroutine cal_launchtolcl( &
         perturbt = 0._r8
         perturbq = 0._r8
 
-        t_up(i,kuplaunch(i) ) = t(i,kuplaunch(i) )+perturbt
-        q_up(i,kuplaunch(i) ) = q(i,kuplaunch(i) )+perturbq
-        mse_up(i,kuplaunch(i) ) = mse( i,kuplaunch(i) )+perturbt*cpair+perturbq*latvap
+        t_up(i,kuplaunch(i) ) = tint(i,kuplaunch(i) )+perturbt
+        q_up(i,kuplaunch(i) ) = qint(i,kuplaunch(i) )+perturbq
+        mse_up(i,kuplaunch(i) ) = mseint( i,kuplaunch(i) )+perturbt*cpair+perturbq*latvap
 
         do k=kuplaunch(i)-1, 1, -1
 
@@ -2017,25 +2030,41 @@ subroutine cal_launchtolcl( &
 
         end do
 
-        do k=nlevp, kuplcl(i), -1
-            normassflx_up(i,k) = (zint(i,k)/zint(i,kuplcl(i)))**0.5
-            mse_up(i,k) = mse_up(i, kuplcl(i))
-            q_up(i,k) = q_up(i, kuplcl(i))
-            t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) )/ &
-                (cpair-(cpliq-cpwv)*q_up(i,k))
-        end do
+        if ( opt == 1 ) then
+            do k=nlevp, kuplcl(i), -1
+                normassflx_up(i,k) = (zint(i,k)/zint(i,kuplcl(i)))**0.5
+                mse_up(i,k) = mse_up(i, kuplcl(i))
+                q_up(i,k) = q_up(i, kuplcl(i))
+                t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) )/ &
+                    (cpair-(cpliq-cpwv)*q_up(i,k))
+            end do
+        else
+            if ( kuplaunch(i) == nlevp ) then
+                kuplaunch(i) = kuplaunch(i)-1
+            end if
+            mse_up(i, kuplaunch(i) ) = msesatint(i, kuplaunch(i) )
+            t_up(i, kuplaunch(i) ) = tint(i, kuplaunch(i) )
+            q_up(i, kuplaunch(i) ) = qsatint(i, kuplaunch(i) )
+            do k=nlevp, kuplaunch(i), -1
+                normassflx_up(i,k) = (zint(i,k)/zint(i,kuplaunch(i)))**0.5
+                mse_up(i,k) = mse_up(i, kuplaunch(i))
+                q_up(i,k) = q_up(i, kuplaunch(i))
+                t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) )/ &
+                    (cpair-(cpliq-cpwv)*q_up(i,k))
+            end do
+        end if
         normassflx_up(i,nlevp) = 0._r8
 
     end do
 
-end subroutine cal_launchtolcl
+end subroutine cal_launchtocldbase
 
 
 subroutine cal_mse_up( &
 !input
         ent_opt, rho, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
         mse, mseint, msesat, msesatint, kuplaunch, kupbase, &
-        ent_rate_up, det_rate_up, w_up_init, &
+        ent_rate_up_mid, det_rate_up, w_up_init, &
 !in/output
         mse_up, t_up, q_up, qliq_up, qice_up, mseqi, condrate, rainrate, snowrate, precrate, &
         normassflx_up, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
@@ -2062,14 +2091,14 @@ subroutine cal_mse_up( &
     integer , dimension(ncol), intent(in) :: kuplaunch ! [1]
     integer , dimension(ncol), intent(in) :: kupbase    ! [1]
 
-    real(r8), dimension(ncol, nlev), intent(inout) :: ent_rate_up ! [1]
+    real(r8), dimension(ncol, nlev), intent(inout) :: ent_rate_up_mid ! [1]
     real(r8), dimension(ncol, nlev), intent(inout) :: det_rate_up ! [1]
     real(r8), dimension(ncol), intent(inout) :: w_up_init ! [1]
 !output
     real(r8), dimension(ncol, nlevp), intent(out) :: w_up ! [J/kg]
-    real(r8), dimension(ncol, nlev), intent(out)  :: w_up_mid ! [J/kg]
+    real(r8), dimension(ncol, nlev),  intent(out) :: w_up_mid ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(out) :: buoy ! [J/kg]
-    real(r8), dimension(ncol, nlev), intent(out)  :: buoy_mid  ! [J/kg]
+    real(r8), dimension(ncol, nlev),  intent(out) :: buoy_mid  ! [J/kg]
 
     integer , dimension(ncol), intent(out) :: kuptop
     real(r8), dimension(ncol), intent(out) :: zuptop  ! [m]
@@ -2088,8 +2117,9 @@ subroutine cal_mse_up( &
     real(r8), dimension(ncol, nlevp), intent(inout) :: normassflx_up  ! [J/kg]
     integer , dimension(ncol), intent(inout) :: trig     ! [1]
 !local
-    real(r8), dimension(ncol, nlev)  :: ent_rate_up_mid ! [1]
+    real(r8), dimension(ncol, nlevp)  :: ent_rate_up ! [1]
     real(r8) :: tv, tv_up,  w2, qw, Fp, Fi, Ek
+    real(r8) :: buoy_l, buoy_h
 
     integer :: i,j,k, iteration
     integer :: ngbuoy
@@ -2114,16 +2144,45 @@ subroutine cal_mse_up( &
     ent_rate_up = 0._r8
     det_rate_up = 0._r8
 
+! ------------------------
+! cloud base diagram
+! ------------------------  kupbase-1
+!
+!        ----------         kupbase-1
+!
+! ------------------------  kupbase (*)
+!
+!        ----------         kupbase
+!
+! ------------------------  kupbase+1
+!
+!            ...
+!
+! ------------------------  nlev
+!
+!        ----------         nlev
+!
+! ------------------------  nlevp
+
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
 
-        k = kupbase(i)
+        !do k=nlevp, kupbase(i)+1, -1
+            !tv = tint(i,k)*(1+tveps*qint(i,k))
+            !tv_up = t_up(i,k)*(1 + tveps*q_up(i,k) )
+            !buoy(i,k) = gravit*(tv_up-tv)/tv
+            !if ( k<=nlev ) then
+                !buoy_mid(i,k) = 0.5*( buoy(i,k)+buoy(i,k+1) )
+            !end if
+        !end do
 
-        w_up(i,k)  = w_up_init(i)
+        k = kupbase(i)
 
         tv = tint(i,k)*(1+tveps*qint(i,k))
         tv_up = t_up(i,k)*(1 + tveps*q_up(i,k) )
         buoy(i,k) = gravit*(tv_up-tv)/tv 
+
+        w_up(i, kupbase(i) )  = w_up_init(i)
 
         !if ( buoy(i,k)<0. ) then
             !trig(i) = -10
@@ -2139,7 +2198,8 @@ subroutine cal_mse_up( &
         end if
         ent_rate_up(i,k) = max(0.0, min( max_ent_rate,  ent_rate_up(i,k)))
 
-!        write(*,"(f20.10)") buoy(i,k), tv_up, tv, ent_rate_up(i,k)
+        !write(*,*) k
+        !write(*,"(10f20.10)") tv, tv_up, tint(i,k), qint(i,k), buoy(i,k), tv_up, tv, ent_rate_up(i,k)
 
 #ifdef SCMDIAG 
         !write(*,"(i3,10f15.6)") k, mse_up(i,k), ent_rate_up_l, buoy(i,k), w_up(i,k)
@@ -2149,6 +2209,8 @@ subroutine cal_mse_up( &
 #endif
 
         do k=kupbase(i)-1, 1, -1
+
+!            write(*,*) k
         
             do iteration = 1, maxiteration, 1
                 if (iteration == 1) then
@@ -2194,6 +2256,8 @@ subroutine cal_mse_up( &
                 mse_up(i,k) = ( normassflx_up(i,k+1)*mse_up(i,k+1) &
                                 + Ek*mse(i,k)*dz(i,k) + mseqi(i,k)*dz(i,k) ) &
                                 /normassflx_up(i,k)
+
+!                write(*,*) iteration, ent_rate_up_mid(i,k), normassflx_up(i,k)
                 
             !----method 1: Taylor expanding ------------------------------------------------
                 if (mse2tsatflag == 1) then
@@ -2307,7 +2371,30 @@ subroutine cal_mse_up( &
                 trig(i) = -11
             end if
         else
-            kuptop(i) = 1
+            k = 1
+            mse_up(i,k) = mseint(i,k)
+            t_up(i,k) = tint(i,k)
+            q_up(i,k) = qint(i,k)
+            qliq_up(i,k) = 0._r8
+            qice_up(i,k) = 0._r8
+            w_up(i,k) = 0._r8
+            buoy(i,k) = 0._r8
+            ent_rate_up(i,k) = 0._r8
+            det_rate_up(i,k) = 0._r8
+            normassflx_up(i,k) = 0._r8
+
+            condrate(i,k) = 0._r8
+            rainrate(i,k) = 0._r8
+            snowrate(i,k) = 0._r8
+            precrate(i,k) = 0._r8
+            mseqi(i,k) = 0._r8
+            qliq_up(i,k) = 0._r8
+            qice_up(i,k) = 0._r8
+
+            ent_rate_up(i,kupbase(i) ) = 0._r8
+
+            kuptop(i) = 2
+
         end if
 
     end do
