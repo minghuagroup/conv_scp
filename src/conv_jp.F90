@@ -303,7 +303,7 @@ subroutine conv_jp_tend( &
         in_ent_opt, dtime, qmin, &
         lat, landfrac, lhflx, &
         psrf, p, dp, zsrf, z, dz, &
-        t, q, bfls_t, bfls_q, &
+        t_in, q_in, bfls_t, bfls_q, &
         omega, pblh, tpert, &
 !in/output
         massflxbase_p, &
@@ -337,7 +337,7 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol), intent(in) :: lat, landfrac, lhflx
     real(r8), dimension(inncol), intent(in) :: psrf, zsrf
     real(r8), dimension(inncol, nlev), intent(in) :: p, dp, z, dz ! [Pa] ; [m]
-    real(r8), dimension(inncol, nlev), intent(in) :: t, q ! [K] ; [kg/kg]
+    real(r8), dimension(inncol, nlev), intent(in) :: t_in, q_in ! [K] ; [kg/kg]
        ! T and Q state after the large-scale forcing is applied, current state
     real(r8), dimension(inncol, nlev), intent(in) :: bfls_t, bfls_q ! [K] ; [kg/kg]
        ! T and Q state before the large-scale forcing is applied
@@ -379,6 +379,7 @@ subroutine conv_jp_tend( &
 
 !local
     integer i, j, k, begk, endk, iconv
+    real(r8), dimension(inncol, nlev) :: t, q
     real(r8), dimension(inncol, nlev) :: dse !environment [J/kg]
     real(r8), dimension(inncol, nlev) :: mse, msesat ! [J/kg] ; [J/kg]
     real(r8), dimension(inncol, nlev) :: twet !environment [K]
@@ -689,6 +690,8 @@ subroutine conv_jp_tend( &
 
 
 
+    t = t_in
+    q = q_in
 
     lvmid = latvap - (cpliq-cpwv) * (t-273.15)
     call cal_qsat2d(t(:,:), p(:,:), qsat(:,:))
@@ -743,8 +746,60 @@ subroutine conv_jp_tend( &
 
 ! --- the big loop for dp and sh convection
     do iconv = 1, 2
+!    do iconv = 2, 1, -1
 
         trigdp = 1
+
+        if ( iconv == 1 ) then
+
+            greg_z0 = greg_z0_sh
+
+            w_up_init_beg = w_up_init_sh_beg
+            w_up_init_end = w_up_init_sh_end
+
+            greg_ent_a_beg = greg_ent_a_sh_beg
+            greg_ent_a_end = greg_ent_a_sh_end
+            greg_ce_beg = greg_ce_sh_beg
+            greg_ce_end = greg_ce_sh_end
+
+            pmf_alpha = pmf_alpha_sh
+            pmf_tau   = pmf_tau_sh
+            nplume = nplume_sh
+            ind_offset = 0
+
+        else if ( iconv == 2 ) then
+
+            greg_z0 = greg_z0_dp
+
+            w_up_init_beg = w_up_init_dp_beg
+            w_up_init_end = w_up_init_dp_end
+
+            greg_ent_a_beg = greg_ent_a_dp_beg
+            greg_ent_a_end = greg_ent_a_dp_end
+            greg_ce_beg = greg_ce_dp_beg
+            greg_ce_end = greg_ce_dp_end
+
+            pmf_alpha = pmf_alpha_dp
+            pmf_tau   = pmf_tau_dp
+            nplume = nplume_dp
+            ind_offset = nplume_sh
+
+        end if
+
+        !write(*,*) "iconv:", iconv
+        !call stdout3dmix( z, normassflx_up, z, zint )
+        !write(*,'(a25,i10,a25,i10)') "kupbase = ", kupbase(1), "kuplaunch = ", kuplaunch(1)
+
+        if (nplume > 1) then
+            dw_up_init = (w_up_init_end - w_up_init_beg) / (nplume-1)
+            greg_ent_a_delta = ( greg_ent_a_end - greg_ent_a_beg ) / (nplume-1)
+            greg_ce_delta    = ( greg_ce_end - greg_ce_beg ) / (nplume-1)
+        else
+            dw_up_init = 0.0
+            greg_ent_a_delta = 0.
+            greg_ce_delta = 0.
+        end if
+
 
 ! do some variable cleaning here
 ! variables w_up, buoy
@@ -765,76 +820,28 @@ subroutine conv_jp_tend( &
         normassflx_dn = 0._r8
 
         if ( iconv == 1 ) then
-
             call cal_launchtocldbase( 2, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                 mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
-
-            greg_z0 = greg_z0_sh
-
-            w_up_init_beg = w_up_init_sh_beg
-            w_up_init_end = w_up_init_sh_end
-
-            greg_ent_a_beg = greg_ent_a_sh_beg
-            greg_ent_a_end = greg_ent_a_sh_end
-            greg_ce_beg = greg_ce_sh_beg
-            greg_ce_end = greg_ce_sh_end
-
-            pmf_alpha = pmf_alpha_sh
-            pmf_tau   = pmf_tau_sh
-            nplume = nplume_sh
-            ind_offset = 0
-
             kupbase = kuplaunch
 
         else if ( iconv == 2 ) then
-
             call cal_launchtocldbase( 1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                 mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
-
-            greg_z0 = greg_z0_dp
-
-            w_up_init_beg = w_up_init_dp_beg
-            w_up_init_end = w_up_init_dp_end
-
-            greg_ent_a_beg = greg_ent_a_dp_beg
-            greg_ent_a_end = greg_ent_a_dp_end
-            greg_ce_beg = greg_ce_dp_beg
-            greg_ce_end = greg_ce_dp_end
-
-            pmf_alpha = pmf_alpha_dp
-            pmf_tau   = pmf_tau_dp
-            nplume = nplume_dp
-            ind_offset = nplume_sh
-
             kupbase = kuplcl
-
 !            kupbase = kuplaunch
 
         end if
 
+        dse_up = cpair*t_up+gravit*zint
+
         jcbot = kupbase
         jctop = kupbase
 
-        !write(*,*) "iconv:", iconv
-        !call stdout3dmix( z, normassflx_up, z, zint )
-        !write(*,'(a25,i10,a25,i10)') "kupbase = ", kupbase(1), "kuplaunch = ", kuplaunch(1)
-
-        dse_up = cpair*t_up+gravit*zint
-
-        if (nplume > 1) then
-            dw_up_init = (w_up_init_end - w_up_init_beg) / (nplume-1)
-            greg_ent_a_delta = ( greg_ent_a_end - greg_ent_a_beg ) / (nplume-1)
-            greg_ce_delta    = ( greg_ce_end - greg_ce_beg ) / (nplume-1)
-        else
-            dw_up_init = 0.0
-            greg_ent_a_delta = 0.
-            greg_ce_delta = 0.
-        end if
-
 
         do j = ind_offset+1, ind_offset+nplume
+!        do j = ind_offset+nplume, ind_offset+1, -1
 
             greg_ent_a = greg_ent_a_beg + (j-ind_offset-1)*greg_ent_a_delta
             greg_ce    = greg_ce_beg + (j-ind_offset-1)*greg_ce_delta
@@ -845,20 +852,20 @@ subroutine conv_jp_tend( &
             write(*,'(a10,i5,a10,f10.5)') "plume:", j, ", w = ",w_up_init
 #endif
 
-            !do i=1, inncol
-                !if ( trigdp(i)<1 ) cycle
-                !mse_up(i, 1:kupbase(i)-1) = mseint(i, 1:kupbase(i)-1)
-                !t_up(i, 1:kupbase(i)-1) = tint(i, 1:kupbase(i)-1)
-                !q_up(i, 1:kupbase(i)-1) = qint(i, 1:kupbase(i)-1)
-            !end do
+
+
+
+            do i=1, inncol
+                if ( trigdp(i)<1 ) cycle
+                mse_up(i, 1:kupbase(i)-1) = mseint(i, 1:kupbase(i)-1)
+                t_up(i, 1:kupbase(i)-1) = tint(i, 1:kupbase(i)-1)
+                q_up(i, 1:kupbase(i)-1) = qint(i, 1:kupbase(i)-1)
+            end do
 
             normassflx_up_tmp = normassflx_up
             normassflx_dn_tmp = 0._r8
 
             trigdp = 1
-
-!            write(*,'(a25,i10)') "kupbase ", kupbase(1)
-!        call stdout3dmix( z, mseint, z, mse_up )
 
 !updraft properties
             call cal_mse_up( &
