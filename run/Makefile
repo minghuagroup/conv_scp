@@ -8,7 +8,7 @@ FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG -fbounds-
 
 VPATH = ../src
 
-SRC = scmdiag.f90 conv_jp.F90
+SRC = scmdiag.f90 conv_jp.F90 buoysort.f90
 
 
 OBJ = $(addsuffix .o, $(basename $(SRC)))
@@ -29,5 +29,5 @@ clean:
 
 #dependence
 
-conv_jp.o : scmdiag.o
+conv_jp.o : scmdiag.o buoysort.o
 

@@ -212,6 +212,9 @@ program test
 
     call subcol_netcdf_addfld( "ent_rate", "1", "mlev")
     call subcol_netcdf_addfld( "det_rate", "1", "mlev")
+    call subcol_netcdf_addfld( "ent_rate_sh", "1", "mlev")
+    call subcol_netcdf_addfld( "det_rate_sh", "1", "mlev")
+    call subcol_netcdf_addfld( "bs_xc", "1", "mlev")
     call subcol_netcdf_addfld( "buoy_closure", "m/s2", "mlev")
 
     call subcol_netcdf_addfld( "diffdse_up", "J/kg", "mlevp")

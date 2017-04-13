@@ -43,6 +43,9 @@ for itime in range(ntime):
     mseint = fcmse*f.variables['mseint'][itime,::-1,0]
 
     ent_rate = 1000*f.variables['ent_rate'][itime,::-1,:]
+    ent_rate_sh = 1000*f.variables['ent_rate_sh'][itime,::-1,:]
+    det_rate_sh = 1000*f.variables['det_rate_sh'][itime,::-1,:]
+    bs_xc = f.variables['bs_xc'][itime,::-1,:]
     w_up = f.variables['w_up'][itime,::-1,:]
     buoy = f.variables['buoy_mid'][itime,::-1,:]*100
 
@@ -236,13 +239,13 @@ for itime in range(ntime):
         #levind = (q_up_tmp > 0)
         #plt.plot( q_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
 
-    plt.plot( dse, z, 'k.-')
-    for i in range(nsubcol):
-        dse_up_tmp = dse_up[:,i]
-        levind = (dse_up_tmp > 0)
-        plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("DSE ^3 J/kg")
-    plt.xlim(290, 360)
+    #plt.plot( dse, z, 'k.-')
+    #for i in range(nsubcol):
+        #dse_up_tmp = dse_up[:,i]
+        #levind = (dse_up_tmp > 0)
+        #plt.plot( dse_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("DSE ^3 J/kg")
+    #plt.xlim(290, 360)
 
     #plt.axvline(x=0, color='grey')
     #for i in range(nsubcol):
@@ -257,22 +260,38 @@ for itime in range(ntime):
         #plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
     #plt.xlabel("diff DSE e3")
 
+    for i in range(nsubcol):
+        ent_rate_tmp = ent_rate_sh[:,i]
+        levind = (ent_rate_tmp > 0)
+        plt.plot( ent_rate_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("entrainment (10^-3)")
+    plt.ylabel("Z")
+    plt.xlim(0, 4)
+
 
     plt.subplot(2,5,7)
     plt.axhline(y=zint[kuplaunch], lw=2, color='g')
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    plt.axvline(x=0, color='grey')
+    #plt.axvline(x=0, color='grey')
+    #for i in range(nsubcol):
+        #ttendtran_tmp = ttendtran[:,i]
+        #qtendtran_tmp = qtendtran[:,i]
+        #plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
+        #plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+    ##plt.plot( ttendtrandn, z, 'k.-')
+    ##plt.plot( qtendtrandn, z, 'g.-')
+    #plt.xlabel("T/Q TRANS K/day")
+    #plt.xlim(-20, 20)
+
     for i in range(nsubcol):
-        ttendtran_tmp = ttendtran[:,i]
-        qtendtran_tmp = qtendtran[:,i]
-        plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
-        plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    #plt.plot( ttendtrandn, z, 'k.-')
-    #plt.plot( qtendtrandn, z, 'g.-')
-    plt.xlabel("T/Q TRANS K/day")
-    plt.xlim(-20, 20)
+        det_rate_tmp = det_rate_sh[:,i]
+        levind = (det_rate_tmp > 0)
+        plt.plot( det_rate_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("detrainment (10^-3)")
+    plt.ylabel("Z")
+    plt.xlim(0, 4)
 
 
     plt.subplot(2,5,8)
@@ -280,19 +299,27 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    plt.axvline(x=0, color='grey')
-    for i in range(nsubcol):
-        ttendcond_tmp = ttendcond[:,i]
-        qtendcond_tmp = qtendcond[:,i]
-        plt.plot( ttendcond_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
-        plt.plot( qtendcond_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("COND tend K/day")
-    plt.xlim(-20, 20)
+    #plt.axvline(x=0, color='grey')
+    #for i in range(nsubcol):
+        #ttendcond_tmp = ttendcond[:,i]
+        #qtendcond_tmp = qtendcond[:,i]
+        #plt.plot( ttendcond_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
+        #plt.plot( qtendcond_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("COND tend K/day")
+    #plt.xlim(-20, 20)
 
     #plt.axvline(x=0, color='grey')
     #plt.plot( qliqtend_det, z, 'k.-')
     #plt.xlabel("QLIQTEND_DET tend K/day")
     ##plt.xlim(-20, 20)
+
+    for i in range(nsubcol):
+        bs_xc_tmp = bs_xc[:,i]
+        levind = (bs_xc_tmp > 0)
+        plt.plot( bs_xc_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("Xc")
+    plt.ylabel("Z")
+    plt.xlim(0, 1)
 
 
     plt.subplot(2,5,9)
