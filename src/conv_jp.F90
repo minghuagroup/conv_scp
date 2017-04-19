@@ -98,12 +98,14 @@ module conv_jp
     integer, parameter :: mseqiflag = 1  ! 1: use Qi; 0: Qi=0
     integer, parameter :: entratemidflag = 1  ! 1: averaged; 2: recalculated with B and w
     integer, parameter :: bsflag = 0  ! 0: no buoy sort 1: buoy sort
-    
+    integer, parameter :: mflxmeanflag = 1  ! 0: averaged; 1: with log weighted
+    integer, parameter :: negcondflag = 1 ! 0: exit when c<0; 1: recalculate qv,T when c<0
+
 ! updraft lifting formula parameters
     real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default 
 
     integer,  parameter :: nplume_sh = 0  ! cntr
-    integer,  parameter :: nplume_dp = 15 ! cntr
+    integer,  parameter :: nplume_dp = 15  ! cntr
     !integer,  parameter :: nplume_sh = 15  ! cntr
     !integer,  parameter :: nplume_dp = 0   ! cntr
     !integer,  parameter :: nplume_sh = 6
@@ -124,6 +126,8 @@ module conv_jp
     real(r8), parameter :: greg_ce_sh_end    = 0.8_r8
     real(r8), parameter :: w_up_init_sh_beg = 0.1
     real(r8), parameter :: w_up_init_sh_end = 1.2
+    !real(r8), parameter :: w_up_init_sh_beg = 0.5
+    !real(r8), parameter :: w_up_init_sh_end = 0.5
 
 
     real(r8), parameter :: greg_z0_dp    = 1.e4_r8 !cntr deep
@@ -135,6 +139,8 @@ module conv_jp
     real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  !cntr
     real(r8), parameter :: w_up_init_dp_beg  = 0.2     !cntr
     real(r8), parameter :: w_up_init_dp_end  = 4.      !cntr
+    !real(r8), parameter :: w_up_init_dp_beg  = 1.0     !cntr
+    !real(r8), parameter :: w_up_init_dp_end  = 1.0      !cntr
 
 !X2 increase entrainment
     !real(r8), parameter :: greg_ent_a_dp_beg = 0.85_r8 !cntr
@@ -2185,7 +2191,7 @@ subroutine cal_mse_up( &
     real(r8) :: tmp_t_up, tmp_q_up, tmp_buoy, tmp_zuptop_max
 
     real(r8) :: tv, tv_up,  w2, qw, Fp, Fi, Ek
-    real(r8) :: denom, ent_rate, det_rate
+    real(r8) :: nom, denom, ent_rate, det_rate, massflxmid
 
     real(r8) :: bs_p0, bs_wue, bs_rle, bs_scaleh, bs_cridis, bs_thetalint, bs_thetal_up
     real(r8), dimension(ncol, nlev ), intent(inout) :: bs_xc
@@ -2375,11 +2381,25 @@ subroutine cal_mse_up( &
 !scalar form
                 normassflx_up(i,k) = normassflx_up(i,k+1) &
                     *exp( (ent_rate-det_rate)*dz(i,k) )
+                nom   = 1. - 0.5*ent_rate*dz(i,k)
                 denom = 1. + 0.5*ent_rate*dz(i,k)
+
+                if (mflxmeanflag == 0) then
+                    massflxmid = 0.5*(normassflx_up(i,k)+normassflx_up(i,k+1))
+                end if
+                if (mflxmeanflag == 1) then
+                    if (abs(normassflx_up(i,k)-normassflx_up(i,k+1))<1e-6) then
+                        massflxmid = 0.5*(normassflx_up(i,k)+normassflx_up(i,k+1))
+                    else
+                        massflxmid = (normassflx_up(i,k)-normassflx_up(i,k+1))/ &
+                            (log(normassflx_up(i,k))-log(normassflx_up(i,k+1)))
+                    end if
+                end if
+                
                 mse_up(i,k) =  1./denom*( &
-                      ent_rate*dz(i,k)*mse(i,k) &
-                    + ( 1 - 0.5*ent_rate*dz(i,k) )*mse_up(i,k+1) &
-                    + dz(i,k)/( 0.5*( normassflx_up(i,k)+normassflx_up(i,k+1) ) )*mseqi(i,k) )
+                      ent_rate*dz(i,k) * mse(i,k) &
+                    + nom * mse_up(i,k+1) &
+                    + dz(i,k)/( massflxmid )*mseqi(i,k) )
                 !write(*,*) "new"
                 !write(*,"(2i2,10f20.10)") k, iteration, ent_rate, normassflx_up(i,k), &
                     !mse_up(i,k), mse(i,k), mse_up(i,k+1)
@@ -2397,15 +2417,6 @@ subroutine cal_mse_up( &
                 end if
             !-------------------------------------------------------------------------------
 
-                Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kupbase(i)) - rain_z0)/rain_zp) )
-!                fp = 1._r8
-                Fi = 0.0
-                if (cloud_t1 < t_up(i,k) .and. t_up(i,k) < cloud_t2) then
-                    Fi = (cloud_t2-t_up(i,k)) / (cloud_t2-cloud_t1)
-                else if (t_up(i,k) <= cloud_t1) then
-                    Fi = 1.0
-                end if
-
 !flux form
                 !condrate(i,k) = 1.0/rho(i,k)*( Ek*q(i,k) &
                     !-( normassflx_up(i,k)*q_up(i,k) &
@@ -2414,12 +2425,32 @@ subroutine cal_mse_up( &
                 !write(*,"(2i2,10f20.10)") k, iteration, condrate(i,k)
 !scalar form
                 condrate(i,k) = 1./dz(i,k)/rho(i,k) &
-                    *( 0.5*( normassflx_up(i,k)+normassflx_up(i,k+1) ) ) &
+                    *( massflxmid ) &
                     *( -denom*q_up(i,k) + ent_rate*dz(i,k)*q(i,k) &
-                       +( 1 - 0.5*ent_rate*dz(i,k) )*q_up(i,k+1) )
+                       + nom *q_up(i,k+1) )
                 !write(*,*) "new cond"
                 !write(*,"(2i2,10f20.10)") k, iteration, condrate(i,k)
 
+                if (negcondflag == 1) then
+                    if (condrate(i,k) < 0) then
+                        condrate(i,k) = 0.0
+                        q_up(i,k) = 1./denom * ( &
+                            ent_rate*dz(i,k)*q(i,k) + &
+                            nom*q_up(i,k+1) )
+                        t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) &
+                            - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) ) &
+                            / (cpair-(cpliq-cpwv)*q_up(i,k))
+                    end if
+                end if
+
+                Fp = max(0.0, 1.0 - exp(-(z(i,k) - zint(i,kupbase(i)) - rain_z0)/rain_zp) )
+!                fp = 1._r8
+                Fi = 0.0
+                if (cloud_t1 < t_up(i,k) .and. t_up(i,k) < cloud_t2) then
+                    Fi = (cloud_t2-t_up(i,k)) / (cloud_t2-cloud_t1)
+                else if (t_up(i,k) <= cloud_t1) then
+                    Fi = 1.0
+                end if
 
                 frezrate(i,k) = Fi * condrate(i,k)
                 rainrate(i,k) = (1.0-Fi) * Fp * condrate(i,k)
@@ -2443,19 +2474,19 @@ subroutine cal_mse_up( &
                 !write(*,"(2i2,10f20.10)") k, iteration, qliq_up(i,k), qice_up(i,k)
 !sclar form fi*rate
                 qliq_up(i,k) =  1./denom*( &
-                    + ( 1 - 0.5*ent_rate*dz(i,k) )*qliq_up(i,k+1) &
-                    + dz(i,k)/( 0.5*( normassflx_up(i,k)+normassflx_up(i,k+1) ) ) &
+                      nom * qliq_up(i,k+1) &
+                    + dz(i,k)/( massflxmid ) &
                       *rho(i,k)*( condrate(i,k)-frezrate(i,k)-rainrate(i,k) ) )
                 qice_up(i,k) =  1./denom*( &
-                    + ( 1 - 0.5*ent_rate*dz(i,k) )*qice_up(i,k+1) &
-                    + dz(i,k)/( 0.5*( normassflx_up(i,k)+normassflx_up(i,k+1) ) ) &
+                      nom * qice_up(i,k+1) &
+                    + dz(i,k)/( massflxmid ) &
                       *rho(i,k)*( frezrate(i,k)-snowrate(i,k) ) )
                 !write(*,*) "new liq and ice rate"
                 !write(*,"(2i2,10f20.10)") k, iteration, qliq_up(i,k), qice_up(i,k)
 !scalar form fi*qw
                 !qw =  1./denom*( &
-                    !+ ( 1 - 0.5*ent_rate*dz(i,k) )*( qliq_up(i,k+1)+qice_up(i,k+1)  )&
-                    !+ dz(i,k)/( 0.5*( normassflx_up(i,k)+normassflx_up(i,k+1) ) ) &
+                    !+ nom * ( qliq_up(i,k+1)+qice_up(i,k+1)  )&
+                    !+ dz(i,k)/( massflxmid ) &
                       !*rho(i,k)*(1.0-Fp)*condrate(i,k) )
                 !qliq_up(i,k) = (1.0-Fi) * qw
                 !qice_up(i,k) = Fi * qw
