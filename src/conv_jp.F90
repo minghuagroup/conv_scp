@@ -12,7 +12,7 @@ module conv_jp
 !                         .
 !                         .
 !                         .
-!                         .  CLOUD TOP (NEUTRAL BOUYANCY)[kuptop]
+!                         .  CLOUD TOP (NEUTRAL BOUYANCY) [kuptop]
 !                         .
 !                         .
 !                         .
@@ -31,13 +31,13 @@ module conv_jp
 !
 ! ********cloud vars are at the interface************       K+1/2 K_cloud=nlev+1
 !                         .
-!                         .  CLOUD BASE (POSITIVE BOUYANCY) [kupbase]
+!                         .  CLOUD BASE (POSITIVE BOUYANCY)
 !                         .
 !                         .
-!                         .  LCL: [kuplcl]
+!                         .  LCL: [kuplcl] [kupbase choice #1]
 !                         .
 !                         .
-!                         .  LAUNCH LEVEL: [kuplaunch] max MSE
+!                         .  LAUNCH LEVEL: [kuplaunch] max MSE [kupbase choice #2]
 !                         .
 ! ***************************************************
 !                ATMOSPHERE BOTTOM k=nlev
@@ -129,10 +129,18 @@ module conv_jp
     real(r8), parameter :: greg_z0_dp    = 1.e4_r8 !cntr deep
 
 !deep parameters
-    !real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
-    !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
-    !real(r8), parameter :: greg_ce_dp_beg    = 0.5_r8  !cntr
-    !real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  !cntr
+    real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
+    real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
+    real(r8), parameter :: greg_ce_dp_beg    = 0.5_r8  !cntr
+    real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  !cntr
+    real(r8), parameter :: w_up_init_dp_beg  = 0.2     !cntr
+    real(r8), parameter :: w_up_init_dp_end  = 4.      !cntr
+
+!X2 increase entrainment
+    !real(r8), parameter :: greg_ent_a_dp_beg = 0.85_r8 !cntr
+    !real(r8), parameter :: greg_ent_a_dp_end = 0.85_r8 !cntr
+    !real(r8), parameter :: greg_ce_dp_beg    = 0.9_r8  !cntr
+    !real(r8), parameter :: greg_ce_dp_end    = 0.9_r8  !cntr
     !real(r8), parameter :: w_up_init_dp_beg  = 0.2     !cntr
     !real(r8), parameter :: w_up_init_dp_end  = 4.      !cntr
 
@@ -145,19 +153,12 @@ module conv_jp
     !real(r8), parameter :: w_up_init_dp_end  = 1.2
 
 !paper
-    real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
-    real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
-    real(r8), parameter :: greg_ce_dp_beg    = 0.6_r8
-    real(r8), parameter :: greg_ce_dp_end    = 0.6_r8
-    real(r8), parameter :: w_up_init_dp_beg  = 0.1     !cntr
-    real(r8), parameter :: w_up_init_dp_end  = 1.4     !cntr
-
-    !real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8
-    !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8
-    !real(r8), parameter :: greg_ce_dp_beg    = 0.45_r8
-    !real(r8), parameter :: greg_ce_dp_end    = 0.45_r8
-    !real(r8), parameter :: w_up_init_dp_beg = 1.
-    !real(r8), parameter :: w_up_init_dp_end = 4.
+    !real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
+    !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
+    !real(r8), parameter :: greg_ce_dp_beg    = 0.6_r8
+    !real(r8), parameter :: greg_ce_dp_end    = 0.6_r8
+    !real(r8), parameter :: w_up_init_dp_beg  = 0.1     !cntr
+    !real(r8), parameter :: w_up_init_dp_end  = 1.4     !cntr
 
     !real(r8), parameter :: greg_ent_a_dp_beg = 0.3_r8
     !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8
@@ -567,6 +568,7 @@ subroutine conv_jp_tend( &
 
     real(r8), dimension(inncol, nlev) :: stendsum
     real(r8), dimension(inncol, nlev) :: qtendsum
+    real(r8), dimension(inncol, nlev) :: qliqtendsum
     real(r8), dimension(inncol) :: precsum
     real(r8), dimension(inncol) :: massflxbasesum
     real(r8), dimension(inncol, nlevp) :: massflxsum
@@ -669,6 +671,7 @@ subroutine conv_jp_tend( &
 
     stendsum = 0._r8
     qtendsum = 0._r8
+    qliqtendsum = 0._r8
     precsum = 0._r8
     massflxbasesum = 0._r8
     massflxsum = 0._r8
@@ -1024,6 +1027,7 @@ subroutine conv_jp_tend( &
                     + stendtran_up(i,:) + stendtran_dn(i,:)
                 qtend(i,:) = qtendcond(i,:) + qtendevap(i,:) &
                     + qtendtran_up(i,:) + qtendtran_dn(i,:)
+                qliqtend(i,:) = qliqtend_det(i,:)
 
                 do k=1, nlev
                     netprec(i) = netprec(i) - ( qtend(i,k) + qliqtend_det(i,k) )*rho(i,k)*dz(i,k)
@@ -1097,6 +1101,7 @@ subroutine conv_jp_tend( &
             do i=1, inncol
                 stendsum(i,:) = stendsum(i,:)+stend(i,:)
                 qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
+                qliqtendsum(i,:) = qliqtendsum(i,:)+qliqtend(i,:)
 
                 precsum(i) = precsum(i)+netprec(i)
 
@@ -1223,11 +1228,12 @@ subroutine conv_jp_tend( &
     stend = stendsum
     qtend = qtendsum
 
-    qliqtend = qliqtend_det
+    qliqtend = qliqtendsum
 
 #ifdef SCMDIAG
     call subcol_netcdf_putclm( "stendsum", nlev, stendsum(1,:), 1 )
     call subcol_netcdf_putclm( "qtendsum", nlev, qtendsum(1,:), 1 )
+    call subcol_netcdf_putclm( "qliqtendsum", nlev, qliqtendsum(1,:), 1 )
     call subcol_netcdf_putclm( "precsum", 1, precsum(1), 1 )
     call subcol_netcdf_putclm( "massflxsum", nlevp, massflxsum(1,:), 1 )
 #endif

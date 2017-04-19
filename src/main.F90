@@ -272,6 +272,7 @@ program test
 
     call subcol_netcdf_addfld( "stendsum",    "K/s",  "mlev")
     call subcol_netcdf_addfld( "qtendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "qliqtendsum",    "K/s",  "mlev")
     call subcol_netcdf_addfld( "precsum",     "1",  "slev")
     call subcol_netcdf_addfld( "massflxsum",  "1",  "mlevp")
     call subcol_netcdf_addfld( "massflx",  "1",  "mlevp")

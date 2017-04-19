@@ -335,7 +335,8 @@ subroutine conv_intr_jp_tend( &
    do i = 1, ncol
        do k = 1, pver
            if ( isnan( ptend_loc%s(i,k) ) .or. &
-                isnan( ptend_loc%q(i,k,1) ) ) then
+                isnan( ptend_loc%q(i,k,1) ) .or. &
+                isnan( qliqtend(i,k) ) ) then
                write(iulog,*) 'problem in conv_jp', i, k
                write(iulog,*) 'ptend_loc%s(i,k)'
                write(iulog,'(5f15.10)') ptend_loc%s(i,:)
@@ -345,6 +346,8 @@ subroutine conv_intr_jp_tend( &
                write(iulog,'(5f15.10)') stend(i,:)
                write(iulog,*) 'qtend(i,k)'
                write(iulog,'(5f15.10)') qtend(i,:)
+               write(iulog,*) 'qliqtend(i,k)'
+               write(iulog,'(5f15.10)') qliqtend(i,:)
 
                exit
            end if
