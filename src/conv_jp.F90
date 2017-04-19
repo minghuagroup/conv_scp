@@ -98,19 +98,23 @@ module conv_jp
     integer, parameter :: mseqiflag = 1  ! 1: use Qi; 0: Qi=0
     integer, parameter :: entratemidflag = 1  ! 1: averaged; 2: recalculated with B and w
     integer, parameter :: bsflag = 0  ! 0: no buoy sort 1: buoy sort
-    integer, parameter :: mflxmeanflag = 1  ! 0: averaged; 1: with log weighted
-    integer, parameter :: negcondflag = 1 ! 0: exit when c<0; 1: recalculate qv,T when c<0
+    integer, parameter :: mflxmeanflag = 0 ! 0: averaged; 1: with log weighted
+    integer, parameter :: negcondflag  = 0 ! 0: exit when c<0; 1: recalculate qv,T when c<0
 
 ! updraft lifting formula parameters
     real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default 
 
-    integer,  parameter :: nplume_sh = 0  ! cntr
-    integer,  parameter :: nplume_dp = 15  ! cntr
-    !integer,  parameter :: nplume_sh = 15  ! cntr
-    !integer,  parameter :: nplume_dp = 0   ! cntr
+    !integer,  parameter :: nplume_sh = 0  ! cntr
+    !integer,  parameter :: nplume_dp = 15  ! cntr
+    integer,  parameter :: nplume_sh = 15  ! cntr
+    integer,  parameter :: nplume_dp = 0   ! cntr
     !integer,  parameter :: nplume_sh = 6
     !integer,  parameter :: nplume_dp = 9
 
+
+!--------------------------------------------------------------
+!shallow parameters
+!--------------------------------------------------------------
     real(r8), parameter :: greg_z0_sh    = 1.e4_r8 !cntr deep
 
     !real(r8), parameter :: greg_ent_a_sh_beg = 0.3_r8
@@ -126,19 +130,34 @@ module conv_jp
     real(r8), parameter :: greg_ce_sh_end    = 0.8_r8
     real(r8), parameter :: w_up_init_sh_beg = 0.1
     real(r8), parameter :: w_up_init_sh_end = 1.2
+
+!haiyang
+    !real(r8), parameter :: greg_ent_a_sh_beg = 0.15_r8
+    !real(r8), parameter :: greg_ent_a_sh_end = 0.15_r8
+    !real(r8), parameter :: greg_ce_sh_beg    = 0.8_r8
+    !real(r8), parameter :: greg_ce_sh_end    = 0.8_r8
     !real(r8), parameter :: w_up_init_sh_beg = 0.5
     !real(r8), parameter :: w_up_init_sh_end = 0.5
 
 
+
+!--------------------------------------------------------------
+!deep parameters
+!--------------------------------------------------------------
     real(r8), parameter :: greg_z0_dp    = 1.e4_r8 !cntr deep
 
-!deep parameters
     real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
     real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
     real(r8), parameter :: greg_ce_dp_beg    = 0.5_r8  !cntr
     real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  !cntr
     real(r8), parameter :: w_up_init_dp_beg  = 0.2     !cntr
     real(r8), parameter :: w_up_init_dp_end  = 4.      !cntr
+
+!haiyang
+    !real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
+    !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
+    !real(r8), parameter :: greg_ce_dp_beg    = 0.5_r8  !cntr
+    !real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  !cntr
     !real(r8), parameter :: w_up_init_dp_beg  = 1.0     !cntr
     !real(r8), parameter :: w_up_init_dp_end  = 1.0      !cntr
 
