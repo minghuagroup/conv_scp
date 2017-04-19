@@ -97,7 +97,7 @@ module conv_jp
     integer, parameter :: mse2tsatflag = 1  ! 1: Taylor; 2: bi-section
     integer, parameter :: mseqiflag = 1  ! 1: use Qi; 0: Qi=0
     integer, parameter :: entratemidflag = 1  ! 1: averaged; 2: recalculated with B and w
-    integer, parameter :: bsflag = 1  ! 0: no buoy sort 1: buoy sort
+    integer, parameter :: bsflag = 0  ! 0: no buoy sort 1: buoy sort
     
 ! updraft lifting formula parameters
     real(r8), parameter :: max_ent_rate = 4.e-3_r8 !paper default 
@@ -128,12 +128,29 @@ module conv_jp
 
     real(r8), parameter :: greg_z0_dp    = 1.e4_r8 !cntr deep
 
+!deep parameters
+    !real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
+    !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
+    !real(r8), parameter :: greg_ce_dp_beg    = 0.5_r8  !cntr
+    !real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  !cntr
+    !real(r8), parameter :: w_up_init_dp_beg  = 0.2     !cntr
+    !real(r8), parameter :: w_up_init_dp_end  = 4.      !cntr
+
+!same as sh
+    !real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8
+    !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8
+    !real(r8), parameter :: greg_ce_dp_beg    = 0.8_r8
+    !real(r8), parameter :: greg_ce_dp_end    = 0.8_r8
+    !real(r8), parameter :: w_up_init_dp_beg  = 0.1
+    !real(r8), parameter :: w_up_init_dp_end  = 1.2
+
+!paper
     real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8 !cntr
     real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 !cntr
-    real(r8), parameter :: greg_ce_dp_beg    = 0.5_r8  !cntr
-    real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  !cntr
-    real(r8), parameter :: w_up_init_dp_beg  = 0.2     !cntr
-    real(r8), parameter :: w_up_init_dp_end  = 4.      !cntr
+    real(r8), parameter :: greg_ce_dp_beg    = 0.6_r8
+    real(r8), parameter :: greg_ce_dp_end    = 0.6_r8
+    real(r8), parameter :: w_up_init_dp_beg  = 0.1     !cntr
+    real(r8), parameter :: w_up_init_dp_end  = 1.4     !cntr
 
     !real(r8), parameter :: greg_ent_a_dp_beg = 0.15_r8
     !real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8
@@ -193,7 +210,9 @@ module conv_jp
 !    real(r8), parameter :: pmf_alpha =2000.e7_r8, pmf_tau=20000.e3_r8
 !    real(r8), parameter :: pmf_alpha =1000.e7_r8, pmf_tau=200.e3_r8
 
+!    real(r8), parameter :: pmf_alpha_dp = 5.e7_r8, pmf_tau_dp = 1.e3_r8 ! paper
     real(r8), parameter :: pmf_alpha_dp = 4000.e7_r8 , pmf_tau_dp = 800.e3_r8 ! cntr deep
+!    real(r8), parameter :: pmf_alpha_dp = 50000.e7_r8, pmf_tau_dp = 20000.e3_r8
     real(r8), parameter :: pmf_alpha_sh = 50000.e7_r8, pmf_tau_sh = 20000.e3_r8
     real(r8) :: pmf_alpha = 4000.e7_r8, pmf_tau = 800.e3_r8 ! cntr deep
 
@@ -423,6 +442,8 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev)  :: ent_rate_sh_up ! [1] solved PARCEL fractional entrainment rates
     real(r8), dimension(inncol, nlev)  :: det_rate_sh_up ! [1] solved PARCEL fractional entrainment rates
     real(r8), dimension(inncol, nlev)  :: bs_xc
+
+    real(r8), dimension(inncol, nlev)  :: convdepth_p
 
     real(r8), dimension(inncol, nlev) :: ent_fc ! [1] an entrainment rate modifier
 
@@ -737,6 +758,8 @@ subroutine conv_jp_tend( &
     mseint = dseint + lvint*qint
     msesatint = dseint + lvint*qsatint
 
+    convdepth_p = 0.
+
 
 !------------------------------------------------------
 !Different methods to calculate entrainment rate
@@ -860,8 +883,6 @@ subroutine conv_jp_tend( &
 #endif
 
 
-
-
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
                 mse_up(i, 1:kupbase(i)-1) = mseint(i, 1:kupbase(i)-1)
@@ -883,6 +904,12 @@ subroutine conv_jp_tend( &
                 mse_up, t_up, q_up, qliq_up, qice_up, mseqi, condrate, rainrate, snowrate, precrate, &
                 normassflx_up_tmp, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
                 trigdp)
+
+            do i=1, inncol
+                if ( trigdp(i)<1 ) cycle
+                convdepth_p( i, j) = zuptop(i)-zint(i,nlevp)
+            end do
+
 
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
@@ -1796,7 +1823,9 @@ subroutine conv_jp_tend( &
 
     outmb = massflxbasesum
 
-    outtmp2d = qcheckout
+!    outtmp2d = qcheckout
+    outtmp2d = zsrf
+!    outtmp2d = zint(:,nlevp)
 !    outtmp2d = bg_qtendsum
 !    outtmp2d = lat_coef
 !    outtmp2d = capeclm
@@ -1812,6 +1841,8 @@ subroutine conv_jp_tend( &
 
 !    outtmp3d = t
 !    outtmp3d = massflxbase_p
+    outtmp3d = convdepth_p
+!    outtmp3d = zint(:,2:nlevp)
 
     outmse = mse
     outmsesat= msesat
@@ -1845,7 +1876,8 @@ subroutine conv_jp_tend( &
     write(*,"(a20,f20.10)") "capefc:", capefc
     write(*,"(a20,f20.10)") "capeclm:", capeclm
     write(*,"(a20,f20.10)") "mconv:", mconv
-    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume)
+    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume_tot)
+    write(*,"(a20,50f20.10)") "convdepth_p:", convdepth_p(1,1:nplume_tot)
     write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape
     write(*,"(a20,f20.10)") "massflxbase_dcape:", massflxbase_dcape
     write(*,"(a20,f20.10)") "massflxbase_clm:", massflxbase_clm
@@ -2186,6 +2218,18 @@ subroutine cal_mse_up( &
 
 ! ------------------------
 ! cloud base diagram
+! ------------------------
+!
+!        ----------       
+!
+! ------------------------  B<0
+!
+!        ----------       
+!
+! ------------------------  kuptop
+!
+!            ...          
+!
 ! ------------------------  kupbase-1
 !
 !        ----------         kupbase-1
@@ -2478,7 +2522,13 @@ subroutine cal_mse_up( &
             end if
 
             if ( condrate(i,k)<0 ) then
-                condrate(i,k) = 0
+                condrate(i,k) = 0.
+                frezrate(i,k) = 0.
+                rainrate(i,k) = 0.
+                snowrate(i,k) = 0.
+                precrate(i,k) = 0.
+                qliq_up(i,k) =  0.
+                qice_up(i,k) =  0.
                 exit
             end if
 
@@ -2507,6 +2557,10 @@ subroutine cal_mse_up( &
             ent_rate_dp_up_int(i,kupbase(i) ) = 0._r8
 
             kuptop(i) = k+1
+            if ( kuptop(i) /= nlev ) then
+                zuptop(i) = zint( i, kuptop(i) )
+!                zuptop(i) = zint( i, nlevp )
+            end if
 
 !not penetrating more than one level
             if ( k == kupbase(i)-1 ) then
@@ -2536,6 +2590,10 @@ subroutine cal_mse_up( &
             ent_rate_dp_up_int(i,kupbase(i) ) = 0._r8
 
             kuptop(i) = 2
+            if ( kuptop(i) /= nlev ) then
+                zuptop(i) = zint( i, kuptop(i) )
+!                zuptop(i) = zint( i, nlevp )
+            end if
 
         end if
 
