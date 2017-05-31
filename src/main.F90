@@ -46,7 +46,11 @@ program test
 
 !output fields
     real(r8), dimension(:,:,:), allocatable :: stend, qtend, qliqtend, qicetend
+    real(r8), dimension(:,:,:), allocatable :: mcon
+    real(r8), dimension(:,:,:), allocatable :: h2otend_det
+    real(r8), dimension(:,:), allocatable   :: rliq
     real(r8), dimension(:,:), allocatable   :: precc
+    real(r8), dimension(:,:), allocatable   :: snow
     real(r8), dimension(:,:,:), allocatable :: qliq, qice
     real(r8), dimension(:,:,:), allocatable :: rainrate, snowrate, precrate
     real(r8), dimension(:,:,:), allocatable :: compstend, compqtend
@@ -219,6 +223,8 @@ program test
 
     call subcol_netcdf_addfld( "diffdse_up", "J/kg", "mlevp")
     call subcol_netcdf_addfld( "diffq_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "diffdse_dn", "J/kg", "mlevp")
+    call subcol_netcdf_addfld( "diffq_dn", "kg/kg", "mlevp")
     call subcol_netcdf_addfld( "qcheck", "kg/kg", "slev")
 
     call subcol_netcdf_addfld( "w_up_mid", "m/s", "mlev")
@@ -237,6 +243,7 @@ program test
     call subcol_netcdf_addfld( "w_up_init", "m/s", "slev")
     call subcol_netcdf_addfld( "w_up", "m/s", "mlevp")
     call subcol_netcdf_addfld( "buoy", "m/s2", "mlevp")
+    call subcol_netcdf_addfld( "radius_up", "m/s2", "mlevp")
     call subcol_netcdf_addfld( "dse_up", "J/kg", "mlevp")
     call subcol_netcdf_addfld( "mse_up", "m/s", "mlevp")
     call subcol_netcdf_addfld( "t_up", "kg/kg", "mlevp")
@@ -273,6 +280,7 @@ program test
     call subcol_netcdf_addfld( "stendsum",    "K/s",  "mlev")
     call subcol_netcdf_addfld( "qtendsum",    "K/s",  "mlev")
     call subcol_netcdf_addfld( "qliqtendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "qicetendsum",    "K/s",  "mlev")
     call subcol_netcdf_addfld( "precsum",     "1",  "slev")
     call subcol_netcdf_addfld( "massflxsum",  "1",  "mlevp")
     call subcol_netcdf_addfld( "massflx",  "1",  "mlevp")
@@ -384,6 +392,10 @@ program test
        !psrf = 0._r8
        !zsrf = 0._r8
 
+#ifdef SCMDIAG
+        call subcol_netcdf_nextstep
+#endif
+
         do j = 1, nlat
             call conv_jp_tend( nlon &
                 ,2, dtime, qmin &
@@ -395,8 +407,9 @@ program test
 !
                 ,massflxbase(:,j,:) &
                 ,jctop(:,j), jcbot(:,j) &
-                ,stend(:,j,:), qtend(:,j,:), qliqtend &
-                ,precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
+                ,stend(:,j,:), qtend(:,j,:) &
+                ,qliqtend(:,j,:), precc(:,j), qliq(:,j,:), rainrate(:,j,:) &
+                ,mcon(:,j,:) &
 !
 !              ,massflxbase(:,j) &
 !              ,stend(:,j,:), qtend(:,j,:), qliqtend, qicetend &
@@ -578,7 +591,13 @@ program test
         allocate( qtend(innlon, innlat, innlev) )
         allocate( qliqtend(innlon, innlat, innlev) )
         allocate( qicetend(innlon, innlat, innlev) )
+
+        allocate( mcon(innlon, innlat, innlev+1) )
+        allocate( h2otend_det(innlon, innlat, innlev) )
+        allocate( rliq(innlon, innlat) )
+
         allocate( precc(innlon, innlat) )
+        allocate( snow(innlon, innlat) )
         allocate( qliq(innlon, innlat, innlev) )
         allocate( qice(innlon, innlat, innlev) )
         allocate( rainrate(innlon, innlat, innlev) )

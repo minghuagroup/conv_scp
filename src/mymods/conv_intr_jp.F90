@@ -111,7 +111,7 @@ end subroutine conv_intr_jp_init
 !------------------------------------------------------
 subroutine conv_intr_jp_tend( &
         ztodt, landfrac, lhflx, state &
-       ,ptend_all, pbuf, dlf)
+       ,ptend_all, pbuf, dlf, mcon, precrate_out)
 
     use physics_buffer, only : pbuf_get_field, physics_buffer_desc, pbuf_old_tim_idx
     use constituents,  only: pcnst
@@ -127,6 +127,9 @@ subroutine conv_intr_jp_tend( &
    type(physics_ptend), intent(out)   :: ptend_all      ! individual parameterization tendencies
    type(physics_buffer_desc), pointer :: pbuf(:)
    real(r8), intent(out) :: dlf(pcols,pver)
+   real(r8), intent(out) :: mcon(pcols,pverp)
+!xiex
+   real(r8), intent(out) :: precrate_out(pcols,pver)
 
 !local
    integer  :: ncol, lchnk
@@ -174,6 +177,7 @@ subroutine conv_intr_jp_tend( &
 
 !for diagnostics
    real(r8) :: qliqtend(pcols,pver)     ! liquid water tendency
+   real(r8) :: precrate(pcols,pver)     ! liquid water tendency
 
    real(r8) :: stendcomp(pcols,pver)    ! s tend but calculated from compensation
    real(r8) :: qtendcomp(pcols,pver)    ! q tend but calculated from compensation
@@ -284,7 +288,8 @@ subroutine conv_intr_jp_tend( &
        jctop(:ncol), jcbot(:ncol), &
        stend(:ncol,:), qtend(:ncol,:), &
        qliqtend(:ncol,:), &
-       prec(:ncol), ql(:ncol,:), rprd(:ncol,:), &
+       prec(:ncol), ql(:ncol,:), precrate(:ncol,:), &
+       mcon(:ncol,:), &
        stendcomp(:ncol,:), qtendcomp(:ncol,:), &
        dilucape(:ncol,:), bfls_dilucape(:ncol), &
 !diagnostics
@@ -335,8 +340,7 @@ subroutine conv_intr_jp_tend( &
    do i = 1, ncol
        do k = 1, pver
            if ( isnan( ptend_loc%s(i,k) ) .or. &
-                isnan( ptend_loc%q(i,k,1) ) .or. &
-                isnan( qliqtend(i,k) ) ) then
+                isnan( ptend_loc%q(i,k,1) ) ) then
                write(iulog,*) 'problem in conv_jp', i, k
                write(iulog,*) 'ptend_loc%s(i,k)'
                write(iulog,'(5f15.10)') ptend_loc%s(i,:)
@@ -346,8 +350,6 @@ subroutine conv_intr_jp_tend( &
                write(iulog,'(5f15.10)') stend(i,:)
                write(iulog,*) 'qtend(i,k)'
                write(iulog,'(5f15.10)') qtend(i,:)
-               write(iulog,*) 'qliqtend(i,k)'
-               write(iulog,'(5f15.10)') qliqtend(i,:)
 
                exit
            end if
@@ -361,7 +363,10 @@ subroutine conv_intr_jp_tend( &
 !   dlf(:ncol,1:pver)  = 0._r8
    dlf(:ncol,1:pver)  = qliqtend(:ncol,1:pver)
    ql(:ncol,1:pver)   = 0._r8
+!   rprd(:ncol,1:pver) = precrate(:ncol,1:pver)
    rprd(:ncol,1:pver) = 0._r8
+
+   precrate_out = precrate
 
    do i = 1, ncol
        do k = 1, pver

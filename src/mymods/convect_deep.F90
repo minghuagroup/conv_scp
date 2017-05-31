@@ -172,6 +172,14 @@ subroutine convect_deep_init(pref_edge)
 !xiex
   call addfld ('MBCONVDP_P', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
   call addfld ('MBCONVDP'  , 'K/s',          1, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('DLF', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('DLFSUM' , 'K/s',            1, 'I', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('RLIQ'   , 'K/s',            1, 'I', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('MFCONVDP', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('MFCONVDPSUM', 'K/s',       1, 'A', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('PRECRATESUM' , 'K/s',            1, 'I', 'T tendency - zm cond tendt',phys_decomp)
+  call addfld ('QTENDSUM' , 'K/s',            1, 'I', 'T tendency - zm cond tendt',phys_decomp)
+
 
   call addfld ('STENDCONVDP', 'K/s',       pver, 'A', 'T tendency - zm cond tendt',phys_decomp)
   call addfld ('QTENDCONVDP', 'kg/kg/s',   pver, 'A', 'Q tendency - zm cond tendq',phys_decomp)
@@ -269,6 +277,14 @@ subroutine convect_deep_tend( &
    real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
 !xiex
    logical :: flag
+   integer :: ncol, lchnk
+   real(r8) :: dlfsum(pcols)
+   real(r8) :: mconsum(pcols)
+   real(r8) :: rho(pcols,pver)    ! detraining mass flux
+   real(r8) :: dz(pcols,pver)    ! detraining mass flux
+   real(r8) :: precrate(pcols,pver)    ! detraining mass flux
+   real(r8) :: precratesum(pcols)
+   real(r8) :: qtendsum(pcols)
 
    real(r8),pointer :: bfls_t(:,:)           ! temp state right after conv
    real(r8),pointer :: bfls_q(:,:)           ! state right after conv
@@ -377,9 +393,10 @@ subroutine convect_deep_tend( &
           rliq    , &
           ztodt   , &
           jctop, jcbot , &
-          state   ,ptend   ,landfrac, pbuf)
+          state   ,ptend   ,landfrac, pbuf, precrate)
 !xiex
   case('SCP') !    2 ==> SCP
+
       zero = 0     
       mcon = 0
       cme  = 0
@@ -390,7 +407,8 @@ subroutine convect_deep_tend( &
 
       call conv_intr_jp_tend( &
           ztodt, landfrac, lhflx, state &
-         ,ptend, pbuf, dlf)
+         ,ptend, pbuf, dlf, mcon, precrate)
+
   end select
 
 !xiex
@@ -398,6 +416,35 @@ subroutine convect_deep_tend( &
       call outfld('STENDCONVDP', ptend%s          ,pcols   , state%lchnk   )
       call outfld('QTENDCONVDP', ptend%q(:,:,1)   ,pcols   , state%lchnk   )
   end if
+
+  ncol = state%ncol
+  lchnk = state%lchnk
+  do k=1,pver
+      dz(:ncol,k) = state%zi(:ncol,k) - state%zi(:ncol,k+1)
+  end do
+  rho(:ncol,:) = state%pmid(:ncol,:)/state%t(:ncol,:)/287.0423
+  dlfsum = 0.
+  mconsum = 0.
+  precratesum = 0.
+  qtendsum = 0.
+  do k=1,pver
+      dlfsum(:ncol)  = dlfsum(:ncol) + dlf(:ncol,k)*rho(:ncol,k)*dz(:ncol,k)
+      mconsum(:ncol)  = mconsum(:ncol) + mcon(:ncol,k)*rho(:ncol,k)*dz(:ncol,k)
+      precratesum(:ncol)  = precratesum(:ncol) + precrate(:ncol,k)*rho(:ncol,k)*dz(:ncol,k)
+      qtendsum(:ncol)  = qtendsum(:ncol) + ptend%q(:ncol,k,1)*rho(:ncol,k)*dz(:ncol,k)
+  end do
+  call outfld('DLF', dlf, pcols, lchnk)      ! RBN - CAPE output
+  call outfld('DLFSUM', dlfsum, pcols, lchnk)      ! RBN - CAPE output
+  call outfld('RLIQ',   rliq, pcols, lchnk)        ! RBN - CAPE output
+  call outfld('MFCONVDP',   mcon(:,:pver), pcols, lchnk)        ! RBN - CAPE output
+  call outfld('MFCONVDPSUM',   mconsum, pcols, lchnk)        ! RBN - CAPE output
+  call outfld('PRECRATESUM', precratesum, pcols, lchnk)      ! RBN - CAPE output
+  call outfld('QTENDSUM', qtendsum, pcols, lchnk)      ! RBN - CAPE output
+
+  if( deep_scheme == 'SCP' ) then
+!      mcon = 0.
+  end if
+
 
   if (do_waccm_phys()) then
      call pbuf_get_field(pbuf, zmdt_idx, zmdt)
