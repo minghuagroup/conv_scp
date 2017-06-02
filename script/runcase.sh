@@ -12,5 +12,5 @@ cp ../mymods/* ./mymods-$NAME
 #make
 #cd $PWD
 
-echo $NAME && mpirun -np 128 -H $2 -bynode ../cesm > runlog 2>&1 &
+echo $NAME && mpirun -np 128 -H $2 ../cesm > runlog 2>&1 &
 
