@@ -88,6 +88,8 @@ module physics_types
 !xiex
           var1,    &! q1
           var2,    &! q2
+          newvar1,    &! new variables for high vertical resolution
+          newvar2,    &! new variables for high vertical resolution
 
           prevt,   &! previous t
           prevq,   &! previous q
@@ -541,6 +543,10 @@ contains
          varname="state%var1",         msg=msg)
     call shr_assert_in_domain(state%var2(:ncol,:),         is_nan=.false., &
          varname="state%var2",         msg=msg)
+    call shr_assert_in_domain(state%newvar1(:ncol,:),         is_nan=.false., &
+         varname="state%newvar1",         msg=msg)
+    call shr_assert_in_domain(state%newvar2(:ncol,:),         is_nan=.false., &
+         varname="state%newvar2",         msg=msg)
 
     call shr_assert_in_domain(state%s(:ncol,:),         is_nan=.false., &
          varname="state%s",         msg=msg)
@@ -638,6 +644,10 @@ contains
          varname="state%var1",         msg=msg)
     call shr_assert_in_domain(state%var2(:ncol,:),         lt=posinf_r8, gt=neginf_r8, &
          varname="state%var2",         msg=msg)
+    call shr_assert_in_domain(state%newvar1(:ncol,:),         lt=posinf_r8, gt=neginf_r8, &
+         varname="state%newvar1",         msg=msg)
+    call shr_assert_in_domain(state%newvar2(:ncol,:),         lt=posinf_r8, gt=neginf_r8, &
+         varname="state%newvar2",         msg=msg)
 
     call shr_assert_in_domain(state%s(:ncol,:),         lt=posinf_r8, gt=neginf_r8, &
          varname="state%s",         msg=msg)
@@ -1520,7 +1530,11 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%var1')
   allocate(state%var2(psetcols,pver), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%var2')
-  
+  allocate(state%newvar1(psetcols,pver), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%newvar1')
+  allocate(state%newvar2(psetcols,pver), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%newvar2')
+
   allocate(state%s(psetcols,pver), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%s')
   
@@ -1614,6 +1628,8 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
 !xiex
   state%var1(:,:) = inf
   state%var2(:,:) = inf
+  state%newvar1(:,:) = inf
+  state%newvar2(:,:) = inf
   state%s(:,:) = inf
   state%omega(:,:) = inf
   state%pmid(:,:) = inf

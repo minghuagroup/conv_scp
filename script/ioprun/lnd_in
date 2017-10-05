@@ -1,0 +1,14 @@
+&clm_inparm
+ co2_ppmv		= 3.670000e+02
+ co2_type		= 'diagnostic'
+ dtime		= 1200
+ fatmlndfrc		= '/R3/cesm/inputdata/share/domains/domain.clm/domain.lnd.T42_USGS.111004.nc'
+ fpftcon		= '/R3/cesm/inputdata/lnd/clm2/pftdata/pft-physiology.clm40.c130424.nc'
+ fsnowaging		= '/R3/cesm/inputdata/lnd/clm2/snicardata/snicar_drdt_bst_fit_60_c070416.nc'
+ fsnowoptics		= '/R3/cesm/inputdata/lnd/clm2/snicardata/snicar_optics_5bnd_c090915.nc'
+ fsurdat		= '/R3/cesm/inputdata/lnd/clm2/surfdata/surfdata_64x128_simyr2000_c090928.nc'
+ urban_hac		= 'ON_WASTEHEAT'
+ urban_traffic		= .false.
+/
+&clm_rtm_inparm
+/

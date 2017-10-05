@@ -16,7 +16,7 @@ xsubcol = range(nsubcol)
 
 ymax = 18
 
-plt.figure( figsize=(22,12) )
+plt.figure( figsize=(20,10) )
 
 cm_subsection = np.linspace(0., 1., nsubcol)
 cm = aplt.read_cmap( 'ncl_default' )
@@ -43,11 +43,12 @@ for itime in range(ntime):
     mseint = fcmse*f.variables['mseint'][itime,::-1,0]
 
     ent_rate = 1000*f.variables['ent_rate'][itime,::-1,:]
-    ent_rate_sh = 1000*f.variables['ent_rate_sh'][itime,::-1,:]
-    det_rate_sh = 1000*f.variables['det_rate_sh'][itime,::-1,:]
+    ent_rate_tbl = 1000*f.variables['ent_rate_sh'][itime,::-1,:]
+    det_rate_tbl = 1000*f.variables['det_rate_sh'][itime,::-1,:]
     bs_xc = f.variables['bs_xc'][itime,::-1,:]
     w_up = f.variables['w_up'][itime,::-1,:]
     buoy = f.variables['buoy_mid'][itime,::-1,:]*100
+    radius_up = f.variables['radius_up'][itime,::-1,:]
 
     t = f.variables['t'][itime,::-1,0]
     q = f.variables['q'][itime,::-1,0]
@@ -60,6 +61,8 @@ for itime in range(ntime):
 
     diffdse_up = 0.01*f.variables['diffdse_up'][itime,::-1,:]
     diffq_up = 1000.*f.variables['diffq_up'][itime,::-1,:]
+    diffdse_dn = 0.01*f.variables['diffdse_dn'][itime,::-1,:]
+    diffq_dn = 1000.*f.variables['diffq_dn'][itime,::-1,:]
 
     normassflx = f.variables['normassflx_up'][itime,::-1,:]
     normassflx_mid = f.variables['normassflx_up_mid'][itime,::-1,0]
@@ -94,6 +97,8 @@ for itime in range(ntime):
     qtendtrandn = qcheck*lat/cp*fc*f.variables['qtendtrandn'][itime,::-1,:]
     qtendsum  = qcheck*lat/cp*fc*f.variables['qtendsum'][itime,::-1,0]
 
+    qliqtendsum  = qcheck*lat/cp*fc*f.variables['qliqtendsum'][itime,::-1,0]
+
     qliqtend_det = qcheck*lat/cp*fc*f.variables['qliqtenddet'][itime,::-1,:]
 
     #ttendevap     = fc/cp*f.variables['stendevap'][itime,::-1,0]
@@ -117,6 +122,7 @@ for itime in range(ntime):
 
     trigdp = f.variables['trigdp'][itime,0]
 
+    print( f.variables['kuplcl'][:] )
     kuplcl    = nlev - int( f.variables['kuplcl'][itime,0]-1 )
     kuplaunch = nlev - int( f.variables['kuplaunch'][itime,0]-1 )
 
@@ -144,7 +150,7 @@ for itime in range(ntime):
     plt.plot( msesat, z, 'k.:')
     plt.plot( mseint, zint, 'kx-')
     plt.xlabel("MSE (10^3J/kg)")
-    plt.ylabel("Z")
+    plt.ylabel("Z (km)")
     plt.legend( loc=2 )
     plt.xlim(330, 365)
 
@@ -160,7 +166,7 @@ for itime in range(ntime):
         levind = (ent_rate_tmp > 0)
         plt.plot( ent_rate_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
     plt.xlabel("entrainment (10^-3)")
-    plt.ylabel("Z")
+    plt.ylabel("Z (km)")
     plt.xlim(0, 4)
 
 
@@ -176,6 +182,7 @@ for itime in range(ntime):
         plt.plot( w_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
     plt.xlabel("w(ms-1)")
     plt.xlim(-1, 18)
+    plt.ylabel("Z (km)")
 
 
 
@@ -191,6 +198,7 @@ for itime in range(ntime):
         plt.plot( buoy_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
     plt.xlabel("B 10^-2 ms-2")
     plt.xlim(-1, 6)
+    plt.ylabel("Z (km)")
 
 
     plt.subplot(2,5,5)
@@ -213,6 +221,7 @@ for itime in range(ntime):
     plt.plot( massflxsum, zint, 'b-' , lw=2)
     plt.xlabel("massflux")
     #plt.xlim(-1, 6)
+    plt.ylabel("Z (km)")
 
 
     plt.subplot(2,5,6)
@@ -248,25 +257,41 @@ for itime in range(ntime):
     #plt.xlim(290, 360)
 
     #plt.axvline(x=0, color='grey')
+    ##for i in range(nsubcol):
+        ##diffq_up_tmp = diffq_up[:,i]
+        ##plt.plot( diffq_up_tmp, zint, 'x--', color=colors[i], ms=3.5, mew=1)
+    ##plt.xlabel("diff Q e3")
     #for i in range(nsubcol):
-        #diffq_up_tmp = diffq_up[:,i]
-        #plt.plot( diffq_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
-    #plt.xlabel("diff Q e3")
-    #plt.xlim(-10, 10)
+        #diffq_dn_tmp = diffq_dn[:,i]
+        #plt.plot( diffq_dn_tmp, zint, 'x--', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("diff Q dn e3")
+    ##plt.xlim(-10, 10)
 
     #plt.axvline(x=0, color='grey')
+    ##for i in range(nsubcol):
+        ##diffdse_up_tmp = diffdse_up[:,i]
+        ##plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
     #for i in range(nsubcol):
-        #diffdse_up_tmp = diffdse_up[:,i]
-        #plt.plot( diffdse_up_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
+        #diffdse_dn_tmp = diffdse_dn[:,i]
+        #plt.plot( diffdse_dn_tmp, zint, 'x-', color=colors[i], ms=3.5, mew=1)
     #plt.xlabel("diff DSE e3")
 
+    #for i in range(nsubcol):
+        #ent_rate_tmp = ent_rate_tbl[:,i]
+        #levind = (ent_rate_tmp > 0)
+        #plt.plot( ent_rate_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("entrainment (10^-3)")
+    #plt.ylabel("Z (km)")
+    #plt.xlim(0, 4)
+
+    plt.axvline(x=0, color='grey')
     for i in range(nsubcol):
-        ent_rate_tmp = ent_rate_sh[:,i]
-        levind = (ent_rate_tmp > 0)
-        plt.plot( ent_rate_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("entrainment (10^-3)")
-    plt.ylabel("Z")
-    plt.xlim(0, 4)
+        radius_up_tmp = radius_up[:,i]
+        levind = (radius_up_tmp > 0)
+        plt.plot( radius_up_tmp[levind], zint[levind], 'x-', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("radius")
+    #plt.xlim(-1, 18)
+
 
 
     plt.subplot(2,5,7)
@@ -274,24 +299,29 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    #plt.axvline(x=0, color='grey')
-    #for i in range(nsubcol):
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
         #ttendtran_tmp = ttendtran[:,i]
         #qtendtran_tmp = qtendtran[:,i]
         #plt.plot( ttendtran_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
         #plt.plot( qtendtran_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    ##plt.plot( ttendtrandn, z, 'k.-')
-    ##plt.plot( qtendtrandn, z, 'g.-')
-    #plt.xlabel("T/Q TRANS K/day")
+        ttendtrandn_tmp = ttendtrandn[:,i]
+        qtendtrandn_tmp = qtendtrandn[:,i]
+        plt.plot( ttendtrandn_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
+        plt.plot( qtendtrandn_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+    #plt.plot( ttendtrandn, z, 'k.-')
+    #plt.plot( qtendtrandn, z, 'g.-')
+    plt.xlabel("T/Q TRANS K/day")
     #plt.xlim(-20, 20)
+    plt.ylabel("Z (km)")
 
-    for i in range(nsubcol):
-        det_rate_tmp = det_rate_sh[:,i]
-        levind = (det_rate_tmp > 0)
-        plt.plot( det_rate_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("detrainment (10^-3)")
-    plt.ylabel("Z")
-    plt.xlim(0, 4)
+    #for i in range(nsubcol):
+        #det_rate_tmp = det_rate_tbl[:,i]
+        #levind = (det_rate_tmp > 0)
+        #plt.plot( det_rate_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("detrainment (10^-3)")
+    #plt.ylabel("Z (km)")
+    #plt.xlim(0, 4)
 
 
     plt.subplot(2,5,8)
@@ -299,27 +329,28 @@ for itime in range(ntime):
     plt.axhline(y=zint[kuplcl], lw=1, color='b')
     plt.ylim(0, ymax)
 
-    #plt.axvline(x=0, color='grey')
-    #for i in range(nsubcol):
-        #ttendcond_tmp = ttendcond[:,i]
-        #qtendcond_tmp = qtendcond[:,i]
-        #plt.plot( ttendcond_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
-        #plt.plot( qtendcond_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
-    #plt.xlabel("COND tend K/day")
+    plt.axvline(x=0, color='grey')
+    for i in range(nsubcol):
+        ttendcond_tmp = ttendcond[:,i]
+        qtendcond_tmp = qtendcond[:,i]
+        plt.plot( ttendcond_tmp, z, '.-', color=colors[i], ms=3.5, mew=1)
+        plt.plot( qtendcond_tmp, z, '.--', color=colors[i], ms=3.5, mew=1)
+    plt.xlabel("COND tend K/day")
     #plt.xlim(-20, 20)
+    plt.ylabel("Z (km)")
 
     #plt.axvline(x=0, color='grey')
     #plt.plot( qliqtend_det, z, 'k.-')
+    #plt.plot( qliqtendsum, z, 'b.-', lw=2)
     #plt.xlabel("QLIQTEND_DET tend K/day")
-    ##plt.xlim(-20, 20)
 
-    for i in range(nsubcol):
-        bs_xc_tmp = bs_xc[:,i]
-        levind = (bs_xc_tmp > 0)
-        plt.plot( bs_xc_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
-    plt.xlabel("Xc")
-    plt.ylabel("Z")
-    plt.xlim(0, 1)
+    #for i in range(nsubcol):
+        #bs_xc_tmp = bs_xc[:,i]
+        #levind = (bs_xc_tmp > 0)
+        #plt.plot( bs_xc_tmp[levind], z[levind], '.-', color=colors[i], ms=3.5, mew=1)
+    #plt.xlabel("Xc")
+    #plt.ylabel("Z (km)")
+    #plt.xlim(0, 1)
 
 
     plt.subplot(2,5,9)
@@ -337,6 +368,7 @@ for itime in range(ntime):
     plt.plot( qtendsum, z, 'b--', lw=2)
     plt.xlabel("total tend K/day")
     plt.xlim(-60, 60)
+    plt.ylabel("Z (km)")
 
 
     plt.subplot(2,5,10)
@@ -352,6 +384,7 @@ for itime in range(ntime):
     plt.plot( camttend, z, 'k.-' , ms=3.5, mew=1)
     plt.plot( camqtend, z, 'k.--', ms=3.5, mew=1)
     plt.xlim(-60, 60)
+    plt.ylabel("Z (km)")
 
     #plt.bar( xsubcol ,dilucape )
     #plt.ylabel('DILUCAPE')

@@ -275,7 +275,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      rliq    , &
      ztodt   , &
      jctop   ,jcbot , &
-     state   ,ptend_all   ,landfrac,  pbuf)
+     state   ,ptend_all   ,landfrac,  pbuf, precrate_out)
   
 
    use cam_history,   only: outfld
@@ -310,6 +310,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), intent(out) :: zdu(pcols,pver)    ! detraining mass flux
 
    real(r8), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
+   real(r8), intent(out) :: precrate_out(pcols,pver)    ! detraining mass flux
 
 
    ! Local variables
@@ -437,9 +438,12 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     lengath(lchnk) ,ql      ,rliq  ,landfrac   )
 
 !xiex
+   precrate_out = rprd
+
    !call outfld('TMP3D', outmu, pcols, lchnk)        ! RBN - CAPE output
    !call outfld('CONVDPSU', outsu, pcols, lchnk)        ! RBN - CAPE output
    !call outfld('CONVDPQU', outqu, pcols, lchnk)        ! RBN - CAPE output
+
 
    call outfld('STENDCONVDP', ptend_loc%s, pcols, lchnk)        ! RBN - CAPE output
    call outfld('QTENDCONVDP', ptend_loc%q(:,:,1), pcols, lchnk)        ! RBN - CAPE output

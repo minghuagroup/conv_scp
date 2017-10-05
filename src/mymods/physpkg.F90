@@ -675,6 +675,13 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use tropopause,         only: tropopause_init
     use solar_data,         only: solar_data_init
     use rad_solar_var,      only: rad_solar_var_init
+!xiex
+#ifdef SCMDIAG
+    use scmdiag, only: subcol_netcdf_init, subcol_netcdf_setdim
+    use scmdiag, only: subcol_netcdf_addfld
+    use scmdiag, only: subcol_netcdf_nextstep, subcol_netcdf_end
+    use scmdiag, only: subcol_netcdf_putclm
+#endif
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -803,6 +810,138 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call cldfrc_init
 
     call convect_deep_init(pref_edge)
+
+!xiex
+#ifdef SCMDIAG
+    call subcol_netcdf_setdim( 15, pver)
+    call subcol_netcdf_init( "scmdiag-output.nc" )
+    call subcol_netcdf_addfld( "dtime", "s", "slev")
+    call subcol_netcdf_addfld( "tbef", "K/s", "mlev")
+    call subcol_netcdf_addfld( "qbef", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "taft", "K/s", "mlev")
+    call subcol_netcdf_addfld( "qaft", "kg/kg/s", "mlev")
+
+    call subcol_netcdf_addfld( "mse", "J/kg", "mlev")
+    call subcol_netcdf_addfld( "msesat", "J/kg", "mlev")
+    call subcol_netcdf_addfld( "z", "m", "mlev")
+    call subcol_netcdf_addfld( "p", "Pa", "mlev")
+    call subcol_netcdf_addfld( "rho", "kg/kg", "mlev")
+
+    call subcol_netcdf_addfld( "mseint", "J/kg", "mlevp")
+    call subcol_netcdf_addfld( "msesatint", "J/kg", "mlevp")
+
+    call subcol_netcdf_addfld( "mse_closure", "J/kg", "mlev")
+
+    call subcol_netcdf_addfld( "t", "K", "mlev")
+    call subcol_netcdf_addfld( "q", "kg/kg", "mlev")
+    call subcol_netcdf_addfld( "qsat", "kg/kg", "mlev")
+
+    call subcol_netcdf_addfld( "dse", "J/kg", "mlev")
+
+    call subcol_netcdf_addfld( "ent_rate", "1", "mlev")
+    call subcol_netcdf_addfld( "det_rate", "1", "mlev")
+    call subcol_netcdf_addfld( "ent_rate_sh", "1", "mlev")
+    call subcol_netcdf_addfld( "det_rate_sh", "1", "mlev")
+    call subcol_netcdf_addfld( "bs_xc", "1", "mlev")
+    call subcol_netcdf_addfld( "buoy_closure", "m/s2", "mlev")
+
+    call subcol_netcdf_addfld( "diffdse_up", "J/kg", "mlevp")
+    call subcol_netcdf_addfld( "diffq_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "diffdse_dn", "J/kg", "mlevp")
+    call subcol_netcdf_addfld( "diffq_dn", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "qcheck", "kg/kg", "slev")
+
+    call subcol_netcdf_addfld( "w_up_mid", "m/s", "mlev")
+    call subcol_netcdf_addfld( "buoy_mid", "m/s2", "mlev")
+    call subcol_netcdf_addfld( "mse_up_mid", "m/s", "mlev")
+    call subcol_netcdf_addfld( "t_up_mid", "kg/kg", "mlev")
+    call subcol_netcdf_addfld( "q_up_mid", "kg/kg", "mlev")
+    call subcol_netcdf_addfld( "normassflx_up_mid", "1", "mlev")
+
+    call subcol_netcdf_addfld( "zint", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "pint", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "qint", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "qsatint", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "tint", "K", "mlevp")
+
+    call subcol_netcdf_addfld( "w_up_init", "m/s", "slev")
+    call subcol_netcdf_addfld( "w_up", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "buoy", "m/s2", "mlevp")
+    call subcol_netcdf_addfld( "radius_up", "m/s2", "mlevp")
+    call subcol_netcdf_addfld( "dse_up", "J/kg", "mlevp")
+    call subcol_netcdf_addfld( "mse_up", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "t_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "q_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "qliq_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "qice_up", "kg/kg", "mlevp")
+    call subcol_netcdf_addfld( "normassflx_up", "1", "mlevp")
+    call subcol_netcdf_addfld( "mse_up_plume", "J/kg", "mlevp")
+
+    call subcol_netcdf_addfld( "mse_dn", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "normassflx_dn", "1", "mlevp")
+
+    call subcol_netcdf_addfld( "camstend", "K/s", "mlev")
+    call subcol_netcdf_addfld( "camqtend", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "camstendcond", "K/s", "mlev")
+    call subcol_netcdf_addfld( "camqtendcond", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "camstendtranup", "K/s", "mlev")
+    call subcol_netcdf_addfld( "camqtendtranup", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "camstendtrandn", "K/s", "mlev")
+    call subcol_netcdf_addfld( "camqtendtrandn", "kg/kg/s", "mlev")
+
+    call subcol_netcdf_addfld( "stend",     "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtend",     "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendcond", "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtendcond", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendtranup", "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtendtranup", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendtrandn", "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtendtrandn", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "qliqtenddet", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "stendcomp", "K/s",     "mlev")
+    call subcol_netcdf_addfld( "qtendcomp", "kg/kg/s", "mlev")
+
+    call subcol_netcdf_addfld( "stendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "qtendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "qliqtendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "qicetendsum",    "K/s",  "mlev")
+    call subcol_netcdf_addfld( "precsum",     "1",  "slev")
+    call subcol_netcdf_addfld( "massflxsum",  "1",  "mlevp")
+    call subcol_netcdf_addfld( "massflx",  "1",  "mlevp")
+
+    call subcol_netcdf_addfld( "tmp1stend", "K/s", "mlev")
+    call subcol_netcdf_addfld( "tmp1qtend", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "tmp2stend", "K/s", "mlev")
+    call subcol_netcdf_addfld( "tmp2qtend", "kg/kg/s", "mlev")
+
+    call subcol_netcdf_addfld( "stendevap", "K/s", "mlev")
+    call subcol_netcdf_addfld( "qtendevap", "kg/kg/s", "mlev")
+
+    call subcol_netcdf_addfld( "mseqi",    "J/kg/m", "mlev")
+    call subcol_netcdf_addfld( "condrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "evaprate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "rainrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "snowrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "precrate", "kg/kg/s", "mlev")
+    call subcol_netcdf_addfld( "accuprec", "kg/m2/s", "mlev")
+
+    call subcol_netcdf_addfld( "prec", "1", "slev")
+    call subcol_netcdf_addfld( "dilucape", "1", "slev")
+    call subcol_netcdf_addfld( "pmassflxbase", "1", "slev")
+    call subcol_netcdf_addfld( "massflxbase", "1", "slev")
+    call subcol_netcdf_addfld( "massflxbase_cape", "1", "slev")
+    call subcol_netcdf_addfld( "massflxbase_w", "1", "slev")
+    call subcol_netcdf_addfld( "massflxbase_mconv", "1", "slev")
+
+    call subcol_netcdf_addfld( "capefc", "1", "slev")
+
+    call subcol_netcdf_addfld( "nconvlev", "1", "slev")
+    call subcol_netcdf_addfld( "kuplaunch", "1", "slev")
+    call subcol_netcdf_addfld( "kupbase", "1", "slev")
+    call subcol_netcdf_addfld( "kuplcl" , "1", "slev")
+
+    call subcol_netcdf_addfld( "trigdp" , "1", "slev")
+#endif
 
     if( microp_scheme == 'RK' ) then
        call stratiform_init()
@@ -1177,6 +1316,10 @@ subroutine phys_final( phys_state, phys_tend, pbuf2d )
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+!xiex
+#ifdef SCMDIAG
+    use scmdiag, only: subcol_netcdf_end
+#endif
     !----------------------------------------------------------------------- 
     ! 
     ! Purpose: 
@@ -1187,6 +1330,11 @@ subroutine phys_final( phys_state, phys_tend, pbuf2d )
     type(physics_state), pointer :: phys_state(:)
     type(physics_tend ), pointer :: phys_tend(:)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+
+!xiex
+#ifdef SCMDIAG
+    call subcol_netcdf_end
+#endif
 
     if(associated(pbuf2d)) then
        call pbuf_deallocate(pbuf2d,'global')
@@ -1698,6 +1846,11 @@ subroutine tphysbc (ztodt,               &
     use sslt_rebin,      only: sslt_rebin_adv
     use tropopause,      only: tropopause_output
     use abortutils,      only: endrun
+!xiex
+#ifdef SCMDIAG
+    use scmdiag, only: subcol_netcdf_nextstep
+    use scmdiag, only: subcol_netcdf_putclm
+#endif
 
     implicit none
 
@@ -1799,6 +1952,7 @@ subroutine tphysbc (ztodt,               &
     real(r8)  :: cmeliq(pcols,pver)                      ! Rate of cond-evap of liq within the cloud
 
 !xiex
+    real(r8)  :: dtime(pcols)
     real(r8),pointer :: bfls_t(:,:)           ! temp state right after conv
     real(r8),pointer :: bfls_q(:,:)           ! state right after conv
 
@@ -1979,6 +2133,18 @@ subroutine tphysbc (ztodt,               &
     ! are zeroed here for input to the moist convection routine
     !
 
+!xiex
+#ifdef SCMDIAG
+    call subcol_netcdf_nextstep
+#endif
+
+    dtime = ztodt
+#ifdef SCMDIAG
+    call subcol_netcdf_putclm( "dtime", 1, dtime, 1 )
+    call subcol_netcdf_putclm( "tbef", pver, state%t, 1 )
+    call subcol_netcdf_putclm( "qbef", pver, state%q(1,:,1), 1 )
+#endif
+
     call t_startf ('convect_deep_tend')
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
@@ -1993,6 +2159,11 @@ subroutine tphysbc (ztodt,               &
 
     call t_stopf('convect_deep_tend')
     call physics_update(state, ptend, ztodt, tend)
+!xiex
+#ifdef SCMDIAG
+    call subcol_netcdf_putclm( "taft", pver, state%t, 1 )
+    call subcol_netcdf_putclm( "qaft", pver, state%q(1,:,1), 1 )
+#endif
 
     ! Haiyang Yu
     !call foutput( "physbc:deep_convection", state)

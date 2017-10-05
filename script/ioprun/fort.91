@@ -1,0 +1,197 @@
+(docn_comp_init)  ocn_in = docn_ocn_in
+(docn_comp_init)  decomp = 1d
+(docn_comp_init)  restfilm = undefined
+(docn_comp_init)  restfils = undefined
+(shr_strdata_readnml) reading input namelist file: docn_ocn_in
+(shr_stream_init) Reading file docn.stream.txt
+(shr_file_freeUnit) unit   90 was not in use
+(docn_comp_init)  ocn mode = SSTDATA
+(docn_comp_init)  scm lon lat =   167.4000    8.6000
+(shr_strdata_init)  calling shr_dmodel_mapSet for fill
+(shr_strdata_init)  calling shr_dmodel_mapSet for remap
+(shr_strdata_print) ----------------------------------------------------------
+(shr_strdata_print) name        = SDOCN data
+(shr_strdata_print) dataMode    = SSTDATA
+(shr_strdata_print) domainFile  = /R3/cesm/inputdata/atm/cam/ocnfrac/domain.camocn.64x128_USGS_070807.nc
+(shr_strdata_print) nxg         =      1
+(shr_strdata_print) nyg         =      1
+(shr_strdata_print) calendar    = NO_LEAP
+(shr_strdata_print) io_type     =      6
+(shr_strdata_print) eccen       =  1.000000E+36
+(shr_strdata_print) mvelpp      =  1.000000E+36
+(shr_strdata_print) lambm0      =  1.000000E+36
+(shr_strdata_print) obliqr      =  1.000000E+36
+(shr_strdata_print) nstreams    =      1
+(shr_strdata_print) pio_iotype  =      6
+(shr_strdata_print)   streams ( 1) = docn.stream.txt 0 0 0
+(shr_strdata_print)   taxMode ( 1) = cycle
+(shr_strdata_print)   dtlimit ( 1) =  1.500000E+00
+(shr_strdata_print)   strnxg  ( 1) =    128
+(shr_strdata_print)   strnyg  ( 1) =     64
+(shr_strdata_print)   dofill  ( 1) =  T
+(shr_strdata_print)   fillalgo( 1) = nn
+(shr_strdata_print)   fillmask( 1) = nomask
+(shr_strdata_print)   fillread( 1) = NOT_SET
+(shr_strdata_print)   fillwrit( 1) = NOT_SET
+(shr_strdata_print)   domaps  ( 1) =  T
+(shr_strdata_print)   mapalgo ( 1) = bilinear
+(shr_strdata_print)   mapmask ( 1) = dstmask
+(shr_strdata_print)   mapread ( 1) = NOT_SET
+(shr_strdata_print)   mapwrit ( 1) = NOT_SET
+(shr_strdata_print)   tintalgo( 1) = linear
+(shr_strdata_print)  
+(shr_strdata_print) nvectors    =      0
+(shr_strdata_print) ----------------------------------------------------------
+(docn_comp_init)  initialize gsmaps
+(docn_comp_init) copy domains
+(docn_comp_init) allocate AVs
+(shr_dmodel_readLBUB) reading file: /R3/cesm/inputdata/atm/cam/sst/sst_HadOIBl_bc_64x128_clim_c050526.nc       7
+(shr_dmodel_readLBUB) reading file: /R3/cesm/inputdata/atm/cam/sst/sst_HadOIBl_bc_64x128_clim_c050526.nc       8
+(docn_comp_run) ocn: model date 19990810       0s
+(docn_comp_init) docn_comp_init done
+(docn_comp_run) ocn: model date 19990810    2400s
+(docn_comp_run) ocn: model date 19990810    3600s
+(docn_comp_run) ocn: model date 19990810    4800s
+(docn_comp_run) ocn: model date 19990810    6000s
+(docn_comp_run) ocn: model date 19990810    7200s
+(docn_comp_run) ocn: model date 19990810    8400s
+(docn_comp_run) ocn: model date 19990810    9600s
+(docn_comp_run) ocn: model date 19990810   10800s
+(docn_comp_run) ocn: model date 19990810   12000s
+(docn_comp_run) ocn: model date 19990810   13200s
+(docn_comp_run) ocn: model date 19990810   14400s
+(docn_comp_run) ocn: model date 19990810   15600s
+(docn_comp_run) ocn: model date 19990810   16800s
+(docn_comp_run) ocn: model date 19990810   18000s
+(docn_comp_run) ocn: model date 19990810   19200s
+(docn_comp_run) ocn: model date 19990810   20400s
+(docn_comp_run) ocn: model date 19990810   21600s
+(docn_comp_run) ocn: model date 19990810   22800s
+(docn_comp_run) ocn: model date 19990810   24000s
+(docn_comp_run) ocn: model date 19990810   25200s
+(docn_comp_run) ocn: model date 19990810   26400s
+(docn_comp_run) ocn: model date 19990810   27600s
+(docn_comp_run) ocn: model date 19990810   28800s
+(docn_comp_run) ocn: model date 19990810   30000s
+(docn_comp_run) ocn: model date 19990810   31200s
+(docn_comp_run) ocn: model date 19990810   32400s
+(docn_comp_run) ocn: model date 19990810   33600s
+(docn_comp_run) ocn: model date 19990810   34800s
+(docn_comp_run) ocn: model date 19990810   36000s
+(docn_comp_run) ocn: model date 19990810   37200s
+(docn_comp_run) ocn: model date 19990810   38400s
+(docn_comp_run) ocn: model date 19990810   39600s
+(docn_comp_run) ocn: model date 19990810   40800s
+(docn_comp_run) ocn: model date 19990810   42000s
+(docn_comp_run) ocn: model date 19990810   43200s
+(docn_comp_run) ocn: model date 19990810   44400s
+(docn_comp_run) ocn: model date 19990810   45600s
+(docn_comp_run) ocn: model date 19990810   46800s
+(docn_comp_run) ocn: model date 19990810   48000s
+(docn_comp_run) ocn: model date 19990810   49200s
+(docn_comp_run) ocn: model date 19990810   50400s
+(docn_comp_run) ocn: model date 19990810   51600s
+(docn_comp_run) ocn: model date 19990810   52800s
+(docn_comp_run) ocn: model date 19990810   54000s
+(docn_comp_run) ocn: model date 19990810   55200s
+(docn_comp_run) ocn: model date 19990810   56400s
+(docn_comp_run) ocn: model date 19990810   57600s
+(docn_comp_run) ocn: model date 19990810   58800s
+(docn_comp_run) ocn: model date 19990810   60000s
+(docn_comp_run) ocn: model date 19990810   61200s
+(docn_comp_run) ocn: model date 19990810   62400s
+(docn_comp_run) ocn: model date 19990810   63600s
+(docn_comp_run) ocn: model date 19990810   64800s
+(docn_comp_run) ocn: model date 19990810   66000s
+(docn_comp_run) ocn: model date 19990810   67200s
+(docn_comp_run) ocn: model date 19990810   68400s
+(docn_comp_run) ocn: model date 19990810   69600s
+(docn_comp_run) ocn: model date 19990810   70800s
+(docn_comp_run) ocn: model date 19990810   72000s
+(docn_comp_run) ocn: model date 19990810   73200s
+(docn_comp_run) ocn: model date 19990810   74400s
+(docn_comp_run) ocn: model date 19990810   75600s
+(docn_comp_run) ocn: model date 19990810   76800s
+(docn_comp_run) ocn: model date 19990810   78000s
+(docn_comp_run) ocn: model date 19990810   79200s
+(docn_comp_run) ocn: model date 19990810   80400s
+(docn_comp_run) ocn: model date 19990810   81600s
+(docn_comp_run) ocn: model date 19990810   82800s
+(docn_comp_run) ocn: model date 19990810   84000s
+(docn_comp_run) ocn: model date 19990810   85200s
+(docn_comp_run) ocn: model date 19990811       0s
+(docn_comp_run) ocn: model date 19990811    1200s
+(docn_comp_run) ocn: model date 19990811    2400s
+(docn_comp_run) ocn: model date 19990811    3600s
+(docn_comp_run) ocn: model date 19990811    4800s
+(docn_comp_run) ocn: model date 19990811    6000s
+(docn_comp_run) ocn: model date 19990811    7200s
+(docn_comp_run) ocn: model date 19990811    8400s
+(docn_comp_run) ocn: model date 19990811    9600s
+(docn_comp_run) ocn: model date 19990811   10800s
+(docn_comp_run) ocn: model date 19990811   12000s
+(docn_comp_run) ocn: model date 19990811   13200s
+(docn_comp_run) ocn: model date 19990811   14400s
+(docn_comp_run) ocn: model date 19990811   15600s
+(docn_comp_run) ocn: model date 19990811   16800s
+(docn_comp_run) ocn: model date 19990811   18000s
+(docn_comp_run) ocn: model date 19990811   19200s
+(docn_comp_run) ocn: model date 19990811   20400s
+(docn_comp_run) ocn: model date 19990811   21600s
+(docn_comp_run) ocn: model date 19990811   22800s
+(docn_comp_run) ocn: model date 19990811   24000s
+(docn_comp_run) ocn: model date 19990811   25200s
+(docn_comp_run) ocn: model date 19990811   26400s
+(docn_comp_run) ocn: model date 19990811   27600s
+(docn_comp_run) ocn: model date 19990811   28800s
+(docn_comp_run) ocn: model date 19990811   30000s
+(docn_comp_run) ocn: model date 19990811   31200s
+(docn_comp_run) ocn: model date 19990811   32400s
+(docn_comp_run) ocn: model date 19990811   33600s
+(docn_comp_run) ocn: model date 19990811   34800s
+(docn_comp_run) ocn: model date 19990811   36000s
+(docn_comp_run) ocn: model date 19990811   37200s
+(docn_comp_run) ocn: model date 19990811   38400s
+(docn_comp_run) ocn: model date 19990811   39600s
+(docn_comp_run) ocn: model date 19990811   40800s
+(docn_comp_run) ocn: model date 19990811   42000s
+(docn_comp_run) ocn: model date 19990811   43200s
+(docn_comp_run) ocn: model date 19990811   44400s
+(docn_comp_run) ocn: model date 19990811   45600s
+(docn_comp_run) ocn: model date 19990811   46800s
+(docn_comp_run) ocn: model date 19990811   48000s
+(docn_comp_run) ocn: model date 19990811   49200s
+(docn_comp_run) ocn: model date 19990811   50400s
+(docn_comp_run) ocn: model date 19990811   51600s
+(docn_comp_run) ocn: model date 19990811   52800s
+(docn_comp_run) ocn: model date 19990811   54000s
+(docn_comp_run) ocn: model date 19990811   55200s
+(docn_comp_run) ocn: model date 19990811   56400s
+(docn_comp_run) ocn: model date 19990811   57600s
+(docn_comp_run) ocn: model date 19990811   58800s
+(docn_comp_run) ocn: model date 19990811   60000s
+(docn_comp_run) ocn: model date 19990811   61200s
+(docn_comp_run) ocn: model date 19990811   62400s
+(docn_comp_run) ocn: model date 19990811   63600s
+(docn_comp_run) ocn: model date 19990811   64800s
+(docn_comp_run) ocn: model date 19990811   66000s
+(docn_comp_run) ocn: model date 19990811   67200s
+(docn_comp_run) ocn: model date 19990811   68400s
+(docn_comp_run) ocn: model date 19990811   69600s
+(docn_comp_run) ocn: model date 19990811   70800s
+(docn_comp_run) ocn: model date 19990811   72000s
+(docn_comp_run) ocn: model date 19990811   73200s
+(docn_comp_run) ocn: model date 19990811   74400s
+(docn_comp_run) ocn: model date 19990811   75600s
+(docn_comp_run) ocn: model date 19990811   76800s
+(docn_comp_run) ocn: model date 19990811   78000s
+(docn_comp_run) ocn: model date 19990811   79200s
+(docn_comp_run) ocn: model date 19990811   80400s
+(docn_comp_run) ocn: model date 19990811   81600s
+(docn_comp_run) ocn: model date 19990811   82800s
+(docn_comp_run) ocn: model date 19990811   84000s
+(docn_comp_run) ocn: model date 19990811   85200s
+(docn_comp_run) ocn: model date 19990812       0s
+(docn_comp_final) -------------------------------------------------------------------------
+(docn_comp_final) ocn: end of main integration loop
+(docn_comp_final) -------------------------------------------------------------------------
