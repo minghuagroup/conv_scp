@@ -23,10 +23,121 @@ def fncread(fn,var):
     fid.close()
     return data
 
-
-#===============================================================================
+#def foldplot():
 if __name__ == '__main__':
 
+    plt.figure(1, figsize=(20,10))
+
+    for icase in range(2):
+        pin = '/T3/yhy/research/ECP/conv_scp/'
+        #pin = '/Users/Oscar/yhy/Research/ECP/conv_scp/'
+        if icase == 0:  fin = pin+'run/scmdiag-output_GRE.nc'
+        if icase == 1:  fin = pin+'run/scmdiag-output_MZhang.nc'
+
+        lev  = fncread(fin, 'p')[0,:,0]/100.0
+        levp = fncread(fin, 'pint')[0,:,0]/100.0
+
+        nplume = 15
+        clrs = [( min(255*i/nplume,255)/255.0, 
+            min(255-abs(255-2*255*i/nplume),255)/255.0, 
+            min(255*(nplume-i)/nplume, 255)/255.0 ) for i in range(nplume)]
+
+        #---------------------------------------------------------------
+        plt.subplot(2,5,icase*5 + 1)
+        mse = fncread(fin, 'mseint')[0,:,0] / 1000.0
+        msesat = fncread(fin, 'msesatint')[0,:,0] / 1000.0
+        mseup = fncread(fin, 'mse_up')[0,:,:] / 1000.0
+
+        plt.plot(mse, levp, 'k', lw=2)
+        plt.plot(msesat, levp, 'k--', lw=2)
+        for i in range(nplume):
+            mseup[abs(mseup[:,i]-mse)<1e-5,i] = np.nan
+            plt.plot(mseup[:,i], levp, '-', color=clrs[i], lw=1)
+        if icase==0: plt.title('a) GRE: MSE $(10^{-3} \ J \ kg^{-1})$', loc='left', fontsize=16)
+        if icase==1: plt.title('f) New: MSE $(10^{-3} \ J \ kg^{-1})$', loc='left', fontsize=16)
+        plt.axis([335, 360, 140,1000])
+        plt.ylabel('pressure (hPa)')
+        plt.grid('on')
+        plt.gca().invert_yaxis()
+        #---------------------------------------------------------------
+        plt.subplot(2,5,icase*5 + 2)
+        entr = fncread(fin, 'ent_rate')[0,:,:] * 1000.0
+        detr = fncread(fin, 'det_rate')[0,:,:] * 1000.0
+
+        for i in range(nplume):
+            entr[abs(entr[:,i])<1e-5,i] = np.nan
+            detr[abs(detr[:,i])<1e-5,i] = np.nan
+            plt.plot(entr[:,i], lev, '-', color=clrs[i], lw=1)
+            plt.plot(detr[:,i], lev, '--', color=clrs[i], lw=1)
+
+        if icase==0: plt.title('b) GRE: '+r'$\epsilon,\ \delta \ (10^{-3} s^{-1})$', loc='left', fontsize=16)
+        if icase==1: plt.title('g) New: '+r'$\epsilon,\ \delta \ (10^{-3} s^{-1})$', loc='left', fontsize=16)
+        plt.axis([0, 4, 140,1000])
+        #plt.ylabel('pressure (hPa)')
+        plt.grid('on')
+        plt.gca().invert_yaxis()
+        #---------------------------------------------------------------
+        plt.subplot(2,5,icase*5 + 3)
+        mflxup = fncread(fin, 'normassflx_up')[0,:,:]
+        mflxdn = fncread(fin, 'normassflx_dn')[0,:,:]
+
+        for i in range(nplume):
+            mflxup[abs(mflxup[:,i])<1e-5,i] = np.nan
+            mflxdn[abs(mflxdn[:,i])<1e-5,i] = np.nan
+            plt.plot(mflxup[:,i], levp, '-', color=clrs[i], lw=1)
+            plt.plot(mflxdn[:,i], levp, '--', color=clrs[i], lw=1)
+
+        if icase==0: plt.title('c) GRE: '+r'$\hat \eta,\ \breve{\eta}$', loc='left', fontsize=16)
+        if icase==1: plt.title('h) New: '+r'$\hat \eta,\ \breve{\eta}$', loc='left', fontsize=16)
+        plt.axis([-1, 6, 140,1000])
+        #plt.ylabel('pressure (hPa)')
+        plt.grid('on')
+        plt.gca().invert_yaxis()
+
+        #---------------------------------------------------------------
+        plt.subplot(2,5,icase*5 + 4)
+        w = fncread(fin, 'w_up')[0,:,:]
+
+        for i in range(nplume):
+            w[abs(w[:,i])<1e-5,i] = np.nan
+            plt.plot(w[:,i], levp, '-', color=clrs[i], lw=1)
+            
+        if icase==0: plt.title('d) GRE: w $(m \ s^{-1})$', loc='left', fontsize=16)
+        if icase==1: plt.title('i) New: w $(m \ s^{-1})$', loc='left', fontsize=16)
+        plt.axis([0, 8, 140,1000])
+        #plt.ylabel('pressure (hPa)')
+        plt.grid('on')
+        plt.gca().invert_yaxis()
+
+        #---------------------------------------------------------------
+        plt.subplot(2,5,icase*5 + 5)
+        buoy = fncread(fin, 'buoy')[0,:,:] * 100
+
+        for i in range(nplume):
+            buoy[abs(buoy[:,i])<1e-5,i] = np.nan
+            plt.plot(buoy[:,i], levp, '-', color=clrs[i], lw=1)
+            
+        if icase==0: plt.title('e) GRE: B $(10^{-2} \ m \ s^{-2})$', loc='left', fontsize=16)
+        if icase==1: plt.title('j) New: B $(10^{-2} \ m \ s^{-2})$', loc='left', fontsize=16)
+
+        plt.plot([0,0],[0,1000],'k')
+        plt.axis([-6, 6, 140,1000])
+        #plt.ylabel('pressure (hPa)')
+        plt.grid('on')
+        plt.gca().invert_yaxis()
+
+
+    plt.tight_layout()
+    ffig = pin+'run/plot/fig18_plumes.png'; print ffig
+    plt.savefig(ffig)
+    plt.close(1)
+
+
+
+#===============================================================================
+def foldplot():
+#if __name__ == '__main__':
+    
     pin = '/T3/yhy/research/ECP/conv_scp/'
     #pin = '/Users/Oscar/yhy/Research/ECP/conv_scp/'
     fin = pin+'run/scmdiag-output.nc'
@@ -88,12 +199,12 @@ if __name__ == '__main__':
             var  = ['stend','stendcond','stendevap','stendtranup','stendtrandn']
             fac  = np.array([1,1,1,1,1]) /1004.0 * 86400
             icol = [-1,-1,-1,-1,-1]
-            xlim = [-120, 120]
+            xlim = [-30, 30]
         if i==11: 
             var  = ['qtend','qtendcond','qtendevap','qtendtranup','qtendtrandn']
             fac  = [86400*1000] * 5
             icol = [-1,-1,-1,-1,-1]
-            xlim = [-60, 60]
+            xlim = [-30, 30]
 
 
         tstr = ''
@@ -117,7 +228,11 @@ if __name__ == '__main__':
 
 
     plt.tight_layout()
-    ffig = pin+'run/plot/pic_scmdiag-output.png'; print ffig
+    ffig = pin+'run/plot/pic_plumes_fig18.png'; print ffig
     plt.savefig(ffig)
     plt.close(1)
+    
+    return
+    
+    
 
