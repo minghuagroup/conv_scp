@@ -308,34 +308,34 @@ subroutine conv_intr_jp_tend( &
    !ptend_loc%q(:ncol,:,1) = qtendcomp(:ncol,:)
 
 
-   call outfld('TMP2D', outtmp2d, pcols, state%lchnk )
-   call outfld('TMP3D', outtmp3d, pcols, state%lchnk )
+!   call outfld('TMP2D', outtmp2d, pcols, state%lchnk )
+!   call outfld('TMP3D', outtmp3d, pcols, state%lchnk )
 
-   call outfld('MBCONVDP_P', massflxbase_p, pcols, state%lchnk )
-   call outfld('MBCONVDP', outmb, pcols, state%lchnk )
+!   call outfld('MBCONVDP_P', massflxbase_p, pcols, state%lchnk )
+!   call outfld('MBCONVDP', outmb, pcols, state%lchnk )
 
-   call outfld('MSE', outmse, pcols, state%lchnk )
-   call outfld('MSESAT', outmsesat, pcols, state%lchnk )
-   call outfld('MSEUP', outmseup, pcols, state%lchnk )
-   call outfld('CONVZ', z, pcols, state%lchnk )
+!   call outfld('MSE', outmse, pcols, state%lchnk )
+!   call outfld('MSESAT', outmsesat, pcols, state%lchnk )
+!   call outfld('MSEUP', outmseup, pcols, state%lchnk )
+!   call outfld('CONVZ', z, pcols, state%lchnk )
 
-   call outfld('STENDCONVDP', stend, pcols, lchnk)
-   call outfld('QTENDCONVDP', qtend, pcols, lchnk)
+!   call outfld('STENDCONVDP', stend, pcols, lchnk)
+!   call outfld('QTENDCONVDP', qtend, pcols, lchnk)
 
-   call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
-   call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
-   call outfld('STENDCONVDPTRANUP', outstendtranup, pcols, lchnk)
-   call outfld('QTENDCONVDPTRANUP', outqtendtranup, pcols, lchnk)
-   call outfld('STENDCONVDPTRANDN', outstendtrandn, pcols, lchnk)
-   call outfld('QTENDCONVDPTRANDN', outqtendtrandn, pcols, lchnk)
-   call outfld('STENDCONVDPEVAP', outstendevap, pcols, lchnk)
-   call outfld('QTENDCONVDPEVAP', outqtendevap, pcols, lchnk)
+!   call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
+!   call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
+!   call outfld('STENDCONVDPTRANUP', outstendtranup, pcols, lchnk)
+!   call outfld('QTENDCONVDPTRANUP', outqtendtranup, pcols, lchnk)
+!   call outfld('STENDCONVDPTRANDN', outstendtrandn, pcols, lchnk)
+!   call outfld('QTENDCONVDPTRANDN', outqtendtrandn, pcols, lchnk)
+!   call outfld('STENDCONVDPEVAP', outstendevap, pcols, lchnk)
+!   call outfld('QTENDCONVDPEVAP', outqtendevap, pcols, lchnk)
 
-   call outfld('STENDCONVDPCOMP', stendcomp, pcols, lchnk)
-   call outfld('QTENDCONVDPCOMP', qtendcomp, pcols, lchnk)
+!   call outfld('STENDCONVDPCOMP', stendcomp, pcols, lchnk)
+!   call outfld('QTENDCONVDPCOMP', qtendcomp, pcols, lchnk)
 
 !   call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
-   call outfld('BFLSDILUCAPE', bfls_dilucape, pcols, lchnk)   ! RBN - CAPE output
+!   call outfld('BFLSDILUCAPE', bfls_dilucape, pcols, lchnk)   ! RBN - CAPE output
 
    do i = 1, ncol
        do k = 1, pver

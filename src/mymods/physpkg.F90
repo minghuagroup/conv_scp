@@ -36,7 +36,11 @@ module physpkg
   use camsrfexch,      only: cam_export
   use phys_control,    only: do_waccm_phys
 
+  ! Haiyang Yu
+  !use mod_foutput,     only: foutput
+
   implicit none
+
   private
 
   !  Physics buffer index
@@ -70,6 +74,8 @@ module physpkg
   public phys_run1   ! First phase of the public run method
   public phys_run2   ! Second phase of the public run method
   public phys_final  ! Public finalization method
+  
+  
   !
   ! Private module data
   !
@@ -1484,6 +1490,7 @@ subroutine tphysac (ztodt,   cam_in,  &
     if (state_debug_checks) &
          call physics_state_check(state, name="before tphysac")
 
+    
     call t_startf('tphysac_init')
     ! Associate pointers with physics buffer fields
     itim = pbuf_old_tim_idx()
@@ -1535,6 +1542,10 @@ subroutine tphysac (ztodt,   cam_in,  &
          cam_in%lhf , cam_in%cflx )
 
     call t_stopf('tphysac_init')
+    
+    ! Haiyang Yu
+    !call foutput( "physac:init", state)
+    
     !===================================================
     ! Source/sink terms for advected tracers.
     !===================================================
@@ -1563,6 +1574,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     end if
     call t_stopf('adv_tracer_src_snk')
 
+    ! Haiyang Yu
+    !call foutput("physac:adv_tracer", state)
+    
     !===================================================
     ! Vertical diffusion/pbl calculation
     ! Call vertical diffusion code (pbl, free atmosphere and molecular)
@@ -1599,6 +1613,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     endif
 
 
+    ! Haiyang Yu
+    !call foutput("physac:vertical diffusion", state)
+    
     !===================================================
     ! Rayleigh friction calculation
     !===================================================
@@ -1607,6 +1624,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     call physics_update(state, ptend, ztodt, tend)
     call t_stopf('rayleigh_friction')
 
+    ! Haiyang Yu
+    !call foutput("physac:rayleigh friction", state)
+    
     if (do_clubb_sgs) then
       call check_energy_chng(state, tend, "vdiff", nstep, ztodt, zero, zero, zero, zero)
     else
@@ -1623,6 +1643,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     call physics_update(state, ptend, ztodt, tend)
     call t_stopf('aero_drydep')
 
+    ! Haiyang Yu
+    !call foutput( "physac:aerosol dry deposition", state)
+    
    ! CARMA microphysics
    !
    ! NOTE: This does both the timestep_tend for CARMA aerosols as well as doing the dry
@@ -1640,6 +1663,9 @@ subroutine tphysac (ztodt,   cam_in,  &
    end if
 
 
+    ! Haiyang Yu
+    !call foutput( "physac:CARMA microphysics", state)
+    
     !---------------------------------------------------------------------------------
     !	... enforce charge neutrality
     !---------------------------------------------------------------------------------
@@ -1657,6 +1683,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     call check_energy_chng(state, tend, "gwdrag", nstep, ztodt, zero, zero, zero, zero)
     call t_stopf('gw_intr')
 
+    ! Haiyang Yu
+    !call foutput("physac:gravity wave drag", state)
+    
 #if ( defined WACCM_PHYS )
 
     ! QBO relaxation
@@ -1686,6 +1715,9 @@ subroutine tphysac (ztodt,   cam_in,  &
 
 #endif
 
+    ! Haiyang Yu
+    !call foutput("physac:WACCM_PHYS", state)
+    
 
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -1724,6 +1756,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     call physics_dme_adjust(state, tend, qini, ztodt)
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
 !!!   call check_energy_chng(state, tend, "drymass", nstep, ztodt, zero, zero, zero, zero)
+
+    ! Haiyang YU
+    !call foutput("physac:DME adjust", state)
 
     !-------------- Energy budget checks ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     if (aqua_planet) then
@@ -1930,6 +1965,7 @@ subroutine tphysbc (ztodt,               &
     ! Debug physics_state.
     logical :: state_debug_checks
 
+
     call phys_getopts( microp_scheme_out      = microp_scheme, &
                        macrop_scheme_out      = macrop_scheme, &
                        state_debug_checks_out = state_debug_checks)
@@ -2018,6 +2054,10 @@ subroutine tphysbc (ztodt,               &
 
     call t_stopf('bc_init')
 
+    ! Haiyang Yu
+    !call foutput("physbc:init", state)
+
+
     !===================================================
     ! Global mean total energy fixer
     !===================================================
@@ -2053,6 +2093,10 @@ subroutine tphysbc (ztodt,               &
     end if
 
     call t_stopf('energy_fixer')
+    
+    ! Haiyang Yu
+    !call foutput( "physbc:energy_fixer", state)
+    
     !
     !===================================================
     ! Dry adjustment
@@ -2076,6 +2120,9 @@ subroutine tphysbc (ztodt,               &
     call physics_update(state, ptend, ztodt, tend)
 
     call t_stopf('dry_adjustment')
+    
+    ! Haiyang Yu
+    !call foutput( "physbc:dry_adjustment", state)
     !
     !===================================================
     ! Moist convection
@@ -2109,8 +2156,8 @@ subroutine tphysbc (ztodt,               &
 !xiex.
 !clean
 !         state,   ptend, cam_in%landfrac, pbuf) 
-    call t_stopf('convect_deep_tend')
 
+    call t_stopf('convect_deep_tend')
     call physics_update(state, ptend, ztodt, tend)
 !xiex
 #ifdef SCMDIAG
@@ -2118,6 +2165,9 @@ subroutine tphysbc (ztodt,               &
     call subcol_netcdf_putclm( "qaft", pver, state%q(1,:,1), 1 )
 #endif
 
+    ! Haiyang Yu
+    !call foutput( "physbc:deep_convection", state)
+    
     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
     call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )
     call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
@@ -2149,6 +2199,9 @@ subroutine tphysbc (ztodt,               &
 
     call physics_update(state, ptend, ztodt, tend)
 
+    ! Haiyang Yu
+    !call foutput( "physbc:shallow_convection", state)
+    
     flx_cnd(:ncol) = prec_sh(:ncol) + rliq2(:ncol)
     call check_energy_chng(state, tend, "convect_shallow", nstep, ztodt, zero, flx_cnd, snow_sh, zero)
 
@@ -2179,6 +2232,9 @@ subroutine tphysbc (ztodt,               &
             prec_str=prec_str, snow_str=snow_str, prec_sed=prec_sed_carma, snow_sed=snow_sed_carma)
        call physics_update(state, ptend, ztodt, tend)
 
+    ! Haiyang Yu
+    !call foutput( "physbc:CARMA", state)
+    
        ! Before the detrainment, the reserved condensate is all liquid, but if CARMA is doing
        ! detrainment, then the reserved condensate is snow.
        if (carma_do_detrain) then
@@ -2284,6 +2340,9 @@ subroutine tphysbc (ztodt,               &
 
     endif
 
+    ! Haiyang Yu
+    !call foutput( "physbc:microphysics", state)
+    
     ! Add the precipitation from CARMA to the precipitation from stratiform.
     if (carma_do_cldice .or. carma_do_cldliq) then
        prec_sed(:ncol) = prec_sed(:ncol) + prec_sed_carma(:ncol)
@@ -2330,6 +2389,9 @@ subroutine tphysbc (ztodt,               &
 
    endif
 
+    ! Haiyang Yu
+    !call foutput( "physbc:aerosol wet chemistry", state)
+    
     !===================================================
     ! Moist physical parameteriztions complete: 
     ! send dynamical variables, and derived variables to history file
@@ -2377,6 +2439,9 @@ subroutine tphysbc (ztodt,               &
 
     call t_stopf('radiation')
 
+    ! Haiyang Yu
+    !call foutput( "physbc:radiation", state)
+    
     ! Diagnose the location of the tropopause and its location to the history file(s).
     call t_startf('tropopause')
     call tropopause_output(state)
@@ -2497,5 +2562,6 @@ subroutine phys_timestep_init(phys_state, cam_out, pbuf2d)
   call aoa_tracers_timestep_init(phys_state)
 
 end subroutine phys_timestep_init
+
 
 end module physpkg

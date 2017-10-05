@@ -5,10 +5,12 @@ module buoysort
     private
     save
 
-    public :: cal_buoysort
+    public :: cal_buoysort, conden, cal_qsat, conden_new, cal_fracmix, cal_entdet
 
     integer,parameter :: r8 = selected_real_kind(12)
 
+   ! real(r8), parameter :: criqc  = 0.7e-3_r8 + 999
+    real(r8), parameter :: criqc  = 0.7e-3_r8 
     real(r8), parameter :: latvap = 2.501e6
     real(r8), parameter :: latice = 3.34e5
     real(r8), parameter :: latall = latvap+latice
@@ -55,13 +57,185 @@ module buoysort
 contains
 
 
+subroutine conden_new(T0, qt, p, T, qv, ql)
+    real(r8), intent(in) :: T0, qt, p
+    real(r8), intent(out) :: T, qv, ql
+    real(r8) :: qs, mindT, ft0, ft, ft1, ft2, T1, T2, qs1, qs2
+    integer :: iter, maxiter
 
-subroutine cal_buoysort(cridis, z, p, rho, thle, qte, thlue, qtue, wue, xc, ent_rate, det_rate)
+    maxiter = 20
+
+    ft0 = T0 + latvap*qt/cpair
+    call cal_qsat(T0, p, qs)
+    if (qs >= qt) then
+        T = T0
+        qv = qt
+        ql = 0.0
+    else
+        T1 = T0
+        T2 = 350.0
+        call cal_qsat(T1, p, qs1)
+        ft1 = T1 + latvap * qs1/cpair
+        call cal_qsat(T2, p, qs2)
+        ft2 = T2 + latvap * qs2/cpair
+        do iter = 1, maxiter 
+            T = (T1+T2)/2.0
+            call cal_qsat(T, p, qs)
+            ft = T + latvap*qs/cpair
+            if (ft-ft0 <= 0) then
+                T1 = T
+            else
+                T2 = T
+            end if
+            qv = qs
+            ql = qt-qv
+            
+            if (abs(T1-T2) < 0.001) then
+                exit
+            end if
+
+        end do
+
+    end if
+
+end subroutine conden_new
 
 
+subroutine cal_fracmix(Te, qte, Tc, qtc, p, w, cridis, xc)
+    real(r8), intent(in) :: Te, qte, Tc, qtc, p, w, cridis
+    real(r8), intent(out) :: xc
+    real(r8) :: xsat, x0, qse, qve, qle, qsc, qvc, qlc, qsx, qvx, qlx, qtx, buoyc, buoysat
+    real(r8) :: Tle, Tlc, Tlx, Tx, x, x1, x2, xc1, xc2, Tve, Tvc, Tvx, fa,fb,fc,r1,r2
+    integer :: iter, maxiter, status
+
+    maxiter = 10
+
+    call cal_qsat(Te, p, qse)
+    qve = min(qte, qse)
+    qle = max(0.0, qte-qse)
+    Tle = Te - latvap*qle/cpair
+    Tve = Te * (1 + tveps * qve - qle)
+
+    call cal_qsat(Tc, p, qsc)
+    qvc = min(qtc, qsc)
+    qlc = max(0.0, qtc-qsc)
+    Tlc = Tc - latvap*qlc/cpair
+    Tvc = Tc * (1 + tveps * qvc - qlc)
+    buoyc = g*(Tvc - Tve)/Tve
+
+    if (qtc >= qsc) then
+        if (qte >= qse) then
+            xsat = 1.0
+            x0 = 1.0
+            xc = 1.0
+        else
+            x1 = 0.0
+            x2 = 1.0
+            do iter = 1,maxiter
+                x = (x1+x2)/2.0
+                Tlx = x*Tle + (1-x)*Tlc
+                qtx = x*qte + (1-x)*qtc
+                call conden_new(Tlx, qtx, p, Tx, qvx, qlx)
+                call cal_qsat(Tx, p, qsx)
+                if (qtx >= qsx) then
+                    x1 = x
+                else
+                    x2 = x
+                end if
+                if (abs(x1-x2) < 0.001) then
+                    exit
+                end if
+            end do
+            xsat = x
+            Tvx = Tx * (1+tveps*qvx - qlx)
+            buoysat = g*(Tvx-Tve)/Tve
+            
+            !write(*, *) buoyc, buoysat
+            
+            if (buoysat > 0) then
+                x0 = 1.0
+                xc = 1.0
+            else
+                if (buoyc < 0) then
+                    x0 = 0.0
+                    if (w*w/2/max(1e-6, -buoyc) <= cridis ) then
+                        xc = 0.0
+                    else
+                        fa = w*w
+                        fb = 2*(buoysat-buoyc)*cridis/max(1e-5,xsat) - 2*w*w
+                        fc = w*w - 2*x0*(buoysat-buoyc)*cridis/max(1e-5,xsat)
+                        call roots(fa,fb,fc,r1,r2,status)
+                        xc1 = min(r1,r2)
+                        if (xc1 <= xsat) then
+                            xc = xc1
+                        else
+                            fa = w*w
+                            fb = -2*buoysat*cridis/max(1e-5,1-xsat) + 2*w*w
+                            fc = w*w + 2*buoysat*cridis/max(1e-5,1-xsat)
+                            call roots(fa,fb,fc,r1,r2,status)
+                            xc2 = min(r1,r2)
+                            xc = max(xsat, xc2)
+                        end if
+                    end if
+                else
+                    x0 = max(0.0, min(xsat, (Tvc-Tve)/max(1e-5, Tvc-Tvx)*xsat ))
+                    fa = w*w
+                    fb = 2*buoysat*cridis/max(1e-5,xsat-x0) - 2*w*w
+                    fc = w*w - 2*x0*buoysat*cridis/max(1e-5,xsat-x0)
+                    call roots(fa,fb,fc,r1,r2,status)
+                    xc1 =  min(r1,r2)
+                    if (xc1 <= xsat) then
+                        xc = xc1
+                    else
+                        fa = w*w
+                        fb = -2*buoysat*cridis/max(1e-5,1-xsat) + 2*w*w
+                        fc = w*w + 2*buoysat*cridis/max(1e-5,1-xsat)
+                        call roots(fa,fb,fc,r1,r2,status)
+                        xc2 = min(r1,r2)
+                        xc = max(xsat, xc2)
+                    end if
+
+                end if
+            end if  ! buoysat v.s. buoyc
+
+        end if  ! qte v.s. qse
+    else
+        xsat = 0.0
+        x0 = 1.0
+        xc = 1.0
+    end if  ! qtc v.s. qsc
+
+end subroutine cal_fracmix
+
+subroutine cal_entdet(flagbspdf, xc, ent, det)
+    integer, intent(in) :: flagbspdf
+    real(r8), intent(in) :: xc
+    real(r8), intent(out) :: ent, det
+
+    if (flagbspdf == 1) then
+        ent    = xc**2
+        det    = 1._r8 - 2._r8*xc + xc**2
+    end if
+
+    if (flagbspdf == 2) then
+        if (xc < 0.5) then
+            ent = 2.0/3 *xc*xc
+            det = 2.0/3 *(1-xc)*(1-xc) - 1.0/18
+        else
+            ent = 2.0/3 *xc*xc *(1-xc)*(1-xc) + 1.0/18
+            det = 8.0/9 *(1-xc)*(1-xc)*(1-xc)
+        end if
+    end if
+
+end subroutine cal_entdet
+
+
+subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, wue, xc, ent_rate, det_rate)
+
+    integer, intent(in) :: flagbspdf
     real(r8), intent(in) :: cridis
     real(r8), intent(in) :: z, p, rho
-    real(r8), intent(in) :: thle, qte, thlue, qtue
+    real(r8), intent(in) :: thle, qte, thlue0, qtue0
     real(r8), intent(in) :: wue
     real(r8), intent(out) :: xc
     real(r8), intent(out) :: ent_rate, det_rate
@@ -71,7 +245,7 @@ subroutine cal_buoysort(cridis, z, p, rho, thle, qte, thlue, qtue, wue, xc, ent_
     real(r8), parameter :: rbuoy = 1._r8
     real(r8), parameter :: rkm = 14.0_r8
 
-    real(r8) :: exne
+    real(r8) :: exne, exql, exqi, thlue, qtue
 
     real(r8) :: tj, thvj, thv0j
     real(r8) :: excessu, excess0
@@ -91,6 +265,8 @@ subroutine cal_buoysort(cridis, z, p, rho, thle, qte, thlue, qtue, wue, xc, ent_
 
     integer :: kk, stat
 
+    qtue = qtue0
+    thlue = thlue0
 
     exne = (p/p00)**rovcp
 
@@ -102,11 +278,17 @@ subroutine cal_buoysort(cridis, z, p, rho, thle, qte, thlue, qtue, wue, xc, ent_
     call cal_qsat(qsat_arg, p, qs)
     excess0 = qte-qs
 
-    !write(*,"(5a20)") "thle", "qte", "qs", "excess0"
-    !write(*,"(5f20.10)") thle, qte, qs, excess0
+!    write(*,"(5a20)") "thle", "qte", "qs", "excess0"
+!    write(*,"(5f20.10)") thle, qte, qs, excess0
 
 
     call conden(p,thlue,qtue,thj,qvj,qlj,qij,qse,id_check)
+      if( (qlj + qij) > criqc ) then
+           exql  = ( ( qlj + qij ) - criqc ) * qlj / ( qlj + qij )
+           exqi  = ( ( qlj + qij ) - criqc ) * qij / ( qlj + qij )
+           qtue  = qtue - exql - exqi
+           thlue = thlue + (latvap/cpair/exne)*exql + (latall/cpair/exne)*exqi 
+      endif
     thvj = thj * ( 1._r8 + tveps * qvj - qlj - qij )
     tj   = thj * exne
 !thlue = thlue + (latvap/cpair/exne)*exql + (latall/cpair/exne)*exqi
@@ -114,8 +296,9 @@ subroutine cal_buoysort(cridis, z, p, rho, thle, qte, thlue, qtue, wue, xc, ent_
     call cal_qsat(qsat_arg, p, qs)
     excessu = qtue-qs
 
-    !write(*,"(5a20)") "thlue", "qtue", "qs", "excessu"
-    !write(*,"(5f20.10)") thlue, qtue, qs, excessu
+
+!    write(*,"(5a20)") "thlue", "qtue", "qs", "excessu"
+!    write(*,"(5f20.10)") thlue, qtue, qs, excessu
 
 
     if ( ( excessu .le. 0._r8 .and. excess0 .le. 0._r8 ) .or. ( excessu .ge. 0._r8 .and. excess0 .ge. 0._r8 ) ) then
@@ -178,11 +361,11 @@ subroutine cal_buoysort(cridis, z, p, rho, thle, qte, thlue, qtue, wue, xc, ent_
             endif
 
             !write(*,"(5a20)") "xsat", "x_cu", "x_en"
-            !write(*,"(5f20.10)") xsat, x_cu, x_en
 
         enddo
 
-        if( x_cu .eq. xsat ) then
+        !write(*,"(5f10.3)") xsat, x_cu, x_en
+        if( abs(x_cu - xsat) < 1.0e-6 ) then
             xc = max(x_cu, x_en)
         else
             xc = x_cu
@@ -190,21 +373,33 @@ subroutine cal_buoysort(cridis, z, p, rho, thle, qte, thlue, qtue, wue, xc, ent_
 
     endif
 
-    ee2    = xc**2
-    ud2    = 1._r8 - 2._r8*xc + xc**2
+    if (flagbspdf == 1) then
+        ee2    = xc**2
+        ud2    = 1._r8 - 2._r8*xc + xc**2
 
-    rei = ( 0.5_r8 * rkm / z / g /rho )
+        rei = ( 0.5_r8 * rkm / z / g /rho )
 
-!    if( xc .gt. 0.5_r8 ) rei = min(rei,0.9_r8*log(dp0(k)/g/dt/umf(km1) + 1._r8)/dpe/(2._r8*xc-1._r8))
-    fer = rei * ee2
-    fdr = rei * ud2
+    !    if( xc .gt. 0.5_r8 ) rei = min(rei,0.9_r8*log(dp0(k)/g/dt/umf(km1) + 1._r8)/dpe/(2._r8*xc-1._r8))
+        fer = rei * ee2
+        fdr = rei * ud2
 
-    !write(*,"(6a20)") "xc", "ee2", "ud2", "fer", "fdr"
-    !write(*,"(6f20.10)") xc, ee2, ud2, fer, fdr
-    !write(*,*)
+        !write(*,"(6a20)") "xc", "ee2", "ud2", "fer", "fdr"
+        !write(*,"(6f20.10)") xc, ee2, ud2, fer, fdr
+        !write(*,*)
 
-    ent_rate = fer
-    det_rate = fdr
+        ent_rate = fer
+        det_rate = fdr
+    end if
+
+    if (flagbspdf == 2) then
+        if (xc < 0.5) then
+            ent_rate = 2.0/3 *xc*xc
+            det_rate = 2.0/3 *(1-xc)*(1-xc) - 1.0/18
+        else
+            ent_rate = 2.0/3 *xc*xc *(1-xc)*(1-xc) + 1.0/18
+            det_rate = 8.0/9 *(1-xc)*(1-xc)*(1-xc)
+        end if
+    end if
 
 end subroutine cal_buoysort
 

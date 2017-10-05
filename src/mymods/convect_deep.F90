@@ -351,6 +351,9 @@ subroutine convect_deep_tend( &
    !end do
 
 
+!test
+!write(*,*) "convect_deep:dtime=",ztodt
+
    select case ( deep_scheme )
    case('off') !    0 ==> no deep convection
       zero = 0     
@@ -383,6 +386,7 @@ subroutine convect_deep_tend( &
       evapcdp = 0._r8
       prec = 0._r8
       snow = 0._r8
+
 
   case('ZM') !    1 ==> Zhang-McFarlane (default)
      call pbuf_get_field(pbuf, pblh_idx,  pblh)
