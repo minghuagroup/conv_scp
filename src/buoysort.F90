@@ -9,7 +9,6 @@ module buoysort
 
     integer,parameter :: r8 = selected_real_kind(12)
 
-   ! real(r8), parameter :: criqc  = 0.7e-3_r8 + 999
     real(r8), parameter :: criqc  = 0.7e-3_r8 
     real(r8), parameter :: latvap = 2.501e6
     real(r8), parameter :: latice = 3.34e5
@@ -29,30 +28,6 @@ module buoysort
     real(r8), parameter :: epsilo = 0.6219705862
     real(r8), parameter :: tveps  = 1.0/epsilo - 1
 
-    !real(r8) :: cridis, rle, scaleh
-
-    !real(r8) :: p
-
-    !real(r8) :: xc
-
-    !real(r8) :: thlue, qtue
-    !real(r8) :: thle, qte
-    !real(r8) :: wue
-
-
-    !rle = 0.1_r8
-    !scaleh = 8.e3
-    !cridis = rle*scaleh
-
-    !p = 900.e2
-    !thle = 300._r8
-    !qte = 0.01_r8
-    !thlue = 302._r8
-    !qtue = 0.05_r8
-
-    !wue = 1._r8
-
-    !call cal_buoysort(cridis, p, thle, qte, thlue, qtue, wue, xc )
 
 contains
 

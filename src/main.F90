@@ -3,7 +3,7 @@ program test
 
     use netcdf
 !    use scp_conv
-    use conv_jp, only: conv_jp_init, conv_jp_tend
+    use conv_jp, only: conv_jp_init, conv_jp_tend, nplume_sh, nplume_dp
 #ifdef SCMDIAG
     use scmdiag, only: subcol_netcdf_init, subcol_netcdf_setdim, subcol_netcdf_end
     use scmdiag, only: subcol_netcdf_addfld
@@ -96,7 +96,7 @@ program test
 !local
     real(r8) :: dtime, qmin
     logical  :: flag
-    integer  :: nplume = 15
+    integer  :: nplume 
 
 !field input
 !    call netcdf_check( nf90_open("inputgcm.nc", NF90_NOWRITE, inncid) )
@@ -193,6 +193,7 @@ program test
 
     call conv_jp_init(nlev)
 
+    nplume = nplume_sh + nplume_dp
 #ifdef SCMDIAG
 !init subcol_netcdf
     call subcol_netcdf_setdim( nplume, nlev)
@@ -387,7 +388,7 @@ program test
         stend = 0._r8
 
         pblh = 0._r8
-        tpert = 0._r8
+        tpert = 0.0_r8
         lhflx = 0._r8
        !psrf = 0._r8
        !zsrf = 0._r8
@@ -403,7 +404,7 @@ program test
                 ,psrf(:,j), p(:,j,:), dp(:,j,:) &
                 ,ht(:,j), z(:,j,:), dz(:,j,:) &
                 ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
-                ,omega(:,j,:), pblh(:,j), tpert(:,j) &
+                ,omega(:,j,:), pblh(:,j), tpert(:,j)  &
 !
                 ,massflxbase(:,j,:) &
                 ,jctop(:,j), jcbot(:,j) &
@@ -466,6 +467,11 @@ program test
         call subcol_netcdf_putclm( "camqtendtranup", nlev, camqtendtranup(1,1,:), 1 )
         call subcol_netcdf_putclm( "camstendtrandn", nlev, camstendtrandn(1,1,:), 1 )
         call subcol_netcdf_putclm( "camqtendtrandn", nlev, camqtendtrandn(1,1,:), 1 )
+    
+    do i = 1, nlev, 1
+        write(*,*) p(1,1,i)/100,  qtend(1,1,i)
+    end do
+    
 #endif
 
 
@@ -547,8 +553,8 @@ program test
         allocate( ht(innlon, innlat) )
         allocate( landfrac(innlon, innlat) )
         allocate( pblh(innlon, innlat) )
-        allocate( lhflx(innlon, innlat) )
         allocate( tpert(innlon, innlat) )
+        allocate( lhflx(innlon, innlat) )
         allocate( psrf(innlon, innlat) )
         allocate( zsrf(innlon, innlat) )
 

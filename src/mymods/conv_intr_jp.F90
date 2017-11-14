@@ -311,8 +311,8 @@ subroutine conv_intr_jp_tend( &
 !   call outfld('TMP2D', outtmp2d, pcols, state%lchnk )
 !   call outfld('TMP3D', outtmp3d, pcols, state%lchnk )
 
-!   call outfld('MBCONVDP_P', massflxbase_p, pcols, state%lchnk )
-!   call outfld('MBCONVDP', outmb, pcols, state%lchnk )
+   call outfld('MBCONVDP_P', massflxbase_p, pcols, state%lchnk )
+   call outfld('MBCONVDP', outmb, pcols, state%lchnk )
 
 !   call outfld('MSE', outmse, pcols, state%lchnk )
 !   call outfld('MSESAT', outmsesat, pcols, state%lchnk )

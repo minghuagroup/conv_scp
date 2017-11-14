@@ -57,9 +57,41 @@ module conv_jp
     integer,parameter :: r8 = selected_real_kind(12)
 
     public :: conv_jp_init, conv_jp_tend
+    public :: ecp_readnl
+    public :: nplume_sh, nplume_dp
 
     integer :: ncol=0, nlev=0, nlevp=0
 
+    real(r8), parameter :: unset_r8 = huge(1.0_r8)  ! set namelist variables
+    integer,  parameter :: unset_int = -1       ! set namelist variables
+!--------------------------------------------------------------
+! tunable variables from namelist
+!--------------------------------------------------------------
+    integer :: ecp_nplume_sh = unset_int
+    integer :: ecp_nplume_dp = unset_int
+    real(r8) :: ecp_trig_eps0 = unset_r8
+    real(r8) :: ecp_trig_c2 = unset_r8
+    real(r8) :: ecp_fixcldsr = unset_r8
+    real(r8) :: ecp_ratio_ent_rad = unset_r8
+    real(r8) :: ecp_orgent_a = unset_r8
+    real(r8) :: ecp_orgent_beta0 = unset_r8
+    real(r8) :: ecp_w_up_init_sh_beg = unset_r8
+    real(r8) :: ecp_w_up_init_sh_end = unset_r8
+    real(r8) :: ecp_w_up_init_dp_beg = unset_r8
+    real(r8) :: ecp_w_up_init_dp_end = unset_r8
+    real(r8) :: ecp_rain_z0 = unset_r8
+    real(r8) :: ecp_rain_zp = unset_r8
+    real(r8) :: ecp_dn_be = unset_r8
+    real(r8) :: ecp_dn_ae = unset_r8
+    real(r8) :: ecp_dn_vt = unset_r8
+    real(r8) :: ecp_dn_frac = unset_r8
+    real(r8) :: ecp_pmf_alpha_sh = unset_r8
+    real(r8) :: ecp_pmf_tau_sh = unset_r8
+    real(r8) :: ecp_pmf_alpha_dp = unset_r8
+    real(r8) :: ecp_pmf_tau_dp = unset_r8
+    real(r8) :: ecp_capelmt   = unset_r8
+    real(r8) :: ecp_tpertglob   = unset_r8
+    real(r8) :: ecp_qpertglob   = unset_r8
 !--------------------------------------------------------------
 ! physical parameter
 !--------------------------------------------------------------
@@ -92,18 +124,24 @@ module conv_jp
                                                 ! 2: use low interface at the first iteration, then averaged
     integer,  parameter :: flagbuoysort = 2     ! 1: old codes from CAM UW
                                                 ! 2: new codes 
-    real(r8), parameter :: trig_eps0  = 0.003   ! trigger parameters: w -> R (default: 0.003)
-    real(r8), parameter :: trig_c2    = 117.5   ! trigger parameters: w -> R: 23.5 ~ 240m;  117.5 ~ 1km
+    real(r8) :: trig_eps0  = unset_r8   ! trigger parameters: w -> R (default: 0.003)
+    real(r8) :: trig_c2    = unset_r8   ! trigger parameters: w -> R: 23.5 ~ 240m; default: 117.5 ~ 1km
     real(r8), parameter :: fixcldrad0 = -1      ! if +: fixed cloud base radius;  if -: diagnostic from winit
-    real(r8), parameter :: fixcldsr   = 1.0     ! if +: fixed cloud size ratio;  if -: iteration
-    real(r8), parameter :: ratio_ent_rad = 0.2  ! relation between turbulent entr/detr and cloud radius (0.2)
-    real(r8), parameter :: orgent_a     = 1.23  ! organized entrainment parameters: default is 1.23
-    real(r8), parameter :: orgent_beta0 = 2.0   ! organized entrainment parameters: default is 2.0
+    real(r8) :: fixcldsr   = unset_r8   ! default: 1.0; if +: fixed cloud size ratio;  if -: iteration
+    real(r8) :: ratio_ent_rad = unset_r8  ! relation between turbulent entr/detr and cloud radius (0.2)
+    real(r8) :: orgent_a     = unset_r8  ! organized entrainment parameters: default is 1.23
+    real(r8) :: orgent_beta0 = unset_r8   ! organized entrainment parameters: default is 2.0
     real(r8), parameter :: wupmin = 0.01        ! threshold of w for stopping convection
     real(r8), parameter :: wupmax = 100.0       ! upbound of w
-    real(r8), parameter :: fixbasemf = 0.01     ! if +: fixed cloud base mass flux; if -: prognostic
+#ifdef SCMDIAG
+    real(r8), parameter :: fixbasemf = 0.01    ! if +: fixed cloud base mass flux; if -: prognostic
+#endif
+#if (! defined SCMDIAG)
+    real(r8), parameter :: fixbasemf = -0.01    ! if +: fixed cloud base mass flux; if -: prognostic
+#endif
+    
     real(r8), parameter :: zpbltop = -1000.0    ! if +: downdraft mass flux decreases gradually in PBL
-
+                                                ! if -: no decreasing 
 !--------------------------------------------------------------
 ! GRE and NSJ parameters
 !--------------------------------------------------------------
@@ -121,11 +159,11 @@ module conv_jp
 
     real(r8), parameter :: max_ent_rate = 4.e-3_r8      ! maximum entrainment rate (1/m)
     real(r8), parameter :: max_det_rate = 4.e-3_r8      ! maximum detrainment rate (1/m)
-    real(r8), parameter :: zuplaunchtop = 3000._r8      ! max cloud parcel launch height [m]
-    real(r8), parameter :: zuplaunchlow = 0._r8         ! min cloud parcel launch height [m]
+    real(r8), parameter :: zuplaunchtop = 3000.0      ! default: 3000; max cloud parcel launch height [m]
+    real(r8), parameter :: zuplaunchlow = 0.0         ! default: 0; min cloud parcel launch height [m]
     
-    integer,  parameter :: nplume_sh = 15               ! shallow plumes
-    integer,  parameter :: nplume_dp = 0                ! deep plumes
+    integer :: nplume_sh = unset_int               ! shallow plumes
+    integer :: nplume_dp = unset_int                ! deep plumes
 
 !--------------------------------------------------------------
 ! shallow plumes parameters
@@ -135,8 +173,8 @@ module conv_jp
     real(r8), parameter :: greg_ent_a_sh_end = 0.15_r8
     real(r8), parameter :: greg_ce_sh_beg    = 0.8_r8
     real(r8), parameter :: greg_ce_sh_end    = 0.8_r8
-    real(r8), parameter :: w_up_init_sh_beg  = 0.1
-    real(r8), parameter :: w_up_init_sh_end  = 1.2
+    real(r8) :: w_up_init_sh_beg  = unset_r8 ! 0.1
+    real(r8) :: w_up_init_sh_end  = unset_r8 ! 1.2
 
 !--------------------------------------------------------------
 ! deep plumes parameters
@@ -146,8 +184,8 @@ module conv_jp
     real(r8), parameter :: greg_ent_a_dp_end = 0.15_r8 
     real(r8), parameter :: greg_ce_dp_beg    = 0.5_r8  
     real(r8), parameter :: greg_ce_dp_end    = 0.5_r8  
-    real(r8), parameter :: w_up_init_dp_beg  = 0.2    
-    real(r8), parameter :: w_up_init_dp_end  = 3.0
+    real(r8) :: w_up_init_dp_beg  = unset_r8 ! 0.2    
+    real(r8) :: w_up_init_dp_end  = unset_r8 ! 3.0
 
 !--------------------------------------------------------------
 ! parameters for NSJ scheme
@@ -158,8 +196,8 @@ module conv_jp
 !--------------------------------------------------------------
 ! rain fraction parameters
 !--------------------------------------------------------------
-    real(r8), parameter :: rain_z0 = 0._r8      ! CS2010: 1500
-    real(r8), parameter :: rain_zp = 1500._r8   ! CS2010: 4000
+    real(r8) :: rain_z0 = unset_r8      ! default: 0; CS2010: 1500
+    real(r8) :: rain_zp = unset_r8   ! default: 1500; CS2010: 4000
 
 !--------------------------------------------------------------
 ! cloud ice fraction parameters
@@ -170,43 +208,35 @@ module conv_jp
 !--------------------------------------------------------------
 ! downdraft parameters
 !--------------------------------------------------------------
-    real(r8), parameter :: dn_be = 5.e-4_r8
-    real(r8), parameter :: dn_ae = 0.3_r8
-    real(r8), parameter :: dn_vt = 10._r8
-    real(r8), parameter :: dn_frac = 0.3_r8     ! ratio of downdraft base massflux to updraft
+    real(r8) :: dn_be = unset_r8  ! default: 5.0e-4
+    real(r8) :: dn_ae = unset_r8  ! default: 0.3
+    real(r8) :: dn_vt = unset_r8  ! default: 10
+    real(r8) :: dn_frac = unset_r8     ! default: 0.3; ratio of downdraft base massflux to updraft
 
 !--------------------------------------------------------------
 ! parameter for prognostics mass flux calculation
 !--------------------------------------------------------------
-    real(r8), parameter :: pmf_alpha_dp = 4000.e7_r8 , pmf_tau_dp = 800.e3_r8 ! cntr deep
-    real(r8), parameter :: pmf_alpha_sh = 50000.e7_r8, pmf_tau_sh = 20000.e3_r8
-    real(r8) :: pmf_alpha, pmf_tau
+! default setting: 
+!    real(r8), parameter :: pmf_alpha_dp = 4000.e7_r8 , pmf_tau_dp = 800.e3_r8 ! cntr deep
+!    real(r8), parameter :: pmf_alpha_sh = 50000.e7_r8, pmf_tau_sh = 20000.e3_r8
+    real(r8) :: pmf_alpha_dp = unset_r8
+    real(r8) :: pmf_tau_dp = unset_r8
+    real(r8) :: pmf_alpha_sh = unset_r8
+    real(r8) :: pmf_tau_sh = unset_r8
 
-!--------------------------------------------------------------
-! EC scheme: parameter for bulk TOTAL fractional en/detrainment rate depending on RH
-!--------------------------------------------------------------
-    real(r8), parameter :: fe_up_dp=1.0_r8
-    real(r8), parameter :: fe_up_sh=2.0_r8
-    real(r8), parameter :: e_up_dp=1.25e-3_r8   ! origin: 1.75e-3
-    real(r8), parameter :: d_up_dp=0.5e-4_r8    ! origin: 0.75e-4
-    real(r8), parameter :: e_up_sh=1.75e-3_r8
+    real(r8) :: pmf_alpha, pmf_tau
 
 !--------------------------------------------------------------
 ! parameter for diagnostic mass flux calculation
 !--------------------------------------------------------------
-    real(r8), parameter :: cape_timescale = 10.e7_r8
-    real(r8), parameter :: adjdt = 100._r8
-    real(r8), parameter :: capelmt = 50._r8     ! threshold of CAPE for triggering convection
+    real(r8), parameter :: cape_timescale = 10.e7_r8  ! default: not used
+    real(r8) :: capelmt = unset_r8  ! default: 80; threshold of CAPE for triggering convection
 
 !--------------------------------------------------------------
-! reference cloud heights
+! parameter for diagnostic mass flux calculation
 !--------------------------------------------------------------
-    integer, parameter :: kmaxref = 12
-    real, dimension(kmaxref), parameter :: refcape = &
-        (/ 0., 4.42,  14.71,  50.10,  88.80, 155.23, 299.37, 682.90, 1248.15, 1935.19, 3557.54, 5200. /)
-    real, dimension(kmaxref), parameter :: refz = &
-        (/ 0., 0.90,   2.70,   4.50,   6.30,   8.10,   9.90,  11.70,  13.50,   15.30,   17.10, 50. /)
-    real(r8), parameter :: evapke = 0.2e-5_r8
+    real(r8) :: tpertglob = unset_r8   ! default: 0.0
+    real(r8) :: qpertglob = unset_r8   ! default: 0.0
 
 ! -------------------------------------------------------------------
 ! local variables
@@ -230,14 +260,134 @@ module conv_jp
 ! ==============================================================================
 ! initialize the convection scheme
 ! ==============================================================================
+subroutine ecp_readnl(nlfile)
+#ifdef SCMDIAG
+    use shr_nl_mod,  only: shr_nl_find_group_name
+#endif
+    
+#if (! defined SCMDIAG)    
+    use namelist_utils,  only: find_group_name
+    use spmd_utils,      only: masterproc
+    use abortutils,      only: endrun
+    use units,           only: getunit, freeunit
+    use mpishorthand
+#endif
+
+   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+   ! Local variables
+   integer :: unitn, ierr
+   character(len=*), parameter :: subname = 'ecp_readnl'
+
+   namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, ecp_fixcldsr, &
+       ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, &
+       ecp_w_up_init_sh_beg, ecp_w_up_init_sh_end, ecp_w_up_init_dp_beg, ecp_w_up_init_dp_end, &
+       ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac, &
+       ecp_pmf_alpha_sh, ecp_pmf_tau_sh, ecp_pmf_alpha_dp, ecp_pmf_tau_dp, ecp_capelmt, &
+       ecp_tpertglob, ecp_qpertglob
+   !-----------------------------------------------------------------------------
+
+#if (! defined SCMDIAG)    
+   if (masterproc) then
+       unitn = getunit()
+      open( unitn, file=trim(nlfile), status='old' )
+      call find_group_name(unitn, 'ecp_nl', status=ierr)
+      if (ierr == 0) then
+         read(unitn, ecp_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun(subname // ':: ERROR reading namelist')
+         end if
+      end if
+      close(unitn)
+      call freeunit(unitn)
+#endif
+
+#ifdef SCMDIAG
+      open( 10, file=trim(nlfile), status='old' )
+      call shr_nl_find_group_name(10, 'ecp_nl', status=ierr)
+      if (ierr == 0) then
+         read(10, ecp_nl, iostat=ierr)
+         if (ierr /= 0) then
+            write(*,*) 'Haiyang: ERROR reading namelist'
+         end if
+      end if
+      close(10)
+#endif
+
+    ! set local variables
+        nplume_sh = ecp_nplume_sh
+        nplume_dp = ecp_nplume_dp
+        trig_eps0 = ecp_trig_eps0
+        trig_c2   = ecp_trig_c2
+        fixcldsr  = ecp_fixcldsr
+        ratio_ent_rad = ecp_ratio_ent_rad
+        orgent_a      = ecp_orgent_a
+        orgent_beta0  = ecp_orgent_beta0
+        w_up_init_sh_beg = ecp_w_up_init_sh_beg
+        w_up_init_sh_end = ecp_w_up_init_sh_end
+        w_up_init_dp_beg = ecp_w_up_init_dp_beg
+        w_up_init_dp_end = ecp_w_up_init_dp_end
+        rain_z0 = ecp_rain_z0
+        rain_zp = ecp_rain_zp
+        dn_be   = ecp_dn_be
+        dn_ae   = ecp_dn_ae
+        dn_vt   = ecp_dn_vt
+        dn_frac = ecp_dn_frac
+        pmf_alpha_sh = ecp_pmf_alpha_sh
+        pmf_tau_sh   = ecp_pmf_tau_sh
+        pmf_alpha_dp = ecp_pmf_alpha_dp
+        pmf_tau_dp   = ecp_pmf_tau_dp
+        capelmt = ecp_capelmt
+        tpertglob = ecp_tpertglob
+        qpertglob = ecp_qpertglob
+   
+#if (! defined SCMDIAG)    
+    end if
+#endif
+
+#ifdef SPMD
+   ! Broadcast namelist variables
+   call mpibcast(nplume_sh,  1, mpiint,  0, mpicom)
+   call mpibcast(nplume_dp,  1, mpiint,  0, mpicom)
+   call mpibcast(trig_eps0,  1, mpir8,  0, mpicom)
+   call mpibcast(trig_c2,    1, mpir8,  0, mpicom)
+   call mpibcast(fixcldsr,   1, mpir8,  0, mpicom)
+   call mpibcast(ratio_ent_rad,  1, mpir8,  0, mpicom)
+   call mpibcast(orgent_a,  1, mpir8,  0, mpicom)
+   call mpibcast(orgent_beta0,  1, mpir8,  0, mpicom)
+   call mpibcast(w_up_init_sh_beg,  1, mpir8,  0, mpicom)
+   call mpibcast(w_up_init_sh_end,  1, mpir8,  0, mpicom)
+   call mpibcast(w_up_init_dp_beg,  1, mpir8,  0, mpicom)
+   call mpibcast(w_up_init_dp_end,  1, mpir8,  0, mpicom)
+   call mpibcast(rain_z0,  1, mpir8,  0, mpicom)
+   call mpibcast(rain_zp,  1, mpir8,  0, mpicom)
+   call mpibcast(dn_be,  1, mpir8,  0, mpicom)
+   call mpibcast(dn_ae,  1, mpir8,  0, mpicom)
+   call mpibcast(dn_vt,  1, mpir8,  0, mpicom)
+   call mpibcast(dn_frac,  1, mpir8,  0, mpicom)
+   call mpibcast(pmf_alpha_sh,  1, mpir8,  0, mpicom)
+   call mpibcast(pmf_tau_sh,  1, mpir8,  0, mpicom)
+   call mpibcast(pmf_alpha_dp,  1, mpir8,  0, mpicom)
+   call mpibcast(pmf_tau_dp,  1, mpir8,  0, mpicom)
+   call mpibcast(capelmt,  1, mpir8,  0, mpicom)
+   call mpibcast(tpertglob,  1, mpir8,  0, mpicom)
+   call mpibcast(qpertglob,  1, mpir8,  0, mpicom)
+#endif
+
+    write(*, *) "nplume_sh: ", nplume_sh
+    write(*, *) "nplume_dp: ", nplume_dp
+    write(*, *) "trig_eps0: ", trig_eps0
+    write(*, *) "trig_c2: ", trig_c2
+    write(*, *) "fixcldsr: ", fixcldsr
+
+end subroutine ecp_readnl
+
+! ==============================================================================
+! initialize the convection scheme
+! ==============================================================================
 subroutine conv_jp_init(innlev)
-!------------------------------------------------------
-!do some initialization.
-!------------------------------------------------------
 !input
     integer, intent(in) :: innlev
-!local
-
 
     nlev  = innlev
     nlevp = innlev+1
@@ -254,6 +404,8 @@ subroutine conv_jp_init(innlev)
     write(*,"(a20f20.10)") "rair", rair
     write(*,"(a20f20.10)") "rh2o", rh2o
     write(*,"(a20f20.10)") "rhofw", rhofw
+
+    call ecp_readnl('atm_in')
 #endif
 
 end subroutine conv_jp_init
@@ -309,7 +461,7 @@ subroutine conv_jp_tend( &
        ! T and Q state before the large-scale forcing is applied
     real(r8), dimension(inncol, nlev), intent(in) :: omega ! [m/s]
     real(r8), dimension(inncol), intent(in) :: pblh  ! [m/s]
-    real(r8), dimension(inncol), intent(in) :: tpert ! [m/s]
+    real(r8), dimension(inncol), intent(in) :: tpert  ! [K]
 !in/output
     real(r8), dimension(inncol, nlev), intent(inout) :: massflxbase_p !output convective precip[m/s]
 !output
@@ -786,19 +938,13 @@ subroutine conv_jp_tend( &
 
         if ( iconv == 1 ) then
             call cal_launchtocldbase( 2, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
-                mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
+                mse, mseint, msesat, msesatint, landfrac, lhflx,  &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
             kupbase = kuplaunch
 
-!SENS
-            !call cal_launchtocldbase( 1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
-                !mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
-                !kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
-            !kupbase = kuplcl
-
         else if ( iconv == 2 ) then
             call cal_launchtocldbase( 1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
-                mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
+                mse, mseint, msesat, msesatint, landfrac, lhflx,  &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
             kupbase = kuplcl
 !            kupbase = kuplaunch
@@ -923,10 +1069,10 @@ subroutine conv_jp_tend( &
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
                 massflxbase_p(i,j) = min( 0.1, max( 0., &
-                    massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
+!                    massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
 !SENS
 !                    massflxbase_p(i,j) + dtime*( cwf(i,j)/(2*pmf_alpha) &
-!                    massflxbase_p(i,j) + dtime*( max( (dilucape(i,j) - capelmt), 0._r8 )/(2*pmf_alpha) &
+                    massflxbase_p(i,j) + dtime*( max( (dilucape(i,j) - capelmt), 0._r8 )/(2*pmf_alpha) &
                     - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
 
 !SENS
@@ -991,14 +1137,14 @@ subroutine conv_jp_tend( &
 
             end do
 
-#ifdef SCMDIAG
-do k=1,nlev
-    write(30,"(12F10.4)") p(1,k)/100, zint(1,k)/1000, accuprec(1,k)*1e6, evaprate(1,k)*1e6, &
-        stendtran_up(1,k)*1e4, stendtran_dn(1,k)*1e4, stendcond(1,k)*1e4, stendevap(1,k)*1e4, &
-        normassflx_up_tmp(1,k), normassflx_dn_tmp(1,k), qtend(1,k)*1e6, qliqtend_det(1,k)*1e6
-end do
-write(30,*) normassflx_up_tmp(1,nlev+1), normassflx_dn_tmp(1,nlev+1)
-#endif
+!#ifdef SCMDIAG
+!do k=1,nlev
+!    write(30,"(12F10.4)") p(1,k)/100, zint(1,k)/1000, accuprec(1,k)*1e6, evaprate(1,k)*1e6, &
+!        stendtran_up(1,k)*1e4, stendtran_dn(1,k)*1e4, stendcond(1,k)*1e4, stendevap(1,k)*1e4, &
+!        normassflx_up_tmp(1,k), normassflx_dn_tmp(1,k), qtend(1,k)*1e6, qliqtend_det(1,k)*1e6
+!end do
+!write(30,*) normassflx_up_tmp(1,nlev+1), normassflx_dn_tmp(1,nlev+1)
+!#endif
 
             do i=1, inncol
                 stendsum(i,:) = stendsum(i,:)+stend(i,:)
@@ -1313,7 +1459,7 @@ end subroutine conv_jp_tend
 ! ==============================================================================
 subroutine cal_launchtocldbase( &
 !input
-        opt, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, mse, mseint, msesat, msesatint, landfrac, lhflx, tpert, &
+        opt, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, mse, mseint, msesat, msesatint, landfrac, lhflx,  &
 !output
         kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up,  &
 !in/out
@@ -1339,7 +1485,6 @@ subroutine cal_launchtocldbase( &
     real(r8), dimension(ncol, nlevp), intent(in) :: msesatint ! [J/kg]
     real(r8), dimension(ncol), intent(in) :: landfrac ! [J/kg]
     real(r8), dimension(ncol), intent(in) :: lhflx    ! [J/kg]
-    real(r8), dimension(ncol), intent(in) :: tpert    ! [J/kg]
 !output
     integer, dimension(ncol), intent(out) :: kuplaunch ! [1]
     integer, dimension(ncol), intent(out) :: kuplcl    ! [1]
@@ -1359,8 +1504,6 @@ subroutine cal_launchtocldbase( &
     integer, dimension(ncol) :: kuplaunchmin  ! [1]
     integer, dimension(ncol) :: kuplaunchmax  ! [1]
     integer, dimension(ncol) :: kcbase  ! [1]
-    real(r8) :: perturbt
-    real(r8) :: perturbq
 
 !intialize output
     kuplaunch = 1
@@ -1394,13 +1537,9 @@ subroutine cal_launchtocldbase( &
             end if
         end do
 
-        perturbt = 0._r8
-!        perturbq = 0.002_r8
-        perturbq = 0._r8
-
-        t_up(i,kuplaunch(i) ) = tint(i,kuplaunch(i) )+perturbt
-        q_up(i,kuplaunch(i) ) = qint(i,kuplaunch(i) )+perturbq
-        mse_up(i,kuplaunch(i) ) = mseint( i,kuplaunch(i) )+perturbt*cpair+perturbq*latvap
+        t_up(i,kuplaunch(i) ) = tint(i,kuplaunch(i) ) + tpertglob
+        q_up(i,kuplaunch(i) ) = qint(i,kuplaunch(i) ) + qpertglob
+        mse_up(i,kuplaunch(i) ) = mseint( i,kuplaunch(i) )+tpertglob*cpair+qpertglob*latvap
         
         ! cloud base at launch point
         if ( opt == 2 ) then
@@ -2348,21 +2487,7 @@ subroutine cal_mse_up_old( &
                 ent_rate_dp_up_int(i,k) = max(0.0, min( max_ent_rate,  ent_rate_dp_up_int(i,k)))                
 
 
-!                bs_scaleh = 6.e3_r8
-!                bs_scaleh = dz(i,k)
-                !bs_scaleh = tmp_zuptop_max-zint(i, kupbase(i) ) 
-                !bs_cridis = bs_rle*bs_scaleh
-                !bs_wue = w_up(i,k)
-                !bs_thetalint = tint(i,k)*( bs_p0/pint(i,k) )**(rair/cpair)
-                !bs_thetal_up = ( t_up(i,k)-latvap*qliq_up(i,k)/cpair-latice*qice_up(i,k)/cpair  ) &
-                    !*( bs_p0/pint(i,k) )**(rair/cpair)
-                !call cal_buoysort(bs_cridis, zint(i,k), pint(i,k), rho(i,k), &
-                    !bs_thetalint, qint(i,k), bs_thetal_up, q_up(i,k)+qliq_up(i,k)+qice_up(i,k), &
-                    !bs_wue, bs_xc(i,k), ent_rate_sh_up_int(i,k), det_rate_sh_up_int(i,k) )
-
                 if ( bsflag == 1 ) then
-                    !bs_scaleh = 6.e3_r8
-                    !bs_scaleh = dz(i,k)
 
                     bs_scaleh = tmp_zuptop_max-zint(i, kupbase(i) ) 
                     bs_cridis = bs_rle*bs_scaleh

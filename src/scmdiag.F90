@@ -104,7 +104,7 @@ subroutine subcol_netcdf_addfld(varname, varunit, vartype)
         write(*,*) "enddef marked, can not add variable."
         return
     end if
-    write(*,*) "add ", varname
+    ! write(*,*) "add ", varname
 
     if (vartype == "slev") then
         ndim = 2
