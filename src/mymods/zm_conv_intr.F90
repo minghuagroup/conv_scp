@@ -292,6 +292,11 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use physconst,     only: gravit
    use phys_control,  only: cam_physpkg_is
 
+   ! Haiyang Yu
+    use nnparameter,   only: nnmodel, negqtendadj
+    use scamMod,       only: single_column, wfld
+    use constituents,   only:  qmin
+
    ! Arguments
 
    type(physics_state), intent(in )   :: state          ! Physics state variables
@@ -386,6 +391,10 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    logical  :: lq(pcnst)
 
+   ! Haiyang Yu
+   real(r8) :: omega(pcols, pver), z(pcols, pver), qliqtend(pcols, pver)
+
+   qliqtend(:,:) = 0.0
    !----------------------------------------------------------------------
 
    ! initialize
@@ -436,6 +445,29 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     outtrandntends, outtrandntendq, &
                     outmb, outmu, outsu, outqu, &
                     lengath(lchnk) ,ql      ,rliq  ,landfrac   )
+
+!-------------------------------------------------------------------------
+! Haiyang Yu
+    do k=1,pver
+        z(1:ncol,k)  = state%zm(1:ncol,k) + state%phis(1:ncol)/gravit
+    end do
+
+    if (single_column) then
+        omega(1,:) = wfld
+    else
+        omega(1:ncol,:) = state%omega
+    end if
+    if ( lengath(lchnk) > 0 ) then
+        do i = 1, ncol
+            if (landfrac(i) < 0.5) then
+                call nnmodel(pver, landfrac(i), state%pmid(i,:), state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
+                    ptend_loc%s(i,:), ptend_loc%q(i,:,1), qliqtend(i,:), prec(i), rprd(i,:), mcon(i,:) )
+                
+                call negqtendadj(pver, state%q(i,:,1), ptend_loc%q(i,:,1), 0.5*ztodt, qmin(1)*1.001)
+            end if
+        end do
+    end if
+!-------------------------------------------------------------------------
 
 !xiex
    precrate_out = rprd

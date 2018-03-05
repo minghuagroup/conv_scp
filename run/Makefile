@@ -4,13 +4,12 @@ FC  = ifort
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -g -fbacktrace -fcheck=all -DSCMDIAG 
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -fcheck=all -fbacktrace
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG -fbounds-check -g
-FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG -fbounds-check -g
+FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -DSCMDIAG -fbounds-check -g -check all -check noarg_temp_created -fpe0 -traceback
 #FFLAGS := -I$(INC_NETCDF) -L$(LIB_NETCDF) -lnetcdff -lnetcdf -fbounds-check 
 
 VPATH = ../src
 
-SRC = scmdiag.f90 conv_jp.F90 buoysort.f90 shr_nl_mod.F90
-
+SRC = scmdiag.f90 conv_jp.F90 buoysort.f90 shr_nl_mod.F90 nnparameter.F90
 
 OBJ = $(addsuffix .o, $(basename $(SRC)))
 
@@ -30,5 +29,7 @@ clean:
 
 #dependence
 
-conv_jp.o : scmdiag.o buoysort.o shr_nl_mod.o
+nnparameter.o : shr_nl_mod.o 
+
+conv_jp.o : scmdiag.o buoysort.o nnparameter.o shr_nl_mod.o 
 

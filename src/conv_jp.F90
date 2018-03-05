@@ -84,7 +84,8 @@ module conv_jp
     real(r8) :: ecp_dn_be = unset_r8
     real(r8) :: ecp_dn_ae = unset_r8
     real(r8) :: ecp_dn_vt = unset_r8
-    real(r8) :: ecp_dn_frac = unset_r8
+    real(r8) :: ecp_dn_frac_sh = unset_r8
+    real(r8) :: ecp_dn_frac_dp = unset_r8
     real(r8) :: ecp_pmf_alpha_sh = unset_r8
     real(r8) :: ecp_pmf_tau_sh = unset_r8
     real(r8) :: ecp_pmf_alpha_dp = unset_r8
@@ -92,6 +93,7 @@ module conv_jp
     real(r8) :: ecp_capelmt   = unset_r8
     real(r8) :: ecp_tpertglob   = unset_r8
     real(r8) :: ecp_qpertglob   = unset_r8
+    !integer :: ecp_nnlearning   = unset_int
 !--------------------------------------------------------------
 ! physical parameter
 !--------------------------------------------------------------
@@ -142,6 +144,7 @@ module conv_jp
     
     real(r8), parameter :: zpbltop = -1000.0    ! if +: downdraft mass flux decreases gradually in PBL
                                                 ! if -: no decreasing 
+    ! integer :: nnlearning = unset_int
 !--------------------------------------------------------------
 ! GRE and NSJ parameters
 !--------------------------------------------------------------
@@ -211,7 +214,8 @@ module conv_jp
     real(r8) :: dn_be = unset_r8  ! default: 5.0e-4
     real(r8) :: dn_ae = unset_r8  ! default: 0.3
     real(r8) :: dn_vt = unset_r8  ! default: 10
-    real(r8) :: dn_frac = unset_r8     ! default: 0.3; ratio of downdraft base massflux to updraft
+    real(r8) :: dn_frac_sh = unset_r8     ! default: 0.3; ratio of downdraft base massflux to updraft
+    real(r8) :: dn_frac_dp = unset_r8     ! default: 0.3; ratio of downdraft base massflux to updraft
 
 !--------------------------------------------------------------
 ! parameter for prognostics mass flux calculation
@@ -282,9 +286,9 @@ subroutine ecp_readnl(nlfile)
    namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, ecp_fixcldsr, &
        ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, &
        ecp_w_up_init_sh_beg, ecp_w_up_init_sh_end, ecp_w_up_init_dp_beg, ecp_w_up_init_dp_end, &
-       ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac, &
+       ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac_sh, ecp_dn_frac_dp, &
        ecp_pmf_alpha_sh, ecp_pmf_tau_sh, ecp_pmf_alpha_dp, ecp_pmf_tau_dp, ecp_capelmt, &
-       ecp_tpertglob, ecp_qpertglob
+       ecp_tpertglob, ecp_qpertglob !, ecp_nnlearning
    !-----------------------------------------------------------------------------
 
 #if (! defined SCMDIAG)    
@@ -332,7 +336,8 @@ subroutine ecp_readnl(nlfile)
         dn_be   = ecp_dn_be
         dn_ae   = ecp_dn_ae
         dn_vt   = ecp_dn_vt
-        dn_frac = ecp_dn_frac
+        dn_frac_sh = ecp_dn_frac_sh
+        dn_frac_dp = ecp_dn_frac_dp
         pmf_alpha_sh = ecp_pmf_alpha_sh
         pmf_tau_sh   = ecp_pmf_tau_sh
         pmf_alpha_dp = ecp_pmf_alpha_dp
@@ -340,7 +345,7 @@ subroutine ecp_readnl(nlfile)
         capelmt = ecp_capelmt
         tpertglob = ecp_tpertglob
         qpertglob = ecp_qpertglob
-   
+        !nnlearning = ecp_nnlearning 
 #if (! defined SCMDIAG)    
     end if
 #endif
@@ -364,7 +369,8 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(dn_be,  1, mpir8,  0, mpicom)
    call mpibcast(dn_ae,  1, mpir8,  0, mpicom)
    call mpibcast(dn_vt,  1, mpir8,  0, mpicom)
-   call mpibcast(dn_frac,  1, mpir8,  0, mpicom)
+   call mpibcast(dn_frac_sh,  1, mpir8,  0, mpicom)
+   call mpibcast(dn_frac_dp,  1, mpir8,  0, mpicom)
    call mpibcast(pmf_alpha_sh,  1, mpir8,  0, mpicom)
    call mpibcast(pmf_tau_sh,  1, mpir8,  0, mpicom)
    call mpibcast(pmf_alpha_dp,  1, mpir8,  0, mpicom)
@@ -372,6 +378,7 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(capelmt,  1, mpir8,  0, mpicom)
    call mpibcast(tpertglob,  1, mpir8,  0, mpicom)
    call mpibcast(qpertglob,  1, mpir8,  0, mpicom)
+   ! call mpibcast(nnlearning,  1, mpiint,  0, mpicom)
 #endif
 
     write(*, *) "nplume_sh: ", nplume_sh
@@ -379,6 +386,27 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "trig_eps0: ", trig_eps0
     write(*, *) "trig_c2: ", trig_c2
     write(*, *) "fixcldsr: ", fixcldsr
+    write(*, *) "ratio_ent_rad: ", ratio_ent_rad
+    write(*, *) "orgent_a: ", orgent_a
+    write(*, *) "orgent_beta0: ", orgent_beta0
+    write(*, *) "w_up_init_sh_beg: ", w_up_init_sh_beg
+    write(*, *) "w_up_init_sh_end: ", w_up_init_sh_end
+    write(*, *) "w_up_init_dp_beg: ", w_up_init_dp_beg
+    write(*, *) "w_up_init_dp_end: ", w_up_init_dp_end
+    write(*, *) "rain_z0: ", rain_z0
+    write(*, *) "rain_zp: ", rain_zp
+    write(*, *) "dn_be: ", dn_be
+    write(*, *) "dn_ae: ", dn_ae 
+    write(*, *) "dn_vt: ", dn_vt
+    write(*, *) "dn_frac_sh: ", dn_frac_sh
+    write(*, *) "dn_frac_dp: ", dn_frac_dp
+    write(*, *) "pmf_alpha_sh: ", pmf_alpha_sh
+    write(*, *) "pmf_tau_sh: ", pmf_tau_sh
+    write(*, *) "pmf_alpha_dp: ", pmf_alpha_dp
+    write(*, *) "capelmt: ", capelmt
+    write(*, *) "tpertglob: ", tpertglob
+    write(*, *) "qpertglob: ", tpertglob
+    ! write(*, *) "nnlearning: ", nnlearning
 
 end subroutine ecp_readnl
 
@@ -386,6 +414,8 @@ end subroutine ecp_readnl
 ! initialize the convection scheme
 ! ==============================================================================
 subroutine conv_jp_init(innlev)
+!    use nnparameter, only: readnnparameter 
+    
 !input
     integer, intent(in) :: innlev
 
@@ -404,9 +434,12 @@ subroutine conv_jp_init(innlev)
     write(*,"(a20f20.10)") "rair", rair
     write(*,"(a20f20.10)") "rh2o", rh2o
     write(*,"(a20f20.10)") "rhofw", rhofw
-
-    call ecp_readnl('atm_in')
 #endif
+    
+    call ecp_readnl('atm_in')
+    
+    ! call readnnparameter('atm_in')
+
 
 end subroutine conv_jp_init
 
@@ -445,6 +478,7 @@ subroutine conv_jp_tend( &
 !------------------------------------------------------
 !Calculate convective tendency
 !------------------------------------------------------
+!    use nnparameter,   only:  feedforward_prec, feedforward_q1q2, feedforward_q1q2prec
 
 ! Main Interface
     integer , intent(in) :: inncol ! size of column dimension
@@ -572,6 +606,8 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlevp) :: t_dn   ! [K]  bulk in-cloud temperatur given en/detrainment rate.
     real(r8), dimension(inncol, nlevp) :: q_dn   ! [kg/kg]  bulk in-cloud sat water vapor given en/detrainment rate.
     real(r8), dimension(inncol, nlevp) :: dse_dn ! [J/kg]  bulk in-cloud DSE given en/detrainment rate.
+    
+    real(r8) :: dn_frac   ! downdraft fraction
 
 !for evaporation
     real(r8), dimension(inncol, nlev) :: accuprec  ! [1]  bulk precipitation production
@@ -692,6 +728,11 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol) :: bg_qtendsum
     real(r8), dimension(inncol) :: bg_factor
 
+! NN model
+!    real(r8), dimension(inncol) :: nn_prec, nn_q2prec
+!    real(r8), dimension(inncol, nlev) :: nn_q1, nn_q2
+!    real(r8) :: nn_adjfac
+
 !for test
     real(r8), dimension(inncol) :: tmp ! [1] number of convective lev
     real(r8) :: diffz, dw_up_init
@@ -704,6 +745,12 @@ subroutine conv_jp_tend( &
 
 !intialize output
 !    massflxbase_p = 0._r8
+
+!    nn_prec = 0.0_r8
+!    nn_q2prec = 0.0_r8
+!    nn_q1 = 0.0
+!    nn_q2 = 0.0
+
     prec = 0._r8
     stend = 0._r8
     qtend = 0._r8
@@ -858,7 +905,27 @@ subroutine conv_jp_tend( &
     mseint = dseint + lvint*qint
     msesatint = dseint + lvint*qsatint
 
-
+! feedforward with NN model
+!------------------------------------------------------
+!    if (nnlearning == 1) then    
+!        do i = 1, inncol, 1
+!            call feedforward_prec(nlev, landfrac(i), p(i,:), mse(i,:), msesat(i,:), omega(i,:), nn_prec(i) )
+!        end do
+!    end if
+!------------------------------------------------------
+!    if (nnlearning == 2) then    
+!        do i = 1, inncol, 1
+!            call feedforward_q1q2(nlev, landfrac(i), p(i,:), mse(i,:), msesat(i,:), omega(i,:), &
+!                nn_q1(i,:), nn_q2(i,:) )
+!        end do
+!    end if
+!------------------------------------------------------
+!    if (nnlearning == 3) then    
+!        do i = 1, inncol, 1
+!            call feedforward_q1q2prec(nlev, landfrac(i), p(i,:), mse(i,:), msesat(i,:), omega(i,:), &
+!                nn_q1(i,:), nn_q2(i,:), nn_prec(i) )
+!        end do
+!    end if
 !------------------------------------------------------
 !Different methods to calculate entrainment rate
 !------------------------------------------------------
@@ -888,6 +955,8 @@ subroutine conv_jp_tend( &
             nplume = nplume_sh
             ind_offset = 0
 
+            dn_frac = dn_frac_sh
+
         else if ( iconv == 2 ) then
 
             greg_z0 = greg_z0_dp
@@ -905,6 +974,7 @@ subroutine conv_jp_tend( &
             nplume = nplume_dp
             ind_offset = nplume_sh
 
+            dn_frac = dn_frac_dp
         end if
 
         if (nplume > 1) then
@@ -1018,7 +1088,7 @@ subroutine conv_jp_tend( &
 !downdraft properties
             call cal_mse_dn( &
                 ent_opt, kuptop, trigdp, dz, zint, p, rho, t, twet, lvmid, &
-                qint, dseint, accuprec, evaprate, &
+                qint, dseint, accuprec, evaprate, dn_frac, &
                 dse_dn, q_dn, normassflx_dn_tmp)
 
             mse_dn = dse_dn + lvint*q_dn
@@ -1266,9 +1336,75 @@ subroutine conv_jp_tend( &
     qliqtend = qliqtendsum
 
     precrate_out = precratesum
-
-
     mcon = massflxsum
+
+    !-------------------------------------------------
+    ! Haiyang test
+    ! NN learning over oceanic grids
+
+!    do i=1, inncol
+!        if ( trigdp(i)<1 ) cycle
+
+!#ifdef SCMDIAG            
+!            write(*, *) "conv_jp_tend:ECP prec: ", prec(i)*86400*1000.0
+!            write(*, *) "landfrac: ", landfrac(i)
+!#endif
+        !if ( landfrac(i)<0.5 ) then
+            !-----------------------------------
+        !    if (nnlearning == 1) then
+        !        if (prec(i)*86400.0*1000.0 > 0.1 ) then
+        !            nn_adjfac = nn_prec(i) / prec(i)
+        !            prec(i) = nn_prec(i)
+        !            stend(i,:) = stend(i,:) * nn_adjfac
+        !            qtend(i,:) = qtend(i,:) * nn_adjfac
+                    !mcon(i,:) = mcon(i,:) * nn_adjfac
+                    !qliqtend(i,:) = qliqtend(i,:) * nn_adjfac
+                    !precrate_out(i,:) = precrate_out(i,:) * nn_adjfac
+        !            mcon(i,:) = 0.0
+        !            qliqtend(i,:) = 0.0
+        !            precrate_out(i,:) = 0.0
+        !        end if
+        !    end if
+            !-----------------------------------
+        !    if (nnlearning == 2) then
+        !        do k=1, nlev
+        !            nn_q2prec(i) = nn_q2prec(i) + max(0.0, -nn_q2(i,k))*rho(i,k)*dz(i,k)
+                    !nn_q2prec(i) = nn_q2prec(i) + max(0.0, nn_q2(i,k)/(2.5e6))*rho(i,k)*dz(i,k)
+        !        end do
+        !        nn_q2prec(i) = nn_q2prec(i)/rhofw
+        !        if (nn_q2prec(i)*86400.0*1000.0 > 0.1 ) then
+        !            nn_adjfac = prec(i) / nn_q2prec(i)
+        !            stend(i,:) = nn_q1(i,:) * nn_adjfac ! J/kg/s
+        !            qtend(i,:) = nn_q2(i,:) * nn_adjfac  ! kg/kg/s
+                    !qtend(i,:) = nn_q2(i,:)/(-2.5e6) * nn_adjfac  ! J/kg/s -> kg/kg/s
+        !        end if
+        !    end if
+            !-----------------------------------
+        !    if (nnlearning == 3) then
+        !        do k=1, nlev
+        !            nn_q1(i,k) = max(0.0, nn_q1(i,k))
+        !            nn_q2(i,k) = min(0.0, nn_q2(i,k))
+        !            nn_q2prec(i) = nn_q2prec(i) + max(0.0, -nn_q2(i,k))*rho(i,k)*dz(i,k)
+        !            !nn_q2prec(i) = nn_q2prec(i) + max(0.0, nn_q2(i,k)/(2.5e6))*rho(i,k)*dz(i,k)
+        !        end do
+        !        nn_q2prec(i) = nn_q2prec(i)/rhofw
+        !        if (nn_q2prec(i)*86400.0*1000.0 > 0.1 ) then
+        !            nn_adjfac = nn_prec(i) / nn_q2prec(i)
+        !            prec(i) = nn_prec(i)
+        !            stend(i,:) = nn_q1(i,:) * nn_adjfac ! J/kg/s
+        !            qtend(i,:) = nn_q2(i,:) * nn_adjfac  ! kg/kg/s
+        !            !qtend(i,:) = nn_q2(i,:)/(-2.5e6) * nn_adjfac  ! J/kg/s -> kg/kg/s
+        !        end if
+        !    end if
+            !-----------------------------------
+        !end if
+!#ifdef SCMDIAG            
+!            write(*, *) "conv_jp_tend: nn_prec=", nn_prec(i)*86400*1000.0, ", nn_q2prec=", nn_q2prec(i)*86400*1000.0
+!#endif
+
+!    end do
+    !--------------------------------------------------
+
 
 #ifdef SCMDIAG
     call subcol_netcdf_putclm( "stendsum", nlev, stendsum(1,:), 1 )
@@ -1285,14 +1421,13 @@ subroutine conv_jp_tend( &
     minqcheckf = 1._r8
 
     do i=1, inncol
-
 !whole column adjustment
         minqcheckf = 1._r8
         do k=nlev, 1, -1
 
             if ( (q(i,k)<=qmin*1.001) .and. (qtend(i,k)<0.) ) then
 #ifdef SCMDIAG 
-                write(*,*) 'too small Q'
+                write(*,*) 'too small Q: ', p(i,k), q(i,k), qtend(i,k)*dtime
 #endif
                 minqcheckf = 0._r8
                 trigdp(i) = -91
@@ -1302,7 +1437,12 @@ subroutine conv_jp_tend( &
             qcheckf = q(i,k)+qtend(i,k)*dtime
 
             if( qcheckf<qmin ) then
-                qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
+                ! Haiyang 
+                if (abs(qtend(i,k)) > 1e-15) then
+                    qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
+                else
+                    qcheckf = 1.0
+                end if
                 if( qcheckf<minqcheckf ) then
                     minqcheckf = qcheckf
                 end if
@@ -1310,7 +1450,7 @@ subroutine conv_jp_tend( &
 
         end do
 
-        if( minqcheckf<1._r8 ) then
+        if( minqcheckf<1.0_r8 ) then
             massflxbase(i) = minqcheckf*massflxbase(i)
 
             stendcond(i,:) = minqcheckf*stendcond(i,:)
@@ -1450,8 +1590,50 @@ subroutine conv_jp_tend( &
 
 #endif
 
+    !-------------------------------------------------
     ! Haiyang test
-    qliqtend = 0.0
+!    qliqtend = 0.0
+!    ! mcon
+!    do i=1, inncol
+        
+!        if ( trigdp(i)<1 ) cycle
+        
+!        if (nnlearning > 1e-3 .and. landfrac(i)<0.5 ) then
+!            qliqtend_det(i,:) = 0.0
+!            precrate_out(i,:) = 0.0
+!                
+!            do k=1, nlev
+!                if (nn_q1(i,k)<0) then
+!                    nn_q1(i,k) = 0.0
+!                end if
+!                if (nn_q2(i,k)<0) then
+!                    nn_q2(i,k) = 0.0
+!                end if
+!                nn_q2prec(i) = nn_q2prec(i) + max(0.0, ( nn_q2(i,k)/2.5e6 )*rho(i,k)*dz(i,k))
+!            end do
+!            nn_q2prec(i) = nn_q2prec(i)/rhofw
+!#ifdef SCMDIAG            
+!            write(*, *) "conv_jp_tend:ECP prec:", prec(i)*86400*1000.0
+!#endif
+        
+!            ! Use NN_prec to scale the tendency profiles
+!            !if (prec(i)*86400.0*1000.0 > 0.1 ) then
+!            if (nn_q2prec(i)*86400.0*1000.0 > 0.1 ) then
+!                !nn_adjfac = nn_prec(i) / prec(i)
+!                nn_adjfac = nn_prec(i) / nn_q2prec(i)
+!                prec(i) = nn_prec(i)
+!                !stend(i,:) = stend(i,:) * nn_adjfac
+!                !qtend(i,:) = qtend(i,:) * nn_adjfac
+!                stend(i,:) = nn_q1(i,:) * nn_adjfac
+!                qtend(i,:) = nn_q2(i,:)/(-2.5e6) * nn_adjfac
+!            end if
+!#ifdef SCMDIAG            
+!            write(*, *) "conv_jp_tend:nn prec:", prec(i)*86400*1000.0
+!#endif
+!        end if
+!    end do
+    !--------------------------------------------------
+
 end subroutine conv_jp_tend
 
 ! ==============================================================================
@@ -1539,7 +1721,7 @@ subroutine cal_launchtocldbase( &
 
         t_up(i,kuplaunch(i) ) = tint(i,kuplaunch(i) ) + tpertglob
         q_up(i,kuplaunch(i) ) = qint(i,kuplaunch(i) ) + qpertglob
-        mse_up(i,kuplaunch(i) ) = mseint( i,kuplaunch(i) )+tpertglob*cpair+qpertglob*latvap
+        mse_up(i,kuplaunch(i) ) = mseint( i,kuplaunch(i) ) + tpertglob*cpair + qpertglob*latvap
         
         ! cloud base at launch point
         if ( opt == 2 ) then
@@ -2598,7 +2780,7 @@ end subroutine cal_mse_up_old
 subroutine cal_mse_dn( &
 !input
         ent_opt, kuptop, trig, dz, zint, p, rho, t, twet, lvmid, &
-        qint, dseint, accuprec, evaprate, &
+        qint, dseint, accuprec, evaprate, dn_frac, &
 !output
         dse_dn, q_dn, normassflx_dn )
 
@@ -2617,6 +2799,7 @@ subroutine cal_mse_dn( &
     real(r8), dimension(ncol, nlevp), intent(in) :: dseint  ! [J/kg]
     real(r8), dimension(ncol, nlev), intent(in)  :: accuprec ! [#]
     real(r8), dimension(ncol, nlev), intent(in)  :: evaprate ! [1/m]
+    real(r8), intent(in)  :: dn_frac ! [#]
 
 !output
     real(r8), dimension(ncol, nlevp), intent(inout) :: dse_dn  ! [J/kg]

@@ -396,6 +396,9 @@ program test
 #ifdef SCMDIAG
         call subcol_netcdf_nextstep
 #endif
+    
+        ! Haiyang test
+        landfrac = 0.0
 
         do j = 1, nlat
             call conv_jp_tend( nlon &
@@ -469,7 +472,7 @@ program test
         call subcol_netcdf_putclm( "camqtendtrandn", nlev, camqtendtrandn(1,1,:), 1 )
     
     do i = 1, nlev, 1
-        write(*,*) p(1,1,i)/100,  qtend(1,1,i)
+        write(*,"(3F10.4)") p(1,1,i)/100,  stend(1,1,i)/1004*86400, qtend(1,1,i)*86400*1000
     end do
     
 #endif

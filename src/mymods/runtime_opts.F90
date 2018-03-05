@@ -361,7 +361,9 @@ contains
    use cldwat,              only: cldwat_readnl
    use zm_conv,             only: zmconv_readnl
    ! Haiyang Yu
-   use conv_jp,             only: ecp_readnl
+   ! use conv_jp,             only: ecp_readnl
+   ! use nnparameter,         only: readnnparameter
+
    use hk_conv,             only: hkconv_readnl
    use uwshcu,              only: uwshcu_readnl
    use pkg_cld_sediment,    only: cld_sediment_readnl
@@ -792,7 +794,8 @@ contains
    call cldfrc_readnl(nlfilename)
    call zmconv_readnl(nlfilename)
    ! Haiyang Yu
-   call ecp_readnl(nlfilename)
+   ! call ecp_readnl(nlfilename)
+   ! call readnnparameter(nlfilename)
 
    call cldwat_readnl(nlfilename)
    call hkconv_readnl(nlfilename)

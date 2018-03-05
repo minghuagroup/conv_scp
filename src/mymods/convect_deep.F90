@@ -135,11 +135,18 @@ subroutine convect_deep_init(pref_edge)
   use conv_intr_jp,  only: conv_intr_jp_init
   use physics_buffer,        only: pbuf_get_field
 
+!------------------------------------
+! Haiyang Yu
+    use nnparameter, only: readnnparameter
+!-------------------------------------
+
   implicit none
 
   real(r8),intent(in) :: pref_edge(plevp)        ! reference pressures at interfaces
   integer k
 
+  ! Haiyang Yu
+    call readnnparameter('atm_in')
 
   select case ( deep_scheme )
   case('off') !     ==> no deep convection
@@ -149,6 +156,7 @@ subroutine convect_deep_init(pref_edge)
      call zm_conv_init(pref_edge)
 !xiex
   case('SCP') !   2 ==> SCP
+     if (masterproc) write(iulog,*)'convect_deep initializing SCP convection'
      call conv_intr_jp_init
   case default
      if (masterproc) write(iulog,*)'WARNING: convect_deep: no deep convection scheme. May fail.'

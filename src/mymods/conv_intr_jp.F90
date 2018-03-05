@@ -117,6 +117,9 @@ subroutine conv_intr_jp_tend( &
     use constituents,  only: pcnst
     use scamMod,       only: single_column, wfld
 
+! Haiyang Yu
+    use nnparameter,   only: nnmodel, negqtendadj
+
 !------------------------------------------------------
 !Calculate convective tendency
 !------------------------------------------------------
@@ -302,6 +305,16 @@ subroutine conv_intr_jp_tend( &
        outstendevap(:ncol,:), outqtendevap(:ncol,:) &
        )
 
+    ! Haiyang Yu
+    do i = 1,ncol
+        if ( landfrac(i)<0.5 ) then
+            call nnmodel(pver, landfrac(i), state%pmid(i,:), state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
+                   stend(i,:), qtend(i,:), qliqtend(i,:), prec(i), precrate(i,:), mcon(i,:) )
+            
+            call negqtendadj(pver, state%q(i,:,1), qtend(i,:), ztodt, qmin(1)*1.001)
+        end if
+    end do
+
    ptend_loc%s(:ncol,:)   = stend(:ncol,:)
    ptend_loc%q(:ncol,:,1) = qtend(:ncol,:)
    !ptend_loc%s(:ncol,:)   = stendcomp(:ncol,:)
@@ -372,21 +385,21 @@ subroutine conv_intr_jp_tend( &
        do k = 1, pver
            tmp = state_loc%q(i,k,1) + qtend(i,k)*ztodt
            if ( tmp<qmin(1) ) then
-               write(iulog,'(a10,f30.25)') 'qmin', qmin(1)
-               write(iulog,'(a10,f30.25)') 'tmp', tmp
-               write(iulog,'(a10,f30.25)') 'dtime', ztodt
-               write(iulog,'(a10,f30.25)') 'minqcheckf', outtmp2d(i)
-               write(iulog,*) tmp<qmin(1), tmp-qmin(1)
-               write(iulog,*) 'problem in neg Q', i, k
-               write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
-               do j = 1, pver
+               !write(iulog,'(a10,f30.25)') 'qmin', qmin(1)
+               !write(iulog,'(a10,f30.25)') 'tmp', tmp
+               !write(iulog,'(a10,f30.25)') 'dtime', ztodt
+               !write(iulog,'(a10,f30.25)') 'minqcheckf', outtmp2d(i)
+               !write(iulog,*) tmp<qmin(1), tmp-qmin(1)
+               !write(iulog,*) 'problem in neg Q', i, k
+               !write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
+!               do j = 1, pver
                    !write(iulog,'(i3,f10.5,3f30.25,l3)') j, &
                        !state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
-                   !state_loc%q(i,j,1)>qmin(1)
-                   write(iulog,'(i3,f10.5,3f30.25,l3)') j, state_loc%pmid(i,j)/100., &
-                       state_loc%q(i,j,1), qtend(i,j)*ztodt, outqtend(i,j)*ztodt, &
-                   state_loc%q(i,j,1)>qmin(1)
-               end do
+                   !    state_loc%q(i,j,1)>qmin(1)
+                   !write(iulog,'(i3,f10.5,3f30.25,l3)') j, state_loc%pmid(i,j)/100., &
+                   !    state_loc%q(i,j,1), qtend(i,j)*ztodt, outqtend(i,j)*ztodt, &
+                   !    state_loc%q(i,j,1) > qmin(1)
+!               end do
 
                exit
            end if

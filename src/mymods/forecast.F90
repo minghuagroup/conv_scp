@@ -31,7 +31,7 @@ subroutine forecast(lat, psm1, psm2,ps, &
    use cam_logfile,    only: iulog
 
    ! Haiyang Yu
-   use mod_foutput,  only: foutput_6var
+!   use mod_foutput,  only: foutput_6var
 !-----------------------------------------------------------------------
    implicit none
 !-----------------------------------------------------------------------
@@ -231,7 +231,6 @@ subroutine forecast(lat, psm1, psm2,ps, &
 !  place software checks here to guard agains missing data.
 !
 
-!write(*,*) "yhy:have:",have_divt,have_divq
 
       if((.not. (have_divt .and. have_divq)) .and. use_iop) then
 !
@@ -567,9 +566,9 @@ end if
    v3(:)=vfcst(:)
 
 ! Haiyang Yu
- call foutput_6var("forecast:", t3,t3m1,t3m2,q3(:,1),q3m1(:,1),q3m2(:,1) )
-write(*,*) "yhy:scm_relax:", scm_relaxation
-write(*,*) "yhy:3dfrc:", use_3dfrc
+! call foutput_6var("forecast:", t3,t3m1,t3m2,q3(:,1),q3m1(:,1),q3m2(:,1) )
+!write(*,*) "yhy:scm_relax:", scm_relaxation
+!write(*,*) "yhy:3dfrc:", use_3dfrc
 
  !
    if (scm_relaxation) then
