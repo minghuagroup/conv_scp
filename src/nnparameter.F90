@@ -599,6 +599,7 @@ subroutine nnmodel(nlevin, landfrac, p, t, q, z, omega, &
 
     call cal_interpcoef(nlevin, p, interpcoef)
 
+    ! notice the order: mse -> msesat -> omega
     do i = 1, nn_nlev, 1
         invar(i) = sum(interpcoef(i,:) * mse(:))
         invar(i+nn_nlev) = sum(interpcoef(i,:) * msesat(:))
@@ -615,7 +616,7 @@ subroutine nnmodel(nlevin, landfrac, p, t, q, z, omega, &
         write(*,*) 'nnmodel:    prec = ', prec*86400*1000.0
         write(*,*) 'nnmodel: nn_prec = ', nn_prec*86400*1000.0
 #endif
-        if (prec*86400.0*1000.0 > 0.1) then
+        if (prec*86400.0*1000.0 > 1.0 .and. nn_prec*86400*1000.0 > 1.0) then
             nn_adjfac = nn_prec / prec
             prec = nn_prec
             stend(:) = stend(:) * nn_adjfac
