@@ -144,7 +144,8 @@ module conv_jp
     
     real(r8), parameter :: zpbltop = -1000.0    ! if +: downdraft mass flux decreases gradually in PBL
                                                 ! if -: no decreasing 
-    integer :: meanorsum = unset_int
+    integer :: meanorsum = unset_int            ! 1: mean of plumes
+                                                ! 2: sum of plumes
 !--------------------------------------------------------------
 ! GRE and NSJ parameters
 !--------------------------------------------------------------
