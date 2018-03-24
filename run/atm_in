@@ -236,7 +236,7 @@ ecp_capelmt=8.366245e+01
 ecp_tpertglob=6.947131e-01
 /
 &nn_nl
- nn_fname = '/T3/yhy/data/ERA_Interim/NN/NNparameter/combineDPNN_MSE_MSESAT_OMEGA.nc'
+ nn_fname = 'combineDPNN_MSE_MSESAT_OMEGA.nc'
  nn_nlayer = 4
  nn_type = 0
  nn_ptop = 15000.0
