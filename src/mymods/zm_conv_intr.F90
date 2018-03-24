@@ -460,10 +460,12 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
     if ( lengath(lchnk) > 0 ) then
         do i = 1, ncol
             if (landfrac(i) < 0.5) then
-                call nnmodel(pver, landfrac(i), state%pmid(i,:), state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
+                call nnmodel(pver, landfrac(i), state%pmid(i,:), state%u(i,:), state%v(i,:), &
+                    state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
                     ptend_loc%s(i,:), ptend_loc%q(i,:,1), qliqtend(i,:), prec(i), rprd(i,:), mcon(i,:) )
                 
-                call negqtendadj(pver, state%q(i,:,1), ptend_loc%q(i,:,1), 0.5*ztodt, qmin(1)*1.001)
+                call negqtendadj(pver, state%q(i,:,1), ptend_loc%q(i,:,1), ptend_loc%s(i,:), &
+                    rprd(i,:), qliqtend(i,:), mcon(i,:), 0.5*ztodt, qmin(1)*1.001)
             end if
         end do
     end if

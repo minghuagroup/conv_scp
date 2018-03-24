@@ -16,7 +16,6 @@ use cam_history,  only: outfld, addfld, add_default, phys_decomp
 
 use cam_logfile,  only: iulog
 
-!use scp_conv,     only: scp_conv_init, scp_conv_tend
 use conv_jp,     only: conv_jp_init, conv_jp_tend
 
 implicit none
@@ -118,8 +117,7 @@ subroutine conv_intr_jp_tend( &
     use scamMod,       only: single_column, wfld
 
 ! Haiyang Yu
-    use nnparameter,   only: nnmodel, negqtendadj
-
+    use nnparameter,   only: nnmodel, negqtendadj, profileadj
 !------------------------------------------------------
 !Calculate convective tendency
 !------------------------------------------------------
@@ -204,6 +202,11 @@ subroutine conv_intr_jp_tend( &
    real(r8) :: outstendevap(pcols,pver)    ! evaporation DSE tend
    real(r8) :: outqtendevap(pcols,pver)    ! evaporation Q tend
 
+    ! Haiyang Yu
+    real(r8) :: nn_prec(pcols)
+    real(r8) :: nn_stend(pcols, pver)
+    real(r8) :: nn_qtend(pcols, pver)
+
 
    integer :: i, j, k
    logical :: flag
@@ -274,6 +277,18 @@ subroutine conv_intr_jp_tend( &
        z(:ncol,k)  = state%zm(:ncol,k) + state%phis(:ncol)/gravit
    end do
    zsrf(:ncol) = state%phis(:ncol)/gravit
+    
+    ! ---------------------------------------------------------------
+    ! Haiyang Yu: nnmodel
+    do i = 1,ncol
+        if ( landfrac(i)<0.5 ) then
+            call nnmodel(pver, landfrac(i), state%pmid(i,:), state%u(i,:), state%v(i,:), &
+                state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
+                nn_stend(i,:), nn_qtend(i,:), qliqtend(i,:), nn_prec(i), precrate(i,:), mcon(i,:) )
+            ! call negqtendadj(pver, state%q(i,:,1), nn_qtend(i,:), nn_stend(i,:), ztodt, qmin(1)*1.001)
+        end if
+    end do
+    ! ---------------------------------------------------------------
 
    call conv_jp_tend( &
 !input
@@ -285,6 +300,7 @@ subroutine conv_intr_jp_tend( &
        state%t(:ncol,:), state%q(:ncol,:,1), &
        bfls_t(:ncol,:), bfls_q(:ncol,:), &
        omega(:ncol,:), pblh(:ncol), tpert(:ncol), &
+       nn_prec(:ncol), nn_stend(:ncol,:), nn_qtend(:ncol,:), &
 !in/output
        massflxbase_p(:ncol,:), &
 !output
@@ -305,15 +321,16 @@ subroutine conv_intr_jp_tend( &
        outstendevap(:ncol,:), outqtendevap(:ncol,:) &
        )
 
-    ! Haiyang Yu
+    ! ---------------------------------------------------------------
+    ! Haiyang Yu: nn_prec adjustment
     do i = 1,ncol
         if ( landfrac(i)<0.5 ) then
-            call nnmodel(pver, landfrac(i), state%pmid(i,:), state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
-                   stend(i,:), qtend(i,:), qliqtend(i,:), prec(i), precrate(i,:), mcon(i,:) )
-            
-            call negqtendadj(pver, state%q(i,:,1), qtend(i,:), ztodt, qmin(1)*1.001)
+            call profileadj(pver, nn_prec(i), prec(i), stend(i,:), qtend(i,:), precrate(i,:), qliqtend(i,:), mcon(i,:) )
+            call negqtendadj(pver, state%q(i,:,1), qtend(i,:), stend(i,:), &
+                precrate(i,:), qliqtend(i,:), mcon(i,:), ztodt, qmin(1)*1.001)
         end if
     end do
+    ! ---------------------------------------------------------------
 
    ptend_loc%s(:ncol,:)   = stend(:ncol,:)
    ptend_loc%q(:ncol,:,1) = qtend(:ncol,:)
@@ -369,16 +386,9 @@ subroutine conv_intr_jp_tend( &
        end do
    end do
 
-   !ptend_loc%s = 0._r8
-   !ptend_loc%q(:,:,1) = 0._r8
-!   prec = 0._r8
-
-!   dlf(:ncol,1:pver)  = 0._r8
+   ! Haiyang
    dlf(:ncol,1:pver)  = qliqtend(:ncol,1:pver)
-   ql(:ncol,1:pver)   = 0._r8
-!   rprd(:ncol,1:pver) = precrate(:ncol,1:pver)
-   rprd(:ncol,1:pver) = 0._r8
-
+   rprd(:ncol,1:pver) = precrate(:ncol,1:pver)
    precrate_out = precrate
 
    do i = 1, ncol

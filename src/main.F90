@@ -10,6 +10,9 @@ program test
     use scmdiag, only: subcol_netcdf_nextstep
     use scmdiag, only: subcol_netcdf_putclm, subcol_netcdf_putfld
 #endif
+! Haiyang Yu
+    use nnparameter,   only: nnmodel, negqtendadj, profileadj, readnnparameter
+!-------------------------------------
 
     implicit none
 
@@ -37,7 +40,8 @@ program test
     real(r8), dimension(:,:,:), allocatable ::  camstendtrandn, camqtendtrandn
 
     real(r8), dimension(:,:), allocatable :: ht, landfrac, camprecc
-    real(r8), dimension(:,:), allocatable :: pblh, tpert, lhflx
+    real(r8), dimension(:,:), allocatable :: pblh, tpert, lhflx, nn_prec
+    real(r8), dimension(:,:,:), allocatable :: nn_stend, nn_qtend
     real(r8), dimension(:,:), allocatable :: psrf, zsrf
     real(r8), dimension(:), allocatable :: lon, lat, time
 
@@ -320,6 +324,10 @@ program test
     call subcol_netcdf_addfld( "trigdp" , "1", "slev")
 #endif
 
+  ! Haiyang Yu
+    call readnnparameter('atm_in')
+    
+    
     !if ( ntime == 1 ) then
         !dtime = 0.25*24*3600
     !else
@@ -339,8 +347,8 @@ program test
         write(*,"(a12,i5)") "time step:", itime
 
 !input 3D fields
-      !call netcdf_check( nf90_get_var(inncid, uvarid, u, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
-      !call netcdf_check( nf90_get_var(inncid, vvarid, v, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, uvarid, u, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
+        call netcdf_check( nf90_get_var(inncid, vvarid, v, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
         call netcdf_check( nf90_get_var(inncid, omegavarid, omega, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
         call netcdf_check( nf90_get_var(inncid, zvarid, z, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
         call netcdf_check( nf90_get_var(inncid, pvarid, p, start=(/1,1,1,itime/), count=(/nlon,nlat,nlev,1/) ) )
@@ -389,6 +397,9 @@ program test
 
         pblh = 0._r8
         tpert = 0.0_r8
+        nn_prec = 0.0_r8
+        nn_stend = 0.0_r8
+        nn_qtend = 0.0_r8
         lhflx = 0._r8
        !psrf = 0._r8
        !zsrf = 0._r8
@@ -401,13 +412,23 @@ program test
         landfrac = 0.0
 
         do j = 1, nlat
+            ! ---------------------------------------------------------------
+            ! Haiyang Yu: nnmodel
+            do i = 1,nlon
+                if ( landfrac(i,j)<0.5 ) then
+                    call nnmodel(nlev, landfrac(i,j), p(i,j,:), u(i,j,:), v(i,j,:), t(i,j,:), q(i,j,:), z(i,j,:), omega(i,j,:), &
+                           nn_stend(i,j,:), nn_qtend(i,j,:), qliqtend(i,j,:), nn_prec(i,j), rainrate(i,j,:), mcon(i,j,:) )
+                end if
+            end do
+            ! ---------------------------------------------------------------
             call conv_jp_tend( nlon &
                 ,2, dtime, qmin &
                 ,lat(j), landfrac(:,j), lhflx(:,j) &
                 ,psrf(:,j), p(:,j,:), dp(:,j,:) &
                 ,ht(:,j), z(:,j,:), dz(:,j,:) &
                 ,t(:,j,:), q(:,j,:), bfls_t(:,j,:), bfls_q(:,j,:) &
-                ,omega(:,j,:), pblh(:,j), tpert(:,j)  &
+                ,omega(:,j,:), pblh(:,j), tpert(:,j)&
+                ,nn_prec(:,j), nn_stend(:,j,:), nn_qtend(:,j,:) &
 !
                 ,massflxbase(:,j,:) &
                 ,jctop(:,j), jcbot(:,j) &
@@ -430,6 +451,26 @@ program test
                 ,outstendtrandn, outqtendtrandn &
                 ,outstendevap,   outqtendevap &
                 )
+            ! ---------------------------------------------------------------
+#ifdef SCMDIAG
+    do k = 1,nlev
+        write(*, '(a10, 3F10.4)') "stend:", p(1,j,k)/100.0, nn_stend(1,j,k), stend(1,j,k)
+    end do
+#endif
+            ! Haiyang Yu: nnmodel
+            do i = 1,nlon
+                if ( landfrac(i,j)<0.5 ) then
+                    call profileadj(nlev, nn_prec(i,j), precc(i,j), stend(i,j,:), qtend(i,j,:), &
+                        rainrate(i,j,:), qliqtend(i,j,:), mcon(i,j,:) )
+                    call negqtendadj(nlev, q(i,j,:), qtend(i,j,:), stend(i,j,:), &
+                        rainrate(i,j,:), qliqtend(i,j,:), mcon(i,j,:), dtime, 1.0e-12_r8)
+                end if
+            end do
+
+#ifdef SCMDIAG
+    write(*, *) "final prec: ", precc(:,j)*86400*1000.0
+#endif
+            ! ---------------------------------------------------------------
         end do
 
         do j=1, nlat
@@ -471,9 +512,6 @@ program test
         call subcol_netcdf_putclm( "camstendtrandn", nlev, camstendtrandn(1,1,:), 1 )
         call subcol_netcdf_putclm( "camqtendtrandn", nlev, camqtendtrandn(1,1,:), 1 )
     
-    do i = 1, nlev, 1
-        write(*,"(3F10.4)") p(1,1,i)/100,  stend(1,1,i)/1004*86400, qtend(1,1,i)*86400*1000
-    end do
     
 #endif
 
@@ -544,8 +582,8 @@ program test
         allocate( dp(innlon, innlat, innlev) )
         allocate( z(innlon, innlat, innlev) )
         allocate( dz(innlon, innlat, innlev) )
-      !allocate( u(innlon, innlat, innlev) )
-      !allocate( v(innlon, innlat, innlev) )
+        allocate( u(innlon, innlat, innlev) )
+        allocate( v(innlon, innlat, innlev) )
         allocate( omega(innlon, innlat, innlev) )
         allocate( t(innlon, innlat, innlev) )
         allocate( q(innlon, innlat, innlev) )
@@ -557,6 +595,9 @@ program test
         allocate( landfrac(innlon, innlat) )
         allocate( pblh(innlon, innlat) )
         allocate( tpert(innlon, innlat) )
+        allocate( nn_prec(innlon, innlat) )
+        allocate( nn_stend(innlon, innlat, innlev) )
+        allocate( nn_qtend(innlon, innlat, innlev) )
         allocate( lhflx(innlon, innlat) )
         allocate( psrf(innlon, innlat) )
         allocate( zsrf(innlon, innlat) )
