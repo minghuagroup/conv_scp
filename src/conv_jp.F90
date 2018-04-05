@@ -94,6 +94,8 @@ module conv_jp
     real(r8) :: ecp_tpertglob   = unset_r8
     real(r8) :: ecp_qpertglob   = unset_r8
     integer  :: ecp_meanorsum   = unset_int
+    real(r8) :: ecp_facdlf = unset_r8
+
 !--------------------------------------------------------------
 ! physical parameter
 !--------------------------------------------------------------
@@ -146,6 +148,7 @@ module conv_jp
                                                 ! if -: no decreasing 
     integer :: meanorsum = unset_int            ! 1: mean of plumes
                                                 ! 2: sum of plumes
+    real(r8) :: facdlf = unset_r8
 !--------------------------------------------------------------
 ! GRE and NSJ parameters
 !--------------------------------------------------------------
@@ -289,7 +292,7 @@ subroutine ecp_readnl(nlfile)
        ecp_w_up_init_sh_beg, ecp_w_up_init_sh_end, ecp_w_up_init_dp_beg, ecp_w_up_init_dp_end, &
        ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac_sh, ecp_dn_frac_dp, &
        ecp_pmf_alpha_sh, ecp_pmf_tau_sh, ecp_pmf_alpha_dp, ecp_pmf_tau_dp, ecp_capelmt, &
-       ecp_tpertglob, ecp_qpertglob, ecp_meanorsum 
+       ecp_tpertglob, ecp_qpertglob, ecp_meanorsum, ecp_facdlf
    !-----------------------------------------------------------------------------
 
 #if (! defined SCMDIAG)    
@@ -347,6 +350,7 @@ subroutine ecp_readnl(nlfile)
         tpertglob = ecp_tpertglob
         qpertglob = ecp_qpertglob
         meanorsum = ecp_meanorsum 
+        facdlf = ecp_facdlf
 #if (! defined SCMDIAG)    
     end if
 #endif
@@ -380,6 +384,7 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(capelmt,  1, mpir8,  0, mpicom)
    call mpibcast(tpertglob,  1, mpir8,  0, mpicom)
    call mpibcast(qpertglob,  1, mpir8,  0, mpicom)
+   call mpibcast(facdlf,  1, mpir8,  0, mpicom)
 #endif
 
     write(*, *) "nplume_sh: ", nplume_sh
@@ -408,6 +413,7 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "capelmt: ", capelmt
     write(*, *) "tpertglob: ", tpertglob
     write(*, *) "qpertglob: ", tpertglob
+    write(*, *) "facdlf: ", facdlf
 
 end subroutine ecp_readnl
 
@@ -1080,7 +1086,16 @@ subroutine conv_jp_tend( &
             end do
 
             dse_up = cpair*t_up+gravit*zint
+            stendcond =  latvap*condrate
+            qtendcond = -condrate
 
+!evaporation tendency
+            call cal_evap( &
+                ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
+                precrate, accuprec, surfprec, evaprate )
+
+            stendevap = -latvap*evaprate
+            qtendevap =  evaprate
 
 !downdraft properties
             call cal_mse_dn( &
@@ -1089,6 +1104,12 @@ subroutine conv_jp_tend( &
                 dse_dn, q_dn, normassflx_dn_tmp)
 
             mse_dn = dse_dn + lvint*q_dn
+
+! dilute CAPE
+            call cal_cape( &
+                dz, buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
+                dilucape(:,j), cwf(:,j), &
+                trigdp)
 
 !updraft transport tendency
             call cal_tendtransport( &
@@ -1115,21 +1136,6 @@ subroutine conv_jp_tend( &
                     /dz(i,k)/rho(i,k) )
             end do
 
-!evaporation tendency
-            call cal_evap( &
-                ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
-                precrate, accuprec, surfprec, evaprate )
-
-            stendcond =  latvap*condrate
-            qtendcond = -condrate
-
-            stendevap = -latvap*evaprate
-            qtendevap =  evaprate
-
-            call cal_cape( &
-                dz, buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
-                dilucape(:,j), cwf(:,j), &
-                trigdp)
 
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
@@ -1188,6 +1194,9 @@ subroutine conv_jp_tend( &
                     + stendtran_up(i,:) + stendtran_dn(i,:)
                 qtend(i,:) = qtendcond(i,:) + qtendevap(i,:) &
                     + qtendtran_up(i,:) + qtendtran_dn(i,:)
+    
+    ! write(*, *) "yhy:plume:stend:", j, stendcond(i,:), stendevap(i,:), stendtran_up(i,:), stendtran_dn(i,:)
+    ! write(*, *) "yhy:plume:qtend:", j, qtendcond(i,:), qtendevap(i,:), qtendtran_up(i,:), qtendtran_dn(i,:)
 
                 do k=1, nlev
                     netprec(i) = netprec(i) + max(0.0, - ( qtend(i,k) + qliqtend_det(i,k) )*rho(i,k)*dz(i,k))
@@ -1201,6 +1210,7 @@ subroutine conv_jp_tend( &
 #ifdef SCMDIAG
     write(*, *) "weight of plume", j, " = ", weights(i,j)
 #endif
+
                 stend(i,:) = stend(i,:) * weights(i,j)
                 qtend(i,:) = qtend(i,:) * weights(i,j)
                 qliqtend_det(i,:) = qliqtend_det(i,:) * weights(i,j)
@@ -1521,8 +1531,8 @@ subroutine conv_jp_tend( &
 #endif
 
     !-------------------------------------------------
-    ! Haiyang test
-     qliqtend = 0.0
+    ! Haiyang tes
+     qliqtend = qliqtend * facdlf
     !-------------------------------------------------
 
 end subroutine conv_jp_tend
@@ -2025,7 +2035,7 @@ subroutine cal_mse_up( &
                     det_bak = det_rate
 
                     ! get w**2(i,k)
-                    w2 = w_up(i,k+1)*w_up(i,k+1) + 2*dz(i,k)*(orgent_a*buoy_mid(i,k)/ &
+                    w2 = w_up(i,k+1)*w_up(i,k+1) + 2*dz(i,k)*(orgent_a*buoy_mid(i,k) / &
                         (1+cldsr(i,k)*cldsr(i,k)) - ent_rate*w_up_mid(i,k)*w_up_mid(i,k) )
                     w_up(i,k)  = sqrt(max(w2, 0.0))
 
@@ -2036,11 +2046,11 @@ subroutine cal_mse_up( &
 
                     ! normalized mass flux
                     normassflx_up(i,k) = normassflx_up(i,k+1) &
-                        *exp( (ent_rate-det_rate)*dz(i,k) )
+                        * exp( (ent_rate-det_rate)*dz(i,k) )
                     if (abs(normassflx_up(i,k)-normassflx_up(i,k+1))<1e-6) then
                         normassflx_up_mid(i,k) = 0.5*(normassflx_up(i,k)+normassflx_up(i,k+1))
                     else
-                        normassflx_up_mid(i,k) = (normassflx_up(i,k)-normassflx_up(i,k+1))/ &
+                        normassflx_up_mid(i,k) = (normassflx_up(i,k)-normassflx_up(i,k+1)) / &
                             (log(normassflx_up(i,k))-log(normassflx_up(i,k+1)))
                     end if
 

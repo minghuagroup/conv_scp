@@ -18,6 +18,8 @@ module nnparameter
     !   [1000, 1999]: NN(U,V,T,Q,QSAT,Z,windspeed,MSE,MSESAT,omega -> stend,qtend,prec)
     !   [*1]: use stend to calculate the weights for each plume
     !   [*2]: use qtend to calculate the weights for each plume
+    !   [*01, *02]: use normalized profile
+    !   [*11, *12]: use original profile
     integer :: nn_type = 0
 
     ! nn_layer: how many layers in the NN
@@ -269,7 +271,7 @@ end subroutine readnnparameter
 ! 4. Linear interpolation on the NN output from ERA levels to model layers.
 !-----------------------------------------------------------------------------
 subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
-        stend, qtend, qliqtend, prec, precrate, massflux)
+        stend, qtend, prec)
     ! input variables
     integer, intent(in)   :: nlevin
     real(r8), intent(in)  :: landfrac       ! [0, 1]
@@ -281,12 +283,12 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
     real(r8), intent(in)  :: z(nlevin)      ! m
     real(r8), intent(in)  :: omega(nlevin)  ! Pa/s
     ! in/output
-    real(r8), intent(inout)  :: stend(nlevin)      ! J/kg/s
-    real(r8), intent(inout)  :: qtend(nlevin)      ! kg/kg/s
-    real(r8), intent(inout)  :: qliqtend(nlevin)      ! kg/kg/s
-    real(r8), intent(inout)  :: precrate(nlevin)      ! m/s
-    real(r8), intent(inout)  :: massflux(nlevin)      ! 
-    real(r8), intent(inout)  :: prec  ! m/s
+    real(r8), intent(out)  :: stend(nlevin)      ! J/kg/s
+    real(r8), intent(out)  :: qtend(nlevin)      ! kg/kg/s
+    !real(r8), intent(inout)  :: qliqtend(nlevin)      ! kg/kg/s
+    !real(r8), intent(inout)  :: precrate(nlevin)      ! m/s
+    !real(r8), intent(inout)  :: massflux(nlevin)      ! 
+    real(r8), intent(out)  :: prec  ! m/s
     ! local variables
     real(r8) :: windspeed(nlevin)
     real(r8) :: qsat(nlevin), mse(nlevin), msesat(nlevin)
@@ -294,6 +296,10 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
     real(r8) :: invar(nn_node(1)), outvar(nn_nlabel)
     real(r8) :: cftop, cfbot
     integer  :: i,j,k
+
+    prec = 0.0
+    stend = 0.0
+    qtend = 0.0
 
     if (nn_type > 0) then
         outvar = 0.0
@@ -368,6 +374,8 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
                     stend(i) = 0.0
                     qtend(i) = 0.0
                 end if
+                stend(i) = max(0.0, stend(i))
+                qtend(i) = min(0.0, qtend(i))
             end do
         end if  ! NN_q1q2
 
@@ -391,6 +399,8 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
                     stend(i) = 0.0
                     qtend(i) = 0.0
                 end if
+                stend(i) = max(0.0, stend(i))
+                qtend(i) = min(0.0, qtend(i))
             end do
             prec = max(0.0, outvar(nn_nlabel)/86400.0/1000.0 )   ! mm/day -> m/s
 #ifdef SCMDIAG 
@@ -412,10 +422,13 @@ subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight)
     real(r8) :: err_stend(nlevin), err_qtend(nlevin)
     real(r8) :: mstend, mqtend, mnnstend, mnnqtend
     real(r8) :: normstend(nlevin), normqtend(nlevin), normnnstend(nlevin), normnnqtend(nlevin)
-    integer :: i, rr
+    integer :: i, rr, rrr
 
     if (nn_type >= 100) then
 
+        rr = mod(nn_type, 10)
+        rrr = mod(nn_type, 100) 
+        
         ! first, normalize the profile
         mstend = 0.0
         mqtend = 0.0
@@ -454,12 +467,18 @@ subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight)
         end if
         
         ! then, calculate the differences between NN profiles and ECP profiles
-        err_stend =  normstend - normnnstend
-        err_qtend =  normqtend - normnnqtend
+        if (rrr < 10) then
+            err_stend =  normstend - normnnstend
+            err_qtend =  normqtend - normnnqtend
+        end if
+        if (rrr >= 10 .and. rr<20) then
+            err_stend =  stend - nn_stend
+            err_qtend =  qtend - nn_qtend
+
+        end if
 
         ! calculate the weight based on the differences
         weight = 0.0
-        rr = mod(nn_type, 10)
         do i = 1, nlevin, 1
             if (p(i) >= nn_ptop .and. p(i) <= nn_pbot) then
                 ! use the error of stend as weight
@@ -495,6 +514,7 @@ subroutine profileadj(nlevin, nn_prec, prec, prof1, prof2, prof3, prof4, prof5)
     real(r8),intent(inout) :: prec, prof1(nlevin), prof2(nlevin), prof3(nlevin), prof4(nlevin), prof5(nlevin)
     real(r8) :: adjfac
 
+    adjfac = 1.0
     if (nn_type >= 200 .or. (nn_type<100 .and. nn_type > 0) ) then
         if ( prec > 1e-12 .and. nn_prec > 1e-12) then
             adjfac = nn_prec/prec
@@ -590,7 +610,8 @@ subroutine cal_nnforward(landfrac, invar, outvar)
     integer  :: i,j,k
 
     invar = (invar - nn_xoffset) / nn_xfactor 
-    
+    outvar = 0.0
+
     if (landfrac < 0.5) then
         ! hidden layer 1
         do i = 1, nn_node(2), 1
@@ -628,6 +649,12 @@ subroutine cal_nnforward(landfrac, invar, outvar)
     end if
 
     outvar = outvar * nn_yfactor + nn_yoffset
+
+    do i = 1, nn_nlabel, 1
+        if (isnan(outvar(i))) then
+            outvar(i) = 0.0
+        end if
+    end do
 
 end subroutine cal_nnforward
 

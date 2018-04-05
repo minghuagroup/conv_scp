@@ -284,7 +284,7 @@ subroutine conv_intr_jp_tend( &
         if ( landfrac(i)<0.5 ) then
             call nnmodel(pver, landfrac(i), state%pmid(i,:), state%u(i,:), state%v(i,:), &
                 state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
-                nn_stend(i,:), nn_qtend(i,:), qliqtend(i,:), nn_prec(i), precrate(i,:), mcon(i,:) )
+                nn_stend(i,:), nn_qtend(i,:), nn_prec(i) )
             ! call negqtendadj(pver, state%q(i,:,1), nn_qtend(i,:), nn_stend(i,:), ztodt, qmin(1)*1.001)
         end if
     end do
@@ -329,6 +329,9 @@ subroutine conv_intr_jp_tend( &
             call negqtendadj(pver, state%q(i,:,1), qtend(i,:), stend(i,:), &
                 precrate(i,:), qliqtend(i,:), mcon(i,:), ztodt, qmin(1)*1.001)
         end if
+!            write(*, *) "yhy:after adj:",nn_prec(i), nn_stend(i,:), nn_qtend(i,:), &
+!                ", ecp:", prec(i), stend(i,:), qtend(i,:), &
+!                ", precrate qliq mcon:", precrate(i,:), qliqtend(i,:), mcon(i,:)
     end do
     ! ---------------------------------------------------------------
 

@@ -1320,9 +1320,11 @@
       ! ------------------------------------------------------------ !
 
       if( qv0 .gt. qs ) then
+!write(*,*) "yhy:before:",qv0,ql0,qi0
           call gridmean_RH( lchnk, i, k, p, T0, qv0, ql0, qi0,      &
                             a_dc, ql_dc, qi_dc, a_sc, ql_sc, qi_sc, &
                             landfrac(i), snowh(i) )
+!write(*,*) "yhy:after:",qv0,ql0,qi0
           call qsat_water(T0, p, esat0, qsat0)
           U0      = (qv0/qsat0)
           U0_nc   =  U0 
@@ -1353,6 +1355,9 @@
       Tmin0 = T0 - (latvap/cpair)*ql0
       Tmax0 = T0 + ((latvap+latice)/cpair)*qv0
 
+   !write(*,*) "yhy:ql0:",ql0,ql0_nc,qi0_nc
+   !write(*,*) "yhy:dc:",a_dc_in,ql_dc_in,qi_dc_in
+   !write(*,*) "yhy:sc:",a_sc_in,ql_sc_in,qi_sc_in
       ! ------------------------------------------------------------- !
       ! Do nothing and just exit if generalized in-stratus condensate !
       ! condition is satisfied. This includes the case I.             !
@@ -1872,6 +1877,9 @@
    ! Main computation !
    ! ---------------- !
 
+!write(*,*) "yhy:gridmean:1:", p, T, qv, ql, qi
+!write(*,*) "yhy:gridmean:2:", a_dc, ql_dc, qi_dc, a_sc, ql_sc, qi_sc, snowh
+
    ql_nc0 = max(0._r8,ql-a_dc*ql_dc-a_sc*ql_sc)
    qi_nc0 = max(0._r8,qi-a_dc*qi_dc-a_sc*qi_sc)
    qc_nc0 = max(0._r8,ql+qi-a_dc*(ql_dc+qi_dc)-a_sc*(ql_sc+qi_sc))
@@ -1901,6 +1909,7 @@
    ql = qt - qv
    T  = Tc + (latvap/cpair)*ql
 
+! write(*,*) "yhy:gridmean3:",T, p, es, qs, qv, qt, Tc
    return
    end subroutine gridmean_RH
 
