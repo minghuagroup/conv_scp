@@ -325,6 +325,7 @@ subroutine conv_intr_jp_tend( &
     ! Haiyang Yu: nn_prec adjustment
     do i = 1,ncol
         if ( landfrac(i)<0.5 ) then
+            write(*,*) 'yhy:nn:',state%lat(i)*180/3.14159, state%lon(i)*180/3.14159, prec(i)*86400*1000.0, nn_prec(i)*86400*1000.0
             call profileadj(pver, nn_prec(i), prec(i), stend(i,:), qtend(i,:), precrate(i,:), qliqtend(i,:), mcon(i,:) )
             call negqtendadj(pver, state%q(i,:,1), qtend(i,:), stend(i,:), &
                 precrate(i,:), qliqtend(i,:), mcon(i,:), ztodt, qmin(1)*1.001)

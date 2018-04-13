@@ -1467,26 +1467,26 @@ subroutine conv_jp_tend( &
     outqtendevap = qtendevap
 
 #ifdef SCMDIAG 
-    write(*,"(a20,f20.10)") "dtime:", dtime
-    write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "psrf:", psrf
-    write(*,"(a20,i4,a20,i4)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
-    write(*,"(a20,i4,a20,i4)") "uptop:", kuptop
-    write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp, "trigsh:", trigsh
-    write(*,"(a20,f20.10)") "zsrf:",zsrf 
-    write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
-    write(*,"(a20,50f20.10)") "dilucape:", dilucape(1,1:nplume_tot)
-    write(*,"(a20,50f20.10)") "cwf:", cwf(1,1:nplume_tot)
-    write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
-    write(*,"(a20,f20.10)") "capefc:", capefc
-    write(*,"(a20,f20.10)") "capeclm:", capeclm
-    write(*,"(a20,f20.10)") "mconv:", mconv
-    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume)
-    write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape
-    write(*,"(a20,f20.10)") "massflxbase_dcape:", massflxbase_dcape
-    write(*,"(a20,f20.10)") "massflxbase_clm:", massflxbase_clm
-    write(*,"(a20,f20.10)") "massflxbase_w:", massflxbase_w
-    write(*,"(a20,f20.10)") "massflxbase_mconv:", massflxbase_mconv
-    write(*,"(a20,f20.10)") "massflxbase:", massflxbase
+    !write(*,"(a20,f20.10)") "dtime:", dtime
+    !write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "psrf:", psrf
+    !write(*,"(a20,i4,a20,i4)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
+    !write(*,"(a20,i4,a20,i4)") "uptop:", kuptop
+    !write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp, "trigsh:", trigsh
+    !write(*,"(a20,f20.10)") "zsrf:",zsrf 
+    !write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
+    !write(*,"(a20,50f20.10)") "dilucape:", dilucape(1,1:nplume_tot)
+    !write(*,"(a20,50f20.10)") "cwf:", cwf(1,1:nplume_tot)
+    !write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
+    !write(*,"(a20,f20.10)") "capefc:", capefc
+    !write(*,"(a20,f20.10)") "capeclm:", capeclm
+    !write(*,"(a20,f20.10)") "mconv:", mconv
+    !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume_tot)
+    !write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape
+    !write(*,"(a20,f20.10)") "massflxbase_dcape:", massflxbase_dcape
+    !write(*,"(a20,f20.10)") "massflxbase_clm:", massflxbase_clm
+    !write(*,"(a20,f20.10)") "massflxbase_w:", massflxbase_w
+    !write(*,"(a20,f20.10)") "massflxbase_mconv:", massflxbase_mconv
+    !write(*,"(a20,f20.10)") "massflxbase:", massflxbase
     write(*,"(a20,f20.10)") "prec:", prec*3600*24*1000
     write(*,"(a20,f20.10)") "surfprec:", surfprec*3600*24*1000
     write(*,"(a20,f20.10)") "minqcheckf:", minqcheckf
@@ -2908,30 +2908,13 @@ subroutine cal_tendtransport( &
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
 
-!sub cloud layer transport
-!        do k=kuplaunch(i)-1, kuptop(i), -1
+!cloud layer transport
         do k=kupbase(i)-1, kuptop(i), -1
-!        do k=nlev, kuptop(i), -1
-            stend(i,k) = -( &
-                normassflx_up(i,k)*( dse_up(i,k)-dseint(i,k) )&
-                - normassflx_up(i,k+1)*( dse_up(i,k+1)-dseint(i,k+1) )&
-                )/dz(i,k)/rho(i,k)
-            qtend(i,k) = -( &
-                normassflx_up(i,k)*( q_up(i,k)-qint(i,k) )&
-                - normassflx_up(i,k+1)*( q_up(i,k+1)-qint(i,k+1) )&
-                )/dz(i,k)/rho(i,k)
+            stend(i,k) = -( normassflx_up(i,k)*( dse_up(i,k)-dseint(i,k) ) &
+                - normassflx_up(i,k+1)*( dse_up(i,k+1)-dseint(i,k+1) ) ) / dz(i,k)/rho(i,k)
+            qtend(i,k) = -( normassflx_up(i,k)*( q_up(i,k)-qint(i,k) ) &
+                - normassflx_up(i,k+1)*( q_up(i,k+1)-qint(i,k+1) ) ) / dz(i,k)/rho(i,k)
         end do
-
-! Haiyang test
-!        k = kuptop(i)-1
-!        if ( k>=1 ) then
-!            stend(i,k) = -( &
-!                - normassflx_up(i,k+1)*( dse_up(i,k+1)-dseint(i,k+1) )&
-!                )/dz(i,k)/rho(i,k)
-!            qtend(i,k) = -( &
-!                - normassflx_up(i,k+1)*( q_up(i,k+1)-qint(i,k+1) )&
-!                )/dz(i,k)/rho(i,k)
-!        end if
 
     end do
 
