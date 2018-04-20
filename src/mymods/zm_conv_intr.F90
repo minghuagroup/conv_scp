@@ -293,7 +293,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use phys_control,  only: cam_physpkg_is
 
    ! Haiyang Yu
-    use nnparameter,   only: nnmodel, negqtendadj
+    use nnparameter,   only: nnmodel, negqtendadj, nn_type
     use scamMod,       only: single_column, wfld
     use constituents,   only:  qmin
 
@@ -457,6 +457,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
     else
         omega(1:ncol,:) = state%omega
     end if
+    if (nn_type > 0) then
     if ( lengath(lchnk) > 0 ) then
         do i = 1, ncol
             if (landfrac(i) < 0.5) then
@@ -468,6 +469,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     rprd(i,:), qliqtend(i,:), mcon(i,:), 0.5*ztodt, qmin(1)*1.001)
             end if
         end do
+    end if
     end if
 !-------------------------------------------------------------------------
 

@@ -5,7 +5,7 @@ module nnparameter
     private
     save
 
-    public :: readnnparameter, nnmodel, negqtendadj, profileadj, cal_weight, nn_type
+    public :: readnnparameter, nnmodel, negqtendadj, profileadj, cal_weight, nn_flag, nn_type
 
     integer,parameter :: r8 = selected_real_kind(12)
     
@@ -21,6 +21,9 @@ module nnparameter
     !   [*01, *02]: use normalized profile
     !   [*11, *12]: use original profile
     integer :: nn_type = 0
+
+    ! Use NN or not: 0: no, 1: yes
+    integer :: nn_flag = 0
 
     ! nn_layer: how many layers in the NN
     integer :: nn_nlayer = 0
@@ -75,7 +78,7 @@ subroutine readnnparameter(nlfile)
    integer :: unitn, ierr, i, j, k
    character(len=*), parameter :: subname = 'nn_readnl'
 
-   namelist /nn_nl/ nn_type, nn_fname, nn_nlayer, nn_ptop, nn_pbot
+   namelist /nn_nl/ nn_flag, nn_type, nn_fname, nn_nlayer, nn_ptop, nn_pbot
 
 #if (! defined SCMDIAG)    
    if (masterproc) then
@@ -114,6 +117,7 @@ subroutine readnnparameter(nlfile)
    ! Broadcast namelist variables
    call mpibcast (nn_fname  , len(nn_fname) , mpichar, 0, mpicom)
    call mpibcast (nn_nlayer , 1, mpiint, 0, mpicom)
+   call mpibcast (nn_flag , 1, mpiint, 0, mpicom)
    call mpibcast (nn_type , 1, mpiint, 0, mpicom)
    call mpibcast (nn_ptop , 1, mpir8, 0, mpicom)
    call mpibcast (nn_pbot , 1, mpir8, 0, mpicom)
@@ -223,6 +227,7 @@ subroutine readnnparameter(nlfile)
 
 
 ! #ifdef SCMDIAG
+    write(*, *) "nn_flag", nn_flag
     write(*, *) "nn_type: ", nn_type
     write(*, *) "nn_ptop: ", nn_ptop
     write(*, *) "nn_pbot: ", nn_pbot
@@ -374,8 +379,8 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
                     stend(i) = 0.0
                     qtend(i) = 0.0
                 end if
-                stend(i) = max(0.0, stend(i))
-                qtend(i) = min(0.0, qtend(i))
+                !stend(i) = max(0.0, stend(i))
+                !qtend(i) = min(0.0, qtend(i))
             end do
         end if  ! NN_q1q2
 
@@ -399,8 +404,8 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
                     stend(i) = 0.0
                     qtend(i) = 0.0
                 end if
-                stend(i) = max(0.0, stend(i))
-                qtend(i) = min(0.0, qtend(i))
+                !stend(i) = max(0.0, stend(i))
+                !qtend(i) = min(0.0, qtend(i))
             end do
             prec = max(0.0, outvar(nn_nlabel)/86400.0/1000.0 )   ! mm/day -> m/s
 #ifdef SCMDIAG 
@@ -415,92 +420,109 @@ end subroutine nnmodel
 !-----------------------------------------------------------------------------
 ! Calculate the weights for each plume
 !-----------------------------------------------------------------------------
-subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight)
+subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight, valid)
     integer, intent(in) :: nlevin
     real(r8), intent(in) :: p(nlevin), dp(nlevin), nn_stend(nlevin), stend(nlevin), nn_qtend(nlevin), qtend(nlevin)
     real(r8), intent(out) :: weight
+    integer, intent(out) :: valid
     real(r8) :: err_stend(nlevin), err_qtend(nlevin)
-    real(r8) :: mstend, mqtend, mnnstend, mnnqtend
+    real(r8) :: mstend, mqtend, mnnstend, mnnqtend, prec_q1, prec_q2, nnprec_q1, nnprec_q2
     real(r8) :: normstend(nlevin), normqtend(nlevin), normnnstend(nlevin), normnnqtend(nlevin)
-    integer :: i, rr, rrr
+    integer :: i, rr, rrr, k
 
+    weight = 0.0
+    valid = 0
+    
     if (nn_type >= 100) then
 
         rr = mod(nn_type, 10)
-        rrr = mod(nn_type, 100) 
+        rrr = mod(nn_type, 100)
         
-        ! first, normalize the profile
-        mstend = 0.0
-        mqtend = 0.0
-        mnnstend = 0.0
-        mnnqtend = 0.0
-        do i = 1, nlevin, 1
-            if (p(i) >= nn_ptop .and. p(i) <=nn_pbot ) then
-                mstend = mstend + dp(i)*abs(stend(i))/(nn_pbot - nn_ptop)
-                mqtend = mqtend + dp(i)*abs(qtend(i))/(nn_pbot - nn_ptop)
-                mnnstend = mnnstend + dp(i)*abs(nn_stend(i))/(nn_pbot - nn_ptop)
-                mnnqtend = mnnqtend + dp(i)*abs(nn_qtend(i))/(nn_pbot - nn_ptop)
+        prec_q1 = 0.0
+        prec_q2 = 0.0
+        nnprec_q1 = 0.0
+        nnprec_q2 = 0.0
+        do k = 1, nlevin, 1
+            if (p(k)>=20000.0 .and. p(k)<=95000.0) then
+                prec_q1 = prec_q1 +  stend(k)*dp(k)/9.8/2.501e6*86400  ! J/kg/s -> mm/day
+                prec_q2 = prec_q2 - qtend(k)*dp(k)/9.8*86400  ! kg/kg/s -> mm/day
+                nnprec_q1 = nnprec_q1 + nn_stend(k)*dp(k)/9.8/2.501e6*86400  ! J/kg/s -> mm/day
+                nnprec_q2 = nnprec_q2 - nn_qtend(k)*dp(k)/9.8*86400  ! kg/kg/s -> mm/day
             end if
         end do
-        if (mstend > 1e-12) then
-            normstend = stend/mstend
-        else
-            normstend = stend
-        end if
-
-        if (mqtend > 1e-12) then
-            normqtend = qtend / mqtend
-        else
-            normqtend = qtend
-        end if
-
-        if (mnnstend > 1e-12) then
-            normnnstend = nn_stend/mnnstend
-        else
-            normnnstend = nn_stend
-        end if
-
-        if (mnnqtend > 1e-12) then
-            normnnqtend = nn_qtend/mnnqtend
-        else
-            normnnqtend = nn_qtend
-        end if
-        
-        ! then, calculate the differences between NN profiles and ECP profiles
-        if (rrr < 10) then
-            err_stend =  normstend - normnnstend
-            err_qtend =  normqtend - normnnqtend
-        end if
-        if (rrr >= 10 .and. rr<20) then
-            err_stend =  stend - nn_stend
-            err_qtend =  qtend - nn_qtend
-
-        end if
-
-        ! calculate the weight based on the differences
-        weight = 0.0
-        do i = 1, nlevin, 1
-            if (p(i) >= nn_ptop .and. p(i) <= nn_pbot) then
-                ! use the error of stend as weight
-                ! nn_type = 101, 201, 1001
-                if (rr == 1) then 
-                    weight = weight + dp(i) * err_stend(i) * err_stend(i)
+        if ( prec_q1 > 0.1 .and. nnprec_q1 > 0.1) then
+            valid = 1
+            ! first, normalize the profile
+            mstend = 0.0
+            mqtend = 0.0
+            mnnstend = 0.0
+            mnnqtend = 0.0
+            do i = 1, nlevin, 1
+                if (p(i) >= nn_ptop .and. p(i) <=nn_pbot ) then
+                    mstend = mstend + dp(i)*abs(stend(i))/(nn_pbot - nn_ptop)
+                    mqtend = mqtend + dp(i)*abs(qtend(i))/(nn_pbot - nn_ptop)
+                    mnnstend = mnnstend + dp(i)*abs(nn_stend(i))/(nn_pbot - nn_ptop)
+                    mnnqtend = mnnqtend + dp(i)*abs(nn_qtend(i))/(nn_pbot - nn_ptop)
                 end if
-                ! use the error of qtend as weight
-                ! nn_type = 102, 202, 1002
-                if (rr == 2) then 
-                    weight = weight + dp(i) * err_qtend(i) * err_qtend(i)
-                end if
+            end do
+            if (mstend > 1e-12) then
+                normstend = stend/mstend
+            else
+                normstend = stend
             end if
-        end do
 
-        if (weight < 1.0e-15) then
-            weight = 1.0e15
-        else
-            weight = 1.0/weight
+            if (mqtend > 1e-12) then
+                normqtend = qtend / mqtend
+            else
+                normqtend = qtend
+            end if
+
+            if (mnnstend > 1e-12) then
+                normnnstend = nn_stend/mnnstend
+            else
+                normnnstend = nn_stend
+            end if
+
+            if (mnnqtend > 1e-12) then
+                normnnqtend = nn_qtend/mnnqtend
+            else
+                normnnqtend = nn_qtend
+            end if
+            
+            ! then, calculate the differences between NN profiles and ECP profiles
+            if (rrr < 10) then
+                err_stend =  normstend - normnnstend
+                err_qtend =  normqtend - normnnqtend
+            end if
+            if (rrr >= 10 .and. rr<20) then
+                err_stend =  stend - nn_stend
+                err_qtend =  qtend - nn_qtend
+
+            end if
+
+            ! calculate the weight based on the differences
+            weight = 0.0
+            do i = 1, nlevin, 1
+                if (p(i) >= nn_ptop .and. p(i) <= nn_pbot) then
+                    ! use the error of stend as weight
+                    ! nn_type = 101, 201, 1001
+                    if (rr == 1) then 
+                        weight = weight + dp(i) * err_stend(i) * err_stend(i)
+                    end if
+                    ! use the error of qtend as weight
+                    ! nn_type = 102, 202, 1002
+                    if (rr == 2) then 
+                        weight = weight + dp(i) * err_qtend(i) * err_qtend(i)
+                    end if
+                end if
+            end do
+
+            if (weight < 1.0e-15) then
+                weight = 1.0e15
+            else
+                weight = 1.0/weight
+            end if
         end if
-    else
-        weight = 1.0
     end if
 end subroutine cal_weight
 
@@ -516,9 +538,14 @@ subroutine profileadj(nlevin, nn_prec, prec, prof1, prof2, prof3, prof4, prof5)
 
     adjfac = 1.0
     if (nn_type >= 200 .or. (nn_type<100 .and. nn_type > 0) ) then
-        if ( prec > 1e-12 .and. nn_prec > 1e-12) then
-            adjfac = nn_prec/prec
-            prec = nn_prec
+        if (prec*86400*1000.0 > 0.1) then
+            if (nn_prec < prec) then
+                adjfac = nn_prec / prec
+            else
+                adjfac = 2*prec*nn_prec / (prec*prec + nn_prec*nn_prec)
+                adjfac = adjfac*nn_prec/prec + (1.0-adjfac)
+            end if
+            prec = prec * adjfac
             prof1 = prof1 * adjfac
             prof2 = prof2 * adjfac
             prof3 = prof3 * adjfac

@@ -208,6 +208,11 @@ subroutine convect_deep_init(pref_edge)
       'Convectively available potential energy', phys_decomp)
   call addfld ('BFLSDILUCAPE', 'J/kg',   1, 'I', &
       'Convectively available potential energy', phys_decomp)
+  
+! yhy  
+  call addfld ('NNSTEND', 'J/kg/s', pver, 'A', 'NN stend', phys_decomp)
+  call addfld ('NNQTEND', 'kg/kg/s', pver, 'A', 'NN qtend', phys_decomp)
+  call addfld ('NNPREC', 'm/s', 1, 'I', 'NN prec', phys_decomp)
 
 !xiex
   bfls_t_idx = pbuf_get_index('BFLS_T')

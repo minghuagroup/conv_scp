@@ -1466,7 +1466,8 @@ subroutine tphysac (ztodt,   cam_in,  &
     real(r8),pointer :: bfls_t(:,:)           ! temp state right after conv
     real(r8),pointer :: bfls_q(:,:)           ! state right after conv
 
-    logical :: do_clubb_sgs 
+    logical :: do_clubb_sgs
+    character(len=16) :: macrop_scheme
 
     ! Debug physics_state.
     logical :: state_debug_checks
@@ -1479,7 +1480,8 @@ subroutine tphysac (ztodt,   cam_in,  &
     nstep = get_nstep()
     
     call phys_getopts( do_clubb_sgs_out       = do_clubb_sgs, &
-                       state_debug_checks_out = state_debug_checks)
+        macrop_scheme_out      = macrop_scheme, &               
+        state_debug_checks_out = state_debug_checks)
 
     ! Adjust the surface fluxes to reduce instabilities in near sfc layer
     if (phys_do_flux_avg()) then 
@@ -1593,6 +1595,9 @@ subroutine tphysac (ztodt,   cam_in,  &
        call physics_update(state, ptend, ztodt, tend)
 
     else
+    ! yhy
+    !end if
+   ! if (macrop_scheme .eq. 'park') then
 
        call t_startf('vertical_diffusion_tend')
        call vertical_diffusion_tend (ztodt ,state ,cam_in%wsx, cam_in%wsy,   &
@@ -2145,6 +2150,9 @@ subroutine tphysbc (ztodt,               &
     call subcol_netcdf_putclm( "qbef", pver, state%q(1,:,1), 1 )
 #endif
 
+    ! yhy
+    write(*,*) "before convect_deep: q = ", state%q(:,:,1)
+    
     call t_startf ('convect_deep_tend')
     call convect_deep_tend(  &
          cmfmc,      cmfcme,             &
@@ -2246,6 +2254,8 @@ subroutine tphysbc (ztodt,               &
 
     call t_stopf('carma_timestep_tend')
 
+    ! yhy
+    write(*,*) "before macrop: q = ", state%q(:,:,1)
     if( microp_scheme == 'RK' ) then
 
        !===================================================
@@ -2275,8 +2285,11 @@ subroutine tphysbc (ztodt,               &
        call t_startf('macrop_tend')
 
        ! don't call Park macrophysics if CLUBB is called
-       if (macrop_scheme .ne. 'CLUBB_SGS') then
+       ! if (macrop_scheme .ne. 'CLUBB_SGS') then
+       if (macrop_scheme .eq. 'park') then
 
+    ! yhy
+    write(*,*) "before Park macrop: q = ", state%q(:,:,1)
           call macrop_driver_tend(state, ptend, ztodt, &
                cam_in%landfrac, cam_in%ocnfrac, &
                cam_in%snowhland, & ! sediment
@@ -2284,7 +2297,8 @@ subroutine tphysbc (ztodt,               &
                cmfmc,   cmfmc2, &
                cam_in%ts,      cam_in%sst, zdu,  pbuf, &
                cmeliq, det_s, det_ice)
-
+    ! yhy
+    write(*,*) "after Park macrop, before update: q = ", state%q(:,:,1)
           !  Since we "added" the reserved liquid back in this routine, we need 
 	  !    to account for it in the energy checker
           flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
@@ -2293,7 +2307,12 @@ subroutine tphysbc (ztodt,               &
           call physics_update(state, ptend, ztodt, tend)
           call check_energy_chng(state, tend, "macrop_tend", nstep, ztodt, zero, flx_cnd, det_ice, flx_heat)
        
-       else ! Calculate CLUBB macrophysics
+    ! yhy
+    write(*,*) "after Park macrop, after update: q = ", state%q(:,:,1)
+       end if
+
+       if (macrop_scheme .eq. 'CLUBB_SGS') then
+       !else ! Calculate CLUBB macrophysics
 
           ! =====================================================
           !    CLUBB call (PBL, shallow convection, macrophysics)
@@ -2316,6 +2335,8 @@ subroutine tphysbc (ztodt,               &
 
        call t_stopf('macrop_tend') 
 
+    ! yhy
+    write(*,*) "before microp: q = ", state%q(:,:,1)
        !===================================================
        ! Calculate cloud microphysics 
        !===================================================
@@ -2407,6 +2428,8 @@ subroutine tphysbc (ztodt,               &
     ! Write cloud diagnostics on history file
     !===================================================
 
+    ! yhy
+    write(*,*) "before cloud diag: q = ", state%q(:,:,1)
     call t_startf('bc_cld_diag_history_write')
 
     call cloud_diagnostics_calc(state, pbuf)
@@ -2423,6 +2446,9 @@ subroutine tphysbc (ztodt,               &
     ! Radiation computations
     !===================================================
     call t_startf('radiation')
+
+    ! yhy
+    write(*,*) "before radiation: q = ", state%q(:,:,1)
 
     call radiation_tend(state,ptend, pbuf, &
          cam_out, cam_in, &

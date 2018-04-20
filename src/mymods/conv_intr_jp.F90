@@ -117,7 +117,7 @@ subroutine conv_intr_jp_tend( &
     use scamMod,       only: single_column, wfld
 
 ! Haiyang Yu
-    use nnparameter,   only: nnmodel, negqtendadj, profileadj
+    use nnparameter,   only: nnmodel, negqtendadj, profileadj, nn_flag
 !------------------------------------------------------
 !Calculate convective tendency
 !------------------------------------------------------
@@ -269,7 +269,7 @@ subroutine conv_intr_jp_tend( &
        omega(1,:) = wfld
    else
        omega(:ncol,:) = state%omega
-   endif
+   end if
 
 !for layer depth
    do k=1,pver
@@ -285,7 +285,6 @@ subroutine conv_intr_jp_tend( &
             call nnmodel(pver, landfrac(i), state%pmid(i,:), state%u(i,:), state%v(i,:), &
                 state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
                 nn_stend(i,:), nn_qtend(i,:), nn_prec(i) )
-            ! call negqtendadj(pver, state%q(i,:,1), nn_qtend(i,:), nn_stend(i,:), ztodt, qmin(1)*1.001)
         end if
     end do
     ! ---------------------------------------------------------------
@@ -300,7 +299,7 @@ subroutine conv_intr_jp_tend( &
        state%t(:ncol,:), state%q(:ncol,:,1), &
        bfls_t(:ncol,:), bfls_q(:ncol,:), &
        omega(:ncol,:), pblh(:ncol), tpert(:ncol), &
-       nn_prec(:ncol), nn_stend(:ncol,:), nn_qtend(:ncol,:), &
+       nn_prec(:ncol), nn_stend(:ncol,:), nn_qtend(:ncol,:),  &
 !in/output
        massflxbase_p(:ncol,:), &
 !output
@@ -323,17 +322,31 @@ subroutine conv_intr_jp_tend( &
 
     ! ---------------------------------------------------------------
     ! Haiyang Yu: nn_prec adjustment
-    do i = 1,ncol
-        if ( landfrac(i)<0.5 ) then
-            write(*,*) 'yhy:nn:',state%lat(i)*180/3.14159, state%lon(i)*180/3.14159, prec(i)*86400*1000.0, nn_prec(i)*86400*1000.0
-            call profileadj(pver, nn_prec(i), prec(i), stend(i,:), qtend(i,:), precrate(i,:), qliqtend(i,:), mcon(i,:) )
-            call negqtendadj(pver, state%q(i,:,1), qtend(i,:), stend(i,:), &
-                precrate(i,:), qliqtend(i,:), mcon(i,:), ztodt, qmin(1)*1.001)
-        end if
-!            write(*, *) "yhy:after adj:",nn_prec(i), nn_stend(i,:), nn_qtend(i,:), &
-!                ", ecp:", prec(i), stend(i,:), qtend(i,:), &
-!                ", precrate qliq mcon:", precrate(i,:), qliqtend(i,:), mcon(i,:)
-    end do
+    if (nn_flag > 0) then
+        do i = 1,ncol
+            write(*, *) "yhy:before profile adjustment"
+            do k = 1, pver
+                write(*, "(5E10.2)") stend(i,k), qtend(i,k), precrate(i,k), qliqtend(i,k), mcon(i,k)
+            end do
+            write(*, *) "yhy:prec=", prec(i)
+            write(*, *) "yhy:jctop,jcbot=", jctop(i), jcbot(i)
+            if ( landfrac(i)<0.5 ) then
+                write(*,*) 'yhy:nn:',state%lat(i)*180/3.14159, state%lon(i)*180/3.14159, prec(i)*86400*1000.0, nn_prec(i)*86400*1000.0
+                call profileadj(pver, nn_prec(i), prec(i), stend(i,:), qtend(i,:), precrate(i,:), qliqtend(i,:), mcon(i,:) )
+                call negqtendadj(pver, state%q(i,:,1), qtend(i,:), stend(i,:), &
+                    precrate(i,:), qliqtend(i,:), mcon(i,:), ztodt, qmin(1)*1.001)
+            end if
+            write(*, *) "yhy:after profile adjustment"
+            do k = 1, pver
+                write(*, "(5E10.2)") stend(i,k), qtend(i,k), precrate(i,k), qliqtend(i,k), mcon(i,k)
+            end do
+            write(*, *) "yhy:prec=", prec(i)
+            write(*, *) "yhy:jctop,jcbot=", jctop(i), jcbot(i)
+    !            write(*, *) "yhy:after adj:",nn_prec(i), nn_stend(i,:), nn_qtend(i,:), &
+    !                ", ecp:", prec(i), stend(i,:), qtend(i,:), &
+    !                ", precrate qliq mcon:", precrate(i,:), qliqtend(i,:), mcon(i,:)
+        end do
+    end if
     ! ---------------------------------------------------------------
 
    ptend_loc%s(:ncol,:)   = stend(:ncol,:)
@@ -348,13 +361,18 @@ subroutine conv_intr_jp_tend( &
    call outfld('MBCONVDP_P', massflxbase_p, pcols, state%lchnk )
    call outfld('MBCONVDP', outmb, pcols, state%lchnk )
 
+   call outfld('NNSTEND', nn_stend, pcols, lchnk)
+   call outfld('NNQTEND', nn_qtend, pcols, lchnk)
+   call outfld('NNPREC', nn_prec, pcols, lchnk)
+
+
 !   call outfld('MSE', outmse, pcols, state%lchnk )
 !   call outfld('MSESAT', outmsesat, pcols, state%lchnk )
 !   call outfld('MSEUP', outmseup, pcols, state%lchnk )
 !   call outfld('CONVZ', z, pcols, state%lchnk )
 
-!   call outfld('STENDCONVDP', stend, pcols, lchnk)
-!   call outfld('QTENDCONVDP', qtend, pcols, lchnk)
+   call outfld('STENDCONVDP', stend, pcols, lchnk)
+   call outfld('QTENDCONVDP', qtend, pcols, lchnk)
 
 !   call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
 !   call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
@@ -399,22 +417,21 @@ subroutine conv_intr_jp_tend( &
        do k = 1, pver
            tmp = state_loc%q(i,k,1) + qtend(i,k)*ztodt
            if ( tmp<qmin(1) ) then
-               !write(iulog,'(a10,f30.25)') 'qmin', qmin(1)
-               !write(iulog,'(a10,f30.25)') 'tmp', tmp
-               !write(iulog,'(a10,f30.25)') 'dtime', ztodt
-               !write(iulog,'(a10,f30.25)') 'minqcheckf', outtmp2d(i)
-               !write(iulog,*) tmp<qmin(1), tmp-qmin(1)
-               !write(iulog,*) 'problem in neg Q', i, k
-               !write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
-!               do j = 1, pver
-                   !write(iulog,'(i3,f10.5,3f30.25,l3)') j, &
-                       !state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
-                   !    state_loc%q(i,j,1)>qmin(1)
-                   !write(iulog,'(i3,f10.5,3f30.25,l3)') j, state_loc%pmid(i,j)/100., &
-                   !    state_loc%q(i,j,1), qtend(i,j)*ztodt, outqtend(i,j)*ztodt, &
-                   !    state_loc%q(i,j,1) > qmin(1)
-!               end do
-
+               write(iulog,'(a10,f30.25)') 'qmin', qmin(1)
+               write(iulog,'(a10,f30.25)') 'tmp', tmp
+               write(iulog,'(a10,f30.25)') 'dtime', ztodt
+               write(iulog,'(a10,f30.25)') 'minqcheckf', outtmp2d(i)
+               write(iulog,*) tmp<qmin(1), tmp-qmin(1)
+               write(iulog,*) 'problem in neg Q', i, k
+               write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
+               do j = 1, pver
+                   write(iulog,'(i3,f10.5,3f30.25,l3)') j, &
+                       state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
+                       state_loc%q(i,j,1)>qmin(1)
+                   write(iulog,'(i3,f10.5,3f30.25,l3)') j, state_loc%pmid(i,j)/100., &
+                       state_loc%q(i,j,1), qtend(i,j)*ztodt, outqtend(i,j)*ztodt, &
+                       state_loc%q(i,j,1) > qmin(1)
+               end do
                exit
            end if
        end do
@@ -424,6 +441,13 @@ subroutine conv_intr_jp_tend( &
 
    call physics_update(state_loc, ptend_loc, ztodt)
 
+    !yhy
+    write(*, *) "yhy:after phy update"
+    do i = 1, ncol
+        do k = 1, pver
+            write(*,"(E10.4)") state_loc%q(i,k,1)
+        end do
+    end do
 
    call physics_state_dealloc(state_loc)
    call physics_ptend_dealloc(ptend_loc)

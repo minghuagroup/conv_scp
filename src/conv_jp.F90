@@ -137,12 +137,12 @@ module conv_jp
     real(r8) :: orgent_beta0 = unset_r8   ! organized entrainment parameters: default is 2.0
     real(r8), parameter :: wupmin = 0.01        ! threshold of w for stopping convection
     real(r8), parameter :: wupmax = 100.0       ! upbound of w
-#ifdef SCMDIAG
-    real(r8), parameter :: fixbasemf = 0.01    ! if +: fixed cloud base mass flux; if -: prognostic
-#endif
-#if (! defined SCMDIAG)
+!#ifdef SCMDIAG
+!    real(r8), parameter :: fixbasemf = 0.01    ! if +: fixed cloud base mass flux; if -: prognostic
+!#endif
+!#if (! defined SCMDIAG)
     real(r8), parameter :: fixbasemf = -0.01    ! if +: fixed cloud base mass flux; if -: prognostic
-#endif
+!#endif
     
     real(r8), parameter :: zpbltop = -1000.0    ! if +: downdraft mass flux decreases gradually in PBL
                                                 ! if -: no decreasing 
@@ -457,7 +457,7 @@ subroutine conv_jp_tend( &
         lat, landfrac, lhflx, &
         psrf, p, dp, zsrf, z, dz, &
         t_in, q_in, bfls_t, bfls_q, &
-        omega, pblh, tpert, nn_prec, nn_stend, nn_qtend,&
+        omega, pblh, tpert, nn_prec, nn_stend, nn_qtend, &
 !in/output
         massflxbase_p, &
 !output
@@ -482,7 +482,7 @@ subroutine conv_jp_tend( &
 !Calculate convective tendency
 !------------------------------------------------------
 ! Haiyang Yu
-    use nnparameter, only: cal_weight, nn_type
+    use nnparameter, only: cal_weight, nn_flag
 
 ! Main Interface
     integer , intent(in) :: inncol ! size of column dimension
@@ -743,6 +743,7 @@ subroutine conv_jp_tend( &
 
 ! Haiyang Yu: weights of plumes
     real(r8), dimension(inncol, 50) :: weights
+    integer :: validplume, valid
 
 !for test
     real(r8), dimension(inncol) :: tmp ! [1] number of convective lev
@@ -751,6 +752,8 @@ subroutine conv_jp_tend( &
 
 ! weights of plumes
     weights = 0.0
+    validplume = 0
+    valid = 0
 
 !setting the internal dimension size same as the input
     ncol = inncol
@@ -843,9 +846,17 @@ subroutine conv_jp_tend( &
     write(*,*) "[conv_jp_tend]"
 #endif
 
-
     trigdp = 1
-    trigsh = 1
+    trigsh = 1 
+
+    !if (nn_type > 0) then
+    !    do i=1, inncol
+    !        if (nn_prec(i)*86400*1000.0 < 0.1) then
+    !            trigdp(i) = 0
+    !            trigsh(i) = 0
+    !        end if
+    !    end do
+    !end if
 
 !------------------------------------------------------
 !Calculate basic properties
@@ -921,7 +932,7 @@ subroutine conv_jp_tend( &
 ! --- the big loop for dp and sh convection
     do iconv = 1, 2
 
-        trigdp = 1
+        ! trigdp = 1
 
         if ( iconv == 1 ) then
 
@@ -1050,7 +1061,7 @@ subroutine conv_jp_tend( &
             normassflx_up_tmp = normassflx_up
             normassflx_dn_tmp = 0._r8
 
-            trigdp = 1
+            ! trigdp = 1
 
 !updraft properties
             if (ischeme == 2) then
@@ -1203,23 +1214,30 @@ subroutine conv_jp_tend( &
                 end do
                 netprec(i) = netprec(i)/rhofw
 
+                ! yhy:
+                do k=1, nlev
+                    qliq(i,k) = max(1e-13, qliqtend_det(i,k)*dtime)
+                end do
                 !----------------------------------------------------------------------
                 ! Haiyang Yu: calculate the weight for each plume
                 ! if NN is not called, weights = 1.0
-                call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), nn_qtend(i,:), qtend(i,:), weights(i,j))
+                    call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), nn_qtend(i,:), qtend(i,:), weights(i,j), valid)
+                    validplume = validplume + valid
 #ifdef SCMDIAG
     write(*, *) "weight of plume", j, " = ", weights(i,j)
 #endif
 
-                stend(i,:) = stend(i,:) * weights(i,j)
-                qtend(i,:) = qtend(i,:) * weights(i,j)
-                qliqtend_det(i,:) = qliqtend_det(i,:) * weights(i,j)
-                precrate(i,:) = precrate(i,:) * weights(i,j)
-                evaprate(i,:) = evaprate(i,:) * weights(i,j)
-                netprec(i) = netprec(i) * weights(i,j)
-                surfprec(i) = surfprec(i) * weights(i,j)
-                massflxbase(i) = massflxbase(i) * weights(i,j)
-                massflx(i,:) = massflx(i,:) * weights(i,j)
+                if (nn_flag > 0 .and. valid > 0) then
+                    stend(i,:) = stend(i,:) * weights(i,j)
+                    qtend(i,:) = qtend(i,:) * weights(i,j)
+                    qliqtend_det(i,:) = qliqtend_det(i,:) * weights(i,j)
+                    precrate(i,:) = precrate(i,:) * weights(i,j)
+                    evaprate(i,:) = evaprate(i,:) * weights(i,j)
+                    netprec(i) = netprec(i) * weights(i,j)
+                    surfprec(i) = surfprec(i) * weights(i,j)
+                    massflxbase(i) = massflxbase(i) * weights(i,j)
+                    massflx(i,:) = massflx(i,:) * weights(i,j)
+                end if
                 !----------------------------------------------------------------------
             end do
             
@@ -1244,62 +1262,62 @@ subroutine conv_jp_tend( &
             end do
 
 #ifdef SCMDIAG
-            call subcol_netcdf_putclm( "ent_rate", nlev, &
-                ent_rate_dp_up(1,:)+ent_rate_sh_up(1,:), j )
-            call subcol_netcdf_putclm( "det_rate", nlev, &
-                det_rate_dp_up(1,:)+det_rate_sh_up(1,:), j )
-            call subcol_netcdf_putclm( "ent_rate_sh", nlev, ent_rate_sh_up(1,:), j )
-            call subcol_netcdf_putclm( "det_rate_sh", nlev, det_rate_sh_up(1,:), j )
-            call subcol_netcdf_putclm( "bs_xc", nlev, bs_xc(1,:), j )
+!            call subcol_netcdf_putclm( "ent_rate", nlev, &
+!                ent_rate_dp_up(1,:)+ent_rate_sh_up(1,:), j )
+!            call subcol_netcdf_putclm( "det_rate", nlev, &
+!                det_rate_dp_up(1,:)+det_rate_sh_up(1,:), j )
+!            call subcol_netcdf_putclm( "ent_rate_sh", nlev, ent_rate_sh_up(1,:), j )
+!            call subcol_netcdf_putclm( "det_rate_sh", nlev, det_rate_sh_up(1,:), j )
+!            call subcol_netcdf_putclm( "bs_xc", nlev, bs_xc(1,:), j )
 
-            call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), j )
-            call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), j )
+!            call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), j )
+!            call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), j )
 
-            call subcol_netcdf_putclm( "w_up_init", 1, w_up_init(1), j )
-            call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
-            call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), j )
-            call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), j )
-            call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), j )
-            call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), j )
-            call subcol_netcdf_putclm( "qliq_up", nlevp, qliq_up(1,:), j )
-            call subcol_netcdf_putclm( "qice_up", nlevp, qice_up(1,:), j )
-            call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), j )
-            call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up_tmp(1,:), j )
+!            call subcol_netcdf_putclm( "w_up_init", 1, w_up_init(1), j )
+!            call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
+!            call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), j )
+!            call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), j )
+!            call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), j )
+!            call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), j )
+!            call subcol_netcdf_putclm( "qliq_up", nlevp, qliq_up(1,:), j )
+!            call subcol_netcdf_putclm( "qice_up", nlevp, qice_up(1,:), j )
+!            call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), j )
+!            call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up_tmp(1,:), j )
 
 
-            call subcol_netcdf_putclm( "mse_dn", nlevp, mse_dn(1,:), j )
-            call subcol_netcdf_putclm( "normassflx_dn", nlevp, normassflx_dn_tmp(1,:), j )
+!            call subcol_netcdf_putclm( "mse_dn", nlevp, mse_dn(1,:), j )
+!            call subcol_netcdf_putclm( "normassflx_dn", nlevp, normassflx_dn_tmp(1,:), j )
 
-            call subcol_netcdf_putclm( "dilucape", 1, dilucape(1,j), j )
-            call subcol_netcdf_putclm( "mseqi", nlev, mseqi(1,:), j )
-            call subcol_netcdf_putclm( "condrate", nlev, condrate(1,:), j )
-            call subcol_netcdf_putclm( "rainrate", nlev, rainrate(1,:), j )
-            call subcol_netcdf_putclm( "snowrate", nlev, snowrate(1,:), j )
-            call subcol_netcdf_putclm( "precrate", nlev, precrate(1,:), j )
-            call subcol_netcdf_putclm( "accuprec", nlev, accuprec(1,:), j )
-            call subcol_netcdf_putclm( "evaprate", nlev, evaprate(1,:), j )
+!            call subcol_netcdf_putclm( "dilucape", 1, dilucape(1,j), j )
+!            call subcol_netcdf_putclm( "mseqi", nlev, mseqi(1,:), j )
+!            call subcol_netcdf_putclm( "condrate", nlev, condrate(1,:), j )
+!            call subcol_netcdf_putclm( "rainrate", nlev, rainrate(1,:), j )
+!            call subcol_netcdf_putclm( "snowrate", nlev, snowrate(1,:), j )
+!            call subcol_netcdf_putclm( "precrate", nlev, precrate(1,:), j )
+!            call subcol_netcdf_putclm( "accuprec", nlev, accuprec(1,:), j )
+!            call subcol_netcdf_putclm( "evaprate", nlev, evaprate(1,:), j )
 
-            call subcol_netcdf_putclm( "stend", nlev, stend(1,:), j )
-            call subcol_netcdf_putclm( "qtend", nlev, qtend(1,:), j )
-            call subcol_netcdf_putclm( "stendcond", nlev, stendcond(1,:), j )
-            call subcol_netcdf_putclm( "qtendcond", nlev, qtendcond(1,:), j )
-            call subcol_netcdf_putclm( "stendevap", nlev, stendevap(1,:), j )
-            call subcol_netcdf_putclm( "qtendevap", nlev, qtendevap(1,:), j )
-            call subcol_netcdf_putclm( "stendtranup", nlev, stendtran_up(1,:), j )
-            call subcol_netcdf_putclm( "qtendtranup", nlev, qtendtran_up(1,:), j )
-            call subcol_netcdf_putclm( "stendtrandn", nlev, stendtran_dn(1,:), j )
-            call subcol_netcdf_putclm( "qtendtrandn", nlev, qtendtran_dn(1,:), j )
-            call subcol_netcdf_putclm( "qliqtenddet", nlev, qliqtend_det(1,:), j )
+!            call subcol_netcdf_putclm( "stend", nlev, stend(1,:), j )
+!            call subcol_netcdf_putclm( "qtend", nlev, qtend(1,:), j )
+!            call subcol_netcdf_putclm( "stendcond", nlev, stendcond(1,:), j )
+!            call subcol_netcdf_putclm( "qtendcond", nlev, qtendcond(1,:), j )
+!            call subcol_netcdf_putclm( "stendevap", nlev, stendevap(1,:), j )
+!            call subcol_netcdf_putclm( "qtendevap", nlev, qtendevap(1,:), j )
+!            call subcol_netcdf_putclm( "stendtranup", nlev, stendtran_up(1,:), j )
+!            call subcol_netcdf_putclm( "qtendtranup", nlev, qtendtran_up(1,:), j )
+!            call subcol_netcdf_putclm( "stendtrandn", nlev, stendtran_dn(1,:), j )
+!            call subcol_netcdf_putclm( "qtendtrandn", nlev, qtendtran_dn(1,:), j )
+!            call subcol_netcdf_putclm( "qliqtenddet", nlev, qliqtend_det(1,:), j )
 
-            call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
-            call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
+!            call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
+!            call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
 
-            call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
-            call subcol_netcdf_putclm( "massflx", nlevp, massflx(1,:), j )
-            call subcol_netcdf_putclm( "prec", 1, surfprec(1), j )
+!            call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
+!            call subcol_netcdf_putclm( "massflx", nlevp, massflx(1,:), j )
+!            call subcol_netcdf_putclm( "prec", 1, surfprec(1), j )
 
-            tmp2d = trigdp
-            call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
+!            tmp2d = trigdp
+!            call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
 
 #endif
         end do     ! loop of plume
@@ -1309,28 +1327,28 @@ subroutine conv_jp_tend( &
     !----------------------------------------------------------------------
     ! Haiyang Yu: normalized with weights
     do i = 1, inncol
-        ! Summation
-        if (meanorsum == 2) then
-            stendsum(i,:) = stendsum(i,:) / sum(weights(i,:nplume_tot)) * nplume_tot  
-            qtendsum(i,:) = qtendsum(i,:) / sum(weights(i,:nplume_tot)) * nplume_tot
-            qliqtendsum(i,:) = qliqtendsum(i,:) / sum(weights(i,:nplume_tot)) * nplume_tot
-            precratesum(i,:) = precratesum(i,:) / sum(weights(i,:nplume_tot)) * nplume_tot
-            precsum(i) = precsum(i) / sum(weights(i,:nplume_tot)) * nplume_tot 
-            surfprec(i) = surfprec(i) / sum(weights(i,:nplume_tot)) * nplume_tot 
-            massflxbasesum(i) = massflxbasesum(i) / sum(weights(i,:nplume_tot)) * nplume_tot 
-            massflxsum(i,:) = massflxsum(i,:) / sum(weights(i,:nplume_tot)) * nplume_tot 
-        end if
+        if (nn_flag >0 .and. validplume>0) then
+            stendsum(i,:) = stendsum(i,:) / sum(weights(i,1:nplume_tot)) 
+            qtendsum(i,:) = qtendsum(i,:) / sum(weights(i,1:nplume_tot)) 
+            qliqtendsum(i,:) = qliqtendsum(i,:) / sum(weights(i,1:nplume_tot)) 
+            precratesum(i,:) = precratesum(i,:) / sum(weights(i,1:nplume_tot)) 
+            precsum(i) = precsum(i) / sum(weights(i,1:nplume_tot))  
+            surfprec(i) = surfprec(i) / sum(weights(i,1:nplume_tot)) 
+            massflxbasesum(i) = massflxbasesum(i) / sum(weights(i,1:nplume_tot))
+            massflxsum(i,:) = massflxsum(i,:) / sum(weights(i,1:nplume_tot))
+        else
+            ! without NN: mean
+            if (meanorsum == 1) then
+                stendsum(i,:) = stendsum(i,:) / nplume_tot  
+                qtendsum(i,:) = qtendsum(i,:) / nplume_tot
+                qliqtendsum(i,:) = qliqtendsum(i,:) / nplume_tot
+                precratesum(i,:) = precratesum(i,:) / nplume_tot
+                precsum(i) = precsum(i) / nplume_tot 
+                surfprec(i) = surfprec(i) / nplume_tot 
+                massflxbasesum(i) = massflxbasesum(i) / nplume_tot 
+                massflxsum(i,:) = massflxsum(i,:) / nplume_tot 
+            end if
         
-        ! Mean
-        if (meanorsum == 1) then
-            stendsum(i,:) = stendsum(i,:) / sum(weights(i,:nplume_tot))  
-            qtendsum(i,:) = qtendsum(i,:) / sum(weights(i,:nplume_tot))
-            qliqtendsum(i,:) = qliqtendsum(i,:) / sum(weights(i,:nplume_tot)) 
-            precratesum(i,:) = precratesum(i,:) / sum(weights(i,:nplume_tot)) 
-            precsum(i) = precsum(i) / sum(weights(i,:nplume_tot)) 
-            surfprec(i) = surfprec(i) / sum(weights(i,:nplume_tot)) 
-            massflxbasesum(i) = massflxbasesum(i) / sum(weights(i,:nplume_tot)) 
-            massflxsum(i,:) = massflxsum(i,:) / sum(weights(i,:nplume_tot)) 
         end if
     end do
     !----------------------------------------------------------------------
@@ -1361,10 +1379,13 @@ subroutine conv_jp_tend( &
     mcon = massflxsum
 
 #ifdef SCMDIAG
-    call subcol_netcdf_putclm( "stendsum", nlev, stendsum(1,:), 1 )
-    call subcol_netcdf_putclm( "qtendsum", nlev, qtendsum(1,:), 1 )
-    call subcol_netcdf_putclm( "precsum", 1, precsum(1), 1 )
-    call subcol_netcdf_putclm( "massflxsum", nlevp, massflxsum(1,:), 1 )
+!    call subcol_netcdf_putclm( "stendsum", nlev, stendsum(1,:), 1 )
+!    call subcol_netcdf_putclm( "qtendsum", nlev, qtendsum(1,:), 1 )
+!    call subcol_netcdf_putclm( "qliqtendsum", nlev, qliqtendsum(1,:), 1 )
+!    call subcol_netcdf_putclm( "precratesum", nlev, precratesum(1,:), 1 )
+!    call subcol_netcdf_putclm( "precsum", 1, precsum(1), 1 )
+!    call subcol_netcdf_putclm( "massflxsum", nlevp, massflxsum(1,:), 1 )
+!    call subcol_netcdf_putclm( "massflxbasesum", 1, massflxbasesum(1), 1 )
 #endif
 
 !------------------------------------------------------
@@ -1492,41 +1513,41 @@ subroutine conv_jp_tend( &
     write(*,"(a20,f20.10)") "minqcheckf:", minqcheckf
 
     !netcdf output
-    call subcol_netcdf_putclm( "mse", nlev, mse(1,:), 1 )
-    call subcol_netcdf_putclm( "dse", nlev, dse(1,:), 1 )
-    call subcol_netcdf_putclm( "msesat", nlev, msesat(1,:), 1 )
-    call subcol_netcdf_putclm( "z", nlev, z(1,:), 1 )
-    call subcol_netcdf_putclm( "p", nlev, p(1,:), 1 )
-    call subcol_netcdf_putclm( "rho", nlev, rho(1,:), 1 )
+    !call subcol_netcdf_putclm( "mse", nlev, mse(1,:), 1 )
+    !call subcol_netcdf_putclm( "dse", nlev, dse(1,:), 1 )
+    !call subcol_netcdf_putclm( "msesat", nlev, msesat(1,:), 1 )
+    !call subcol_netcdf_putclm( "z", nlev, z(1,:), 1 )
+    !call subcol_netcdf_putclm( "p", nlev, p(1,:), 1 )
+    !call subcol_netcdf_putclm( "rho", nlev, rho(1,:), 1 )
 
-    call subcol_netcdf_putclm( "mseint", nlevp, mseint(1,:), 1 )
-    call subcol_netcdf_putclm( "msesatint", nlevp, msesatint(1,:), 1 )
+    !call subcol_netcdf_putclm( "mseint", nlevp, mseint(1,:), 1 )
+    !call subcol_netcdf_putclm( "msesatint", nlevp, msesatint(1,:), 1 )
 
-    call subcol_netcdf_putclm( "zint", nlevp, zint(1,:), 1 )
-    call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
-    call subcol_netcdf_putclm( "tint", nlevp, tint(1,:), 1 )
-    call subcol_netcdf_putclm( "qint", nlevp, qint(1,:), 1 )
-    call subcol_netcdf_putclm( "qsatint", nlevp, qsatint(1,:), 1 )
+    !call subcol_netcdf_putclm( "zint", nlevp, zint(1,:), 1 )
+    !call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
+    !call subcol_netcdf_putclm( "tint", nlevp, tint(1,:), 1 )
+    !call subcol_netcdf_putclm( "qint", nlevp, qint(1,:), 1 )
+    !call subcol_netcdf_putclm( "qsatint", nlevp, qsatint(1,:), 1 )
 
-    call subcol_netcdf_putclm( "t", nlev, t(1,:), 1 )
-    call subcol_netcdf_putclm( "q", nlev, q(1,:), 1 )
-    call subcol_netcdf_putclm( "qsat", nlev, qsat(1,:), 1 )
+    !call subcol_netcdf_putclm( "t", nlev, t(1,:), 1 )
+    !call subcol_netcdf_putclm( "q", nlev, q(1,:), 1 )
+    !call subcol_netcdf_putclm( "qsat", nlev, qsat(1,:), 1 )
 
     !call subcol_netcdf_putclm( "prec", prec(1), 1 )
     !call subcol_netcdf_putclm( "pmassflxbase", massflxbase_p(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_cape", massflxbase_cape(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_w", massflxbase_w(1), 1 )
     !call subcol_netcdf_putclm( "massflxbase_mconv", massflxbase_mconv(1), 1 )
-    call subcol_netcdf_putclm( "qcheck", 1, qcheckout(1), 1 )
+    !call subcol_netcdf_putclm( "qcheck", 1, qcheckout(1), 1 )
 
-    tmp = kupbase-kuptop+1
-    call subcol_netcdf_putclm( "nconvlev", 1, tmp(1), 1 )
-    tmp = kuplaunch
-    call subcol_netcdf_putclm( "kuplaunch", 1, tmp(1), 1 )
-    tmp = kupbase
-    call subcol_netcdf_putclm( "kupbase", 1, tmp(1), 1 )
-    tmp = kuplcl
-    call subcol_netcdf_putclm( "kuplcl", 1, tmp(1), 1 )
+    !tmp = kupbase-kuptop+1
+    !call subcol_netcdf_putclm( "nconvlev", 1, tmp(1), 1 )
+    !tmp = kuplaunch
+    !call subcol_netcdf_putclm( "kuplaunch", 1, tmp(1), 1 )
+    !tmp = kupbase
+    !call subcol_netcdf_putclm( "kupbase", 1, tmp(1), 1 )
+    !tmp = kuplcl
+    !call subcol_netcdf_putclm( "kuplcl", 1, tmp(1), 1 )
 
 #endif
 
@@ -1545,7 +1566,7 @@ subroutine cal_launchtocldbase( &
         opt, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, mse, mseint, msesat, msesatint, landfrac, lhflx,  &
 !output
         kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up,  &
-!in/out
+!in
         trig)
 !------------------------------------------------------
 !launch to LCL, no entrainment up, in-cloud properties
@@ -1578,7 +1599,7 @@ subroutine cal_launchtocldbase( &
     real(r8), dimension(ncol, nlevp), intent(out) :: normassflx_up ! [kg/kg]
 
 !input/output
-    integer, dimension(ncol), intent(inout) :: trig     ! [1]
+    integer, dimension(ncol), intent(in) :: trig     ! [1]
 
 !local
     integer :: i, k, stat
