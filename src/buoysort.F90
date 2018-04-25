@@ -197,7 +197,9 @@ subroutine cal_entdet(flagbspdf, xc, ent, det)
             ent = 2.0/3 *xc*xc
             det = 2.0/3 *(1-xc)*(1-xc) - 1.0/18
         else
-            ent = 2.0/3 *xc*xc *(1-xc)*(1-xc) + 1.0/18
+            ! check
+            !ent = 2.0/3 *xc*xc *(1-xc)*(1-xc) + 1.0/18
+            ent = 4.0/3 *xc*xc *(1-2.0/3*xc) - 1.0/18
             det = 8.0/9 *(1-xc)*(1-xc)*(1-xc)
         end if
     end if

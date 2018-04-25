@@ -223,6 +223,13 @@ subroutine subcol_netcdf_putclm(varname, in_nlev, input, isubcol)
         call netcdf_check( nf90_enddef(output%ncid) )
     end if
 
+   ! do i = 1, in_nlev
+    !    if (isnan(input(i))) then
+    !        write(*, *) 'scmdiag:putclm:nan:', varname, isubcol
+    !    end if
+        !input(i) = min(1e12, max(-1e12, input(i)))
+   ! end do
+
     varind = 0
     do i = 1, output%nvar
         if ( output%varnamelist(i) == varname) then

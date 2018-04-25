@@ -681,6 +681,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use scmdiag, only: subcol_netcdf_addfld
     use scmdiag, only: subcol_netcdf_nextstep, subcol_netcdf_end
     use scmdiag, only: subcol_netcdf_putclm
+    use conv_jp, only: nplume_sh, nplume_dp
 #endif
 
     ! Input/output arguments
@@ -813,7 +814,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
 !xiex
 #ifdef SCMDIAG
-    call subcol_netcdf_setdim( 15, pver)
+    call subcol_netcdf_setdim( nplume_sh+nplume_dp, pver)
     call subcol_netcdf_init( "scmdiag-output.nc" )
     call subcol_netcdf_addfld( "dtime", "s", "slev")
     call subcol_netcdf_addfld( "tbef", "K/s", "mlev")
@@ -840,6 +841,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     call subcol_netcdf_addfld( "ent_rate", "1", "mlev")
     call subcol_netcdf_addfld( "det_rate", "1", "mlev")
+    call subcol_netcdf_addfld( "ent_rate_dp", "1", "mlev")
+    call subcol_netcdf_addfld( "det_rate_dp", "1", "mlev")
     call subcol_netcdf_addfld( "ent_rate_sh", "1", "mlev")
     call subcol_netcdf_addfld( "det_rate_sh", "1", "mlev")
     call subcol_netcdf_addfld( "bs_xc", "1", "mlev")
@@ -867,9 +870,16 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call subcol_netcdf_addfld( "w_up_init", "m/s", "slev")
     call subcol_netcdf_addfld( "w_up", "m/s", "mlevp")
     call subcol_netcdf_addfld( "buoy", "m/s2", "mlevp")
-    call subcol_netcdf_addfld( "radius_up", "m/s2", "mlevp")
+    
+    !call subcol_netcdf_addfld( "radius_up", "m/s2", "mlevp")
+    call subcol_netcdf_addfld( "radius_up", "m", "mlev")
+    call subcol_netcdf_addfld( "ent_rate_org", "1", "mlev")
+    call subcol_netcdf_addfld( "ent_rate_turb", "1", "mlev")
+    call subcol_netcdf_addfld( "det_rate_org", "1", "mlev")
+    call subcol_netcdf_addfld( "det_rate_turb", "1", "mlev")
+
     call subcol_netcdf_addfld( "dse_up", "J/kg", "mlevp")
-    call subcol_netcdf_addfld( "mse_up", "m/s", "mlevp")
+    call subcol_netcdf_addfld( "mse_up", "J/kg", "mlevp")
     call subcol_netcdf_addfld( "t_up", "kg/kg", "mlevp")
     call subcol_netcdf_addfld( "q_up", "kg/kg", "mlevp")
     call subcol_netcdf_addfld( "qliq_up", "kg/kg", "mlevp")

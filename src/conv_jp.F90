@@ -69,6 +69,11 @@ module conv_jp
 !--------------------------------------------------------------
     integer :: ecp_nplume_sh = unset_int
     integer :: ecp_nplume_dp = unset_int
+    real(r8) :: ecp_turb_enhance = unset_r8
+    real(r8) :: ecp_org_enhance = unset_r8
+    real(r8) :: ecp_org_shape = unset_r8
+    real(r8) :: ecp_evap_enhance = unset_r8
+    real(r8) :: ecp_evap_shape = unset_r8
     real(r8) :: ecp_trig_eps0 = unset_r8
     real(r8) :: ecp_trig_c2 = unset_r8
     real(r8) :: ecp_fixcldsr = unset_r8
@@ -90,7 +95,8 @@ module conv_jp
     real(r8) :: ecp_pmf_tau_sh = unset_r8
     real(r8) :: ecp_pmf_alpha_dp = unset_r8
     real(r8) :: ecp_pmf_tau_dp = unset_r8
-    real(r8) :: ecp_capelmt   = unset_r8
+    real(r8) :: ecp_capelmt_sh   = unset_r8
+    real(r8) :: ecp_capelmt_dp   = unset_r8
     real(r8) :: ecp_tpertglob   = unset_r8
     real(r8) :: ecp_qpertglob   = unset_r8
     integer  :: ecp_meanorsum   = unset_int
@@ -119,10 +125,11 @@ module conv_jp
     integer,  parameter :: ischeme = 2          ! 1: CS2010;  2: MZhang Group
     integer,  parameter :: flagbspdf = 2        ! 1: uniform distribution;  2: new pdf
     integer,  parameter :: cldhiteration = 1    ! iteration for cloud height
-    integer,  parameter :: flagorgent = 5       ! 1: using beta0 and minMSE as the division between entr and detr
+    integer,  parameter :: flagorgent = 6       ! 1: using beta0 and minMSE as the division between entr and detr
                                                 ! 2: new organized entr and detr, and use half of H as division
                                                 ! 3,4: only organized entr, no orgnized detr
                                                 ! 5: when B<=0, use detr
+                                                ! 6: same as 5, but add a profile shape
     integer,  parameter :: flagtotent = 3       ! 1: organized only; 2: turbulence only; 3: sum of org and turb
     integer,  parameter :: flagturbent = 1      ! 1: using low interface only; 
                                                 ! 2: use low interface at the first iteration, then averaged
@@ -130,6 +137,11 @@ module conv_jp
                                                 ! 2: new codes 
     real(r8) :: trig_eps0  = unset_r8   ! trigger parameters: w -> R (default: 0.003)
     real(r8) :: trig_c2    = unset_r8   ! trigger parameters: w -> R: 23.5 ~ 240m; default: 117.5 ~ 1km
+    real(r8) :: turb_enhance = unset_r8   ! enhance turbulence entrainment and detrainment (1.0)
+    real(r8) :: org_enhance = unset_r8   ! enhance organized entrainment and detrainment (2.0)
+    real(r8) :: org_shape = unset_r8     ! shape parameter of organized entrainment and detrainment (2.0)
+    real(r8) :: evap_enhance = unset_r8   ! enhance evaporation (5.0)
+    real(r8) :: evap_shape = unset_r8     ! shape parameter of evaporation profile (2.0)
     real(r8), parameter :: fixcldrad0 = -1      ! if +: fixed cloud base radius;  if -: diagnostic from winit
     real(r8) :: fixcldsr   = unset_r8   ! default: 1.0; if +: fixed cloud size ratio;  if -: iteration
     real(r8) :: ratio_ent_rad = unset_r8  ! relation between turbulent entr/detr and cloud radius (0.2)
@@ -238,7 +250,8 @@ module conv_jp
 ! parameter for diagnostic mass flux calculation
 !--------------------------------------------------------------
     real(r8), parameter :: cape_timescale = 10.e7_r8  ! default: not used
-    real(r8) :: capelmt = unset_r8  ! default: 80; threshold of CAPE for triggering convection
+    real(r8) :: capelmt_sh = unset_r8  ! default: 80; threshold of CAPE for triggering convection
+    real(r8) :: capelmt_dp = unset_r8  ! default: 80; threshold of CAPE for triggering convection
 
 !--------------------------------------------------------------
 ! parameter for diagnostic mass flux calculation
@@ -287,12 +300,12 @@ subroutine ecp_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'ecp_readnl'
 
-   namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, ecp_fixcldsr, &
-       ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, &
+   namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, ecp_turb_enhance, ecp_fixcldsr, &
+       ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, ecp_org_enhance, ecp_org_shape, &
        ecp_w_up_init_sh_beg, ecp_w_up_init_sh_end, ecp_w_up_init_dp_beg, ecp_w_up_init_dp_end, &
        ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac_sh, ecp_dn_frac_dp, &
-       ecp_pmf_alpha_sh, ecp_pmf_tau_sh, ecp_pmf_alpha_dp, ecp_pmf_tau_dp, ecp_capelmt, &
-       ecp_tpertglob, ecp_qpertglob, ecp_meanorsum, ecp_facdlf
+       ecp_pmf_alpha_sh, ecp_pmf_tau_sh, ecp_pmf_alpha_dp, ecp_pmf_tau_dp, ecp_capelmt_sh, ecp_capelmt_dp, &
+       ecp_tpertglob, ecp_qpertglob, ecp_meanorsum, ecp_facdlf, ecp_evap_enhance, ecp_evap_shape
    !-----------------------------------------------------------------------------
 
 #if (! defined SCMDIAG)    
@@ -327,6 +340,9 @@ subroutine ecp_readnl(nlfile)
         nplume_dp = ecp_nplume_dp
         trig_eps0 = ecp_trig_eps0
         trig_c2   = ecp_trig_c2
+        turb_enhance = ecp_turb_enhance
+        org_enhance = ecp_org_enhance
+        org_shape = ecp_org_shape
         fixcldsr  = ecp_fixcldsr
         ratio_ent_rad = ecp_ratio_ent_rad
         orgent_a      = ecp_orgent_a
@@ -346,11 +362,14 @@ subroutine ecp_readnl(nlfile)
         pmf_tau_sh   = ecp_pmf_tau_sh
         pmf_alpha_dp = ecp_pmf_alpha_dp
         pmf_tau_dp   = ecp_pmf_tau_dp
-        capelmt = ecp_capelmt
+        capelmt_sh = ecp_capelmt_sh
+        capelmt_dp = ecp_capelmt_dp
         tpertglob = ecp_tpertglob
         qpertglob = ecp_qpertglob
         meanorsum = ecp_meanorsum 
         facdlf = ecp_facdlf
+        evap_enhance = ecp_evap_enhance
+        evap_shape = ecp_evap_shape
 #if (! defined SCMDIAG)    
     end if
 #endif
@@ -362,6 +381,9 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(meanorsum,  1, mpiint,  0, mpicom)
    call mpibcast(trig_eps0,  1, mpir8,  0, mpicom)
    call mpibcast(trig_c2,    1, mpir8,  0, mpicom)
+   call mpibcast(turb_enhance,    1, mpir8,  0, mpicom)
+   call mpibcast(org_enhance,    1, mpir8,  0, mpicom)
+   call mpibcast(org_shape,    1, mpir8,  0, mpicom)
    call mpibcast(fixcldsr,   1, mpir8,  0, mpicom)
    call mpibcast(ratio_ent_rad,  1, mpir8,  0, mpicom)
    call mpibcast(orgent_a,  1, mpir8,  0, mpicom)
@@ -381,10 +403,13 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(pmf_tau_sh,  1, mpir8,  0, mpicom)
    call mpibcast(pmf_alpha_dp,  1, mpir8,  0, mpicom)
    call mpibcast(pmf_tau_dp,  1, mpir8,  0, mpicom)
-   call mpibcast(capelmt,  1, mpir8,  0, mpicom)
+   call mpibcast(capelmt_sh,  1, mpir8,  0, mpicom)
+   call mpibcast(capelmt_dp,  1, mpir8,  0, mpicom)
    call mpibcast(tpertglob,  1, mpir8,  0, mpicom)
    call mpibcast(qpertglob,  1, mpir8,  0, mpicom)
    call mpibcast(facdlf,  1, mpir8,  0, mpicom)
+   call mpibcast(evap_enhance,  1, mpir8,  0, mpicom)
+   call mpibcast(evap_shape,  1, mpir8,  0, mpicom)
 #endif
 
     write(*, *) "nplume_sh: ", nplume_sh
@@ -392,6 +417,9 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "meanorsum: ", meanorsum
     write(*, *) "trig_eps0: ", trig_eps0
     write(*, *) "trig_c2: ", trig_c2
+    write(*, *) "turb_enhance: ", turb_enhance
+    write(*, *) "org_enhance: ", org_enhance
+    write(*, *) "org_shape: ", org_shape
     write(*, *) "fixcldsr: ", fixcldsr
     write(*, *) "ratio_ent_rad: ", ratio_ent_rad
     write(*, *) "orgent_a: ", orgent_a
@@ -410,10 +438,13 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "pmf_alpha_sh: ", pmf_alpha_sh
     write(*, *) "pmf_tau_sh: ", pmf_tau_sh
     write(*, *) "pmf_alpha_dp: ", pmf_alpha_dp
-    write(*, *) "capelmt: ", capelmt
+    write(*, *) "capelmt_sh: ", capelmt_sh
+    write(*, *) "capelmt_dp: ", capelmt_dp
     write(*, *) "tpertglob: ", tpertglob
     write(*, *) "qpertglob: ", tpertglob
     write(*, *) "facdlf: ", facdlf
+    write(*, *) "evap_enhance: ", evap_enhance
+    write(*, *) "evap_shape: ", evap_shape
 
 end subroutine ecp_readnl
 
@@ -543,7 +574,8 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: t, q
     real(r8), dimension(inncol, nlev) :: dse !environment [J/kg]
     real(r8), dimension(inncol, nlev) :: mse, msesat ! [J/kg] ; [J/kg]
-    real(r8), dimension(inncol, nlev) :: twet !environment [K]
+    real(r8), dimension(inncol, nlev) :: twet !environment wet bulb temperature [K]
+    real(r8), dimension(inncol, nlevp) :: twetint !environment wet bulb temperature [K]
  
     real(r8), dimension(inncol, nlev) :: esat, qsat ! [Pa] ; [kg/kg]
     real(r8), dimension(inncol, nlev) :: rh  ! [1] relative humidity
@@ -919,6 +951,8 @@ subroutine conv_jp_tend( &
     lvint = latvap - (cpliq-cpwv) * (tint-273.15)
     call cal_qsat2d(tint, pint, qsatint)
 
+    call cal_twet2d(tint, qint/qsatint, twetint)
+
     dseint = cpair*tint + gravit*zint
     mseint = dseint + lvint*qint
     msesatint = dseint + lvint*qsatint
@@ -1110,8 +1144,8 @@ subroutine conv_jp_tend( &
 
 !downdraft properties
             call cal_mse_dn( &
-                ent_opt, kuptop, trigdp, dz, zint, p, rho, t, twet, lvmid, &
-                qint, dseint, accuprec, evaprate, dn_frac, &
+                ent_opt, kuptop, trigdp, dz, zint, p, pint, rho, t, twet, twetint, lvmid, &
+                qint, dseint, accuprec, evaprate, buoy_mid, dn_frac, &
                 dse_dn, q_dn, normassflx_dn_tmp)
 
             mse_dn = dse_dn + lvint*q_dn
@@ -1140,27 +1174,46 @@ subroutine conv_jp_tend( &
 
 !liquid detrainment tendency
             do i=1, inncol
+                qliqtend_det(i,1:nlev) = 0.0
                 if ( trigdp(i)<1 ) cycle
-                k = kuptop(i)-1
-                qliqtend_det(i,k) = max( 0.0, &
-                    normassflx_up_tmp(i,k+1)*( qliq_up(i,k+1)+qice_up(i,k+1) ) &
-                    /dz(i,k)/rho(i,k) )
+
+                ! New version: detrain occurs through cloud layers
+                do k = kuptop(i)-1, kupbase(i)-1, 1
+                    qliqtend_det(i,k) = max(0.0, &
+                        normassflx_up_tmp(i,k+1) * (det_rate_dp_up(i,k) + det_rate_sh_up(i,k)) * (qliq_up(i,k+1) + qice_up(i,k+1))  &
+                        /rho(i,k) )
+                    !write(*,*) "qliqtend_net:", k, qliqtend_det(i,k), normassflx_up_tmp(i,k+1), &
+                    !    det_rate_dp_up(i,k), det_rate_sh_up(i,k), &
+                    !    qliq_up(i,k+1), qice_up(i,k+1), rho(i,k)
+                end do
+
+                ! Old version: detrain occurs only at the cloud top layer
+                !k = kuptop(i)-1
+                !qliqtend_det(i,k) = max( 0.0, &
+                !    normassflx_up_tmp(i,k+1)*( qliq_up(i,k+1)+qice_up(i,k+1) ) &
+                !    /dz(i,k)/rho(i,k) )
             end do
 
 
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
-                massflxbase_p(i,j) = min( 0.1, max( 0., &
-!                    massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
+                if (iconv == 1) then  ! shallow plumes 
+                    massflxbase_p(i,j) = min( 0.1, max( 0., &
+                        massflxbase_p(i,j) + dtime*( max( (dilucape(i,j) - capelmt_sh), 0._r8 )/(2*pmf_alpha) &
+                        * (w_up_init_end/w_up_init(i)) &
+                        - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
+                else    ! deep plumes
+                    massflxbase_p(i,j) = min( 0.1, max( 0., &
+                        massflxbase_p(i,j) + dtime*( max( (dilucape(i,j) - capelmt_dp), 0._r8 )/(2*pmf_alpha) &
+                        - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
+                end if
+            end do
+
 !SENS
 !                    massflxbase_p(i,j) + dtime*( cwf(i,j)/(2*pmf_alpha) &
-                    massflxbase_p(i,j) + dtime*( max( (dilucape(i,j) - capelmt), 0._r8 )/(2*pmf_alpha) &
-                    - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
-
-!SENS
+!                    massflxbase_p(i,j) + dtime*( dilucape(i,j)/(2*pmf_alpha) &
 !                massflxbase_p(i,j) = min( 0.1, max( 0., (dilucape(i,j) - capelmt)/cape_timescale ) )
 
-            end do
 
             if (fixbasemf > 0) then
                 massflxbase = fixbasemf
@@ -1202,12 +1255,17 @@ subroutine conv_jp_tend( &
                 massflx(i,:) = normassflx_up_tmp(i,:)*massflxbase(i)
 
                 stend(i,:) = stendcond(i,:) + stendevap(i,:) &
-                    + stendtran_up(i,:) + stendtran_dn(i,:)
+                    + stendtran_up(i,:) + stendtran_dn(i,:) &
+                    - lvmid(i,:) * qliqtend_det(i,:)
+                
                 qtend(i,:) = qtendcond(i,:) + qtendevap(i,:) &
-                    + qtendtran_up(i,:) + qtendtran_dn(i,:)
-    
-    ! write(*, *) "yhy:plume:stend:", j, stendcond(i,:), stendevap(i,:), stendtran_up(i,:), stendtran_dn(i,:)
-    ! write(*, *) "yhy:plume:qtend:", j, qtendcond(i,:), qtendevap(i,:), qtendtran_up(i,:), qtendtran_dn(i,:)
+                    + qtendtran_up(i,:) + qtendtran_dn(i,:) &
+                    + qliqtend_det(i,:)
+
+     !do k = 1, nlev
+     ! write(*, *) "yhy:plume:stend:", j, stendcond(i,:), stendevap(i,:), stendtran_up(i,:), stendtran_dn(i,:)
+     !write(*, *) "yhy:plume:qtend:", k, qtendcond(i,k), qtendevap(i,k), qtendtran_up(i,k), qtendtran_dn(i,k), qliqtend_det(i,k)
+     !end do
 
                 do k=1, nlev
                     netprec(i) = netprec(i) + max(0.0, - ( qtend(i,k) + qliqtend_det(i,k) )*rho(i,k)*dz(i,k))
@@ -1215,9 +1273,10 @@ subroutine conv_jp_tend( &
                 netprec(i) = netprec(i)/rhofw
 
                 ! yhy:
-                do k=1, nlev
-                    qliq(i,k) = max(1e-13, qliqtend_det(i,k)*dtime)
-                end do
+                !do k=1, nlev
+                !    qliq(i,k) = max(1e-13, qliqtend_det(i,k)*dtime)
+                !end do
+                
                 !----------------------------------------------------------------------
                 ! Haiyang Yu: calculate the weight for each plume
                 ! if NN is not called, weights = 1.0
@@ -1262,62 +1321,70 @@ subroutine conv_jp_tend( &
             end do
 
 #ifdef SCMDIAG
-!            call subcol_netcdf_putclm( "ent_rate", nlev, &
-!                ent_rate_dp_up(1,:)+ent_rate_sh_up(1,:), j )
-!            call subcol_netcdf_putclm( "det_rate", nlev, &
-!                det_rate_dp_up(1,:)+det_rate_sh_up(1,:), j )
-!            call subcol_netcdf_putclm( "ent_rate_sh", nlev, ent_rate_sh_up(1,:), j )
-!            call subcol_netcdf_putclm( "det_rate_sh", nlev, det_rate_sh_up(1,:), j )
-!            call subcol_netcdf_putclm( "bs_xc", nlev, bs_xc(1,:), j )
+            call subcol_netcdf_putclm( "ent_rate", nlev, &
+                ent_rate_dp_up(1,:)+ent_rate_sh_up(1,:), j )
+            call subcol_netcdf_putclm( "det_rate", nlev, &
+                det_rate_dp_up(1,:)+det_rate_sh_up(1,:), j )
+            call subcol_netcdf_putclm( "ent_rate_dp", nlev, ent_rate_dp_up(1,:), j )
+            call subcol_netcdf_putclm( "det_rate_dp", nlev, det_rate_dp_up(1,:), j )
+            call subcol_netcdf_putclm( "ent_rate_sh", nlev, ent_rate_sh_up(1,:), j )
+            call subcol_netcdf_putclm( "det_rate_sh", nlev, det_rate_sh_up(1,:), j )
+            call subcol_netcdf_putclm( "bs_xc", nlev, bs_xc(1,:), j )
+            
+            call subcol_netcdf_putclm( "radius_up", nlev, cldrad(1,:), j )
+            call subcol_netcdf_putclm( "ent_rate_org", nlev, ent_org(1,:), j )
+            call subcol_netcdf_putclm( "det_rate_org", nlev, det_org(1,:), j )
+            call subcol_netcdf_putclm( "ent_rate_turb", nlev, ent_turb(1,:), j )
+            call subcol_netcdf_putclm( "det_rate_turb", nlev, det_turb(1,:), j )
 
-!            call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), j )
-!            call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), j )
+            call subcol_netcdf_putclm( "w_up_mid", nlev, w_up_mid(1,:), j )
+            call subcol_netcdf_putclm( "buoy_mid", nlev, buoy_mid(1,:), j )
 
-!            call subcol_netcdf_putclm( "w_up_init", 1, w_up_init(1), j )
-!            call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
-!            call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), j )
-!            call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), j )
-!            call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), j )
-!            call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), j )
-!            call subcol_netcdf_putclm( "qliq_up", nlevp, qliq_up(1,:), j )
-!            call subcol_netcdf_putclm( "qice_up", nlevp, qice_up(1,:), j )
-!            call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), j )
-!            call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up_tmp(1,:), j )
+            call subcol_netcdf_putclm( "w_up_init", 1, w_up_init(1), j )
+            call subcol_netcdf_putclm( "w_up", nlevp, w_up(1,:), j )
+            call subcol_netcdf_putclm( "buoy", nlevp, buoy(1,:), j )
+            call subcol_netcdf_putclm( "mse_up", nlevp, mse_up(1,:), j )
+            call subcol_netcdf_putclm( "t_up", nlevp, t_up(1,:), j )
+            call subcol_netcdf_putclm( "q_up", nlevp, q_up(1,:), j )
+            call subcol_netcdf_putclm( "qliq_up", nlevp, qliq_up(1,:), j )
+            call subcol_netcdf_putclm( "qice_up", nlevp, qice_up(1,:), j )
+            call subcol_netcdf_putclm( "dse_up", nlevp, dse_up(1,:), j )
+            call subcol_netcdf_putclm( "normassflx_up", nlevp, normassflx_up_tmp(1,:), j )
 
 
-!            call subcol_netcdf_putclm( "mse_dn", nlevp, mse_dn(1,:), j )
-!            call subcol_netcdf_putclm( "normassflx_dn", nlevp, normassflx_dn_tmp(1,:), j )
+            call subcol_netcdf_putclm( "mse_dn", nlevp, mse_dn(1,:), j )
+            call subcol_netcdf_putclm( "normassflx_dn", nlevp, normassflx_dn_tmp(1,:), j )
 
-!            call subcol_netcdf_putclm( "dilucape", 1, dilucape(1,j), j )
-!            call subcol_netcdf_putclm( "mseqi", nlev, mseqi(1,:), j )
-!            call subcol_netcdf_putclm( "condrate", nlev, condrate(1,:), j )
-!            call subcol_netcdf_putclm( "rainrate", nlev, rainrate(1,:), j )
-!            call subcol_netcdf_putclm( "snowrate", nlev, snowrate(1,:), j )
-!            call subcol_netcdf_putclm( "precrate", nlev, precrate(1,:), j )
-!            call subcol_netcdf_putclm( "accuprec", nlev, accuprec(1,:), j )
-!            call subcol_netcdf_putclm( "evaprate", nlev, evaprate(1,:), j )
+            call subcol_netcdf_putclm( "dilucape", 1, dilucape(1,j), j )
+            call subcol_netcdf_putclm( "mseqi", nlev, mseqi(1,:), j )
+            call subcol_netcdf_putclm( "condrate", nlev, condrate(1,:), j )
+            call subcol_netcdf_putclm( "rainrate", nlev, rainrate(1,:), j )
+            call subcol_netcdf_putclm( "snowrate", nlev, snowrate(1,:), j )
+            call subcol_netcdf_putclm( "precrate", nlev, precrate(1,:), j )
+            call subcol_netcdf_putclm( "accuprec", nlev, accuprec(1,:), j )
+            call subcol_netcdf_putclm( "evaprate", nlev, evaprate(1,:), j )
 
-!            call subcol_netcdf_putclm( "stend", nlev, stend(1,:), j )
-!            call subcol_netcdf_putclm( "qtend", nlev, qtend(1,:), j )
-!            call subcol_netcdf_putclm( "stendcond", nlev, stendcond(1,:), j )
-!            call subcol_netcdf_putclm( "qtendcond", nlev, qtendcond(1,:), j )
-!            call subcol_netcdf_putclm( "stendevap", nlev, stendevap(1,:), j )
-!            call subcol_netcdf_putclm( "qtendevap", nlev, qtendevap(1,:), j )
-!            call subcol_netcdf_putclm( "stendtranup", nlev, stendtran_up(1,:), j )
-!            call subcol_netcdf_putclm( "qtendtranup", nlev, qtendtran_up(1,:), j )
-!            call subcol_netcdf_putclm( "stendtrandn", nlev, stendtran_dn(1,:), j )
-!            call subcol_netcdf_putclm( "qtendtrandn", nlev, qtendtran_dn(1,:), j )
-!            call subcol_netcdf_putclm( "qliqtenddet", nlev, qliqtend_det(1,:), j )
+            call subcol_netcdf_putclm( "stend", nlev, stend(1,:), j )
+            call subcol_netcdf_putclm( "qtend", nlev, qtend(1,:), j )
+            call subcol_netcdf_putclm( "stendcond", nlev, stendcond(1,:), j )
+            call subcol_netcdf_putclm( "qtendcond", nlev, qtendcond(1,:), j )
+            call subcol_netcdf_putclm( "stendevap", nlev, stendevap(1,:), j )
+            call subcol_netcdf_putclm( "qtendevap", nlev, qtendevap(1,:), j )
+            call subcol_netcdf_putclm( "stendtranup", nlev, stendtran_up(1,:), j )
+            call subcol_netcdf_putclm( "qtendtranup", nlev, qtendtran_up(1,:), j )
+            call subcol_netcdf_putclm( "stendtrandn", nlev, stendtran_dn(1,:), j )
+            call subcol_netcdf_putclm( "qtendtrandn", nlev, qtendtran_dn(1,:), j )
+            call subcol_netcdf_putclm( "qliqtenddet", nlev, qliqtend_det(1,:), j )
 
-!            call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
-!            call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
+            call subcol_netcdf_putclm( "diffdse_up", nlevp, diffdse_up(1,:), j )
+            call subcol_netcdf_putclm( "diffq_up", nlevp, diffq_up(1,:), j )
 
-!            call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
-!            call subcol_netcdf_putclm( "massflx", nlevp, massflx(1,:), j )
-!            call subcol_netcdf_putclm( "prec", 1, surfprec(1), j )
+            call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
+            call subcol_netcdf_putclm( "massflx", nlevp, massflx(1,:), j )
+            call subcol_netcdf_putclm( "prec", 1, surfprec(1), j )
 
-!            tmp2d = trigdp
-!            call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
+            tmp2d = trigdp
+            call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
 
 #endif
         end do     ! loop of plume
@@ -1488,20 +1555,20 @@ subroutine conv_jp_tend( &
     outqtendevap = qtendevap
 
 #ifdef SCMDIAG 
-    !write(*,"(a20,f20.10)") "dtime:", dtime
-    !write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "psrf:", psrf
-    !write(*,"(a20,i4,a20,i4)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
-    !write(*,"(a20,i4,a20,i4)") "uptop:", kuptop
-    !write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp, "trigsh:", trigsh
-    !write(*,"(a20,f20.10)") "zsrf:",zsrf 
-    !write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
-    !write(*,"(a20,50f20.10)") "dilucape:", dilucape(1,1:nplume_tot)
-    !write(*,"(a20,50f20.10)") "cwf:", cwf(1,1:nplume_tot)
-    !write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
-    !write(*,"(a20,f20.10)") "capefc:", capefc
-    !write(*,"(a20,f20.10)") "capeclm:", capeclm
+    write(*,"(a20,f20.10)") "dtime:", dtime
+    write(*,"(a20,f20.10,a20,f20.10,a20,f20.10)") "lat:", lat, "psrf:", psrf
+    write(*,"(a20,i4,a20,i4)") "uplaunch:", kuplaunch, " upbase:  ", kupbase, " uplcl:", kuplcl
+    write(*,"(a20,i4,a20,i4)") "uptop:", kuptop
+    write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp, "trigsh:", trigsh
+    write(*,"(a20,f20.10)") "zsrf:",zsrf 
+    write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
+    write(*,"(a20,50f20.10)") "dilucape:", dilucape(1,1:nplume_tot)
+    write(*,"(a20,50f20.10)") "cwf:", cwf(1,1:nplume_tot)
+    write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
+    write(*,"(a20,f20.10)") "capefc:", capefc
+    write(*,"(a20,f20.10)") "capeclm:", capeclm
     !write(*,"(a20,f20.10)") "mconv:", mconv
-    !write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume_tot)
+    write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume_tot)
     !write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape
     !write(*,"(a20,f20.10)") "massflxbase_dcape:", massflxbase_dcape
     !write(*,"(a20,f20.10)") "massflxbase_clm:", massflxbase_clm
@@ -1517,14 +1584,14 @@ subroutine conv_jp_tend( &
     !call subcol_netcdf_putclm( "dse", nlev, dse(1,:), 1 )
     !call subcol_netcdf_putclm( "msesat", nlev, msesat(1,:), 1 )
     !call subcol_netcdf_putclm( "z", nlev, z(1,:), 1 )
-    !call subcol_netcdf_putclm( "p", nlev, p(1,:), 1 )
+    call subcol_netcdf_putclm( "p", nlev, p(1,:), 1 )
     !call subcol_netcdf_putclm( "rho", nlev, rho(1,:), 1 )
 
     !call subcol_netcdf_putclm( "mseint", nlevp, mseint(1,:), 1 )
     !call subcol_netcdf_putclm( "msesatint", nlevp, msesatint(1,:), 1 )
 
     !call subcol_netcdf_putclm( "zint", nlevp, zint(1,:), 1 )
-    !call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
+    call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
     !call subcol_netcdf_putclm( "tint", nlevp, tint(1,:), 1 )
     !call subcol_netcdf_putclm( "qint", nlevp, qint(1,:), 1 )
     !call subcol_netcdf_putclm( "qsatint", nlevp, qsatint(1,:), 1 )
@@ -1552,7 +1619,7 @@ subroutine conv_jp_tend( &
 #endif
 
     !-------------------------------------------------
-    ! Haiyang tes
+    ! Haiyang test
      qliqtend = qliqtend * facdlf
     !-------------------------------------------------
 
@@ -1930,6 +1997,19 @@ subroutine cal_mse_up( &
                             det_org(i,k) = 0.0                        
                         end if
                     end if
+                    if (flagorgent == 6) then
+                        tmp = orgent_beta0 * cldsr(i,k)/sqrt(1+cldsr(i,k)*cldsr(i,k)) * &
+                            sqrt(abs(buoy_mid(i,k))*cldh(i)) / ( 2*cldrad(i,k)*max(wupmin,w_up_mid(i,k)) )
+                        if ( buoy_mid(i,k) <= 0 ) then
+                            ent_org(i,k) = 0.0
+                            det_org(i,k) = tmp * org_enhance &
+                                * ((p(i,kupbase(i))-p(i,k))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
+                        else
+                            ent_org(i,k) = tmp * org_enhance & 
+                                * ((p(i,k)-p(i,kuptop(i)))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
+                            det_org(i,k) = 0.0                        
+                        end if
+                    end if
                     if (flagorgent == 2) then
                         tmp = 0.8*sqrt( cldsr(i,k)*cldsr(i,k) + cldsr(i,k)*sqrt(cldsr(i,k)*cldsr(i,k)+6) )
                         tmp = tmp*sqrt(abs(cos(3.14159265*(zint(i,k)-zint(i,kupbase(i)))/cldh(i))))
@@ -1955,7 +2035,11 @@ subroutine cal_mse_up( &
                         ent_org(i,k) = tmp
                         det_org(i,k) = 0.0
                     end if
+                    ! treat organized ent/det as deep plumes
+                    ent_rate_dp_up(i,k) = ent_org(i,k)
+                    det_rate_dp_up(i,k) = det_org(i,k)
 
+                    
                     ! turbulent entrainment/detrainment
                     bs_scaleh = tmp_zuptop_max-zint(i, kupbase(i) ) 
                     bs_cridis = bs_rle*bs_scaleh
@@ -1994,41 +2078,49 @@ subroutine cal_mse_up( &
                         end if
                     end if  ! old buoysort code from CAM UW
 
-                    if (flagbuoysort == 2) then
+                    if (flagbuoysort == 2) then  ! new buoysort code
                         call cal_fracmix(t(i,k), q(i,k), t_up(i,k+1), q_up(i,k+1)+qliq_up(i,k+1)+qice_up(i,k+1), &
                             p(i,k), w_up(i,k+1), bs_cridis, bs_xc(i,k))
-                        
-                        !write(*,*) "fracmix: ", t(i,k), q(i,k), t_up(i,k+1), q_up(i,k+1)+qliq_up(i,k+1)+qice_up(i,k+1), &
-                        !    p(i,k), w_up(i,k+1), bs_cridis, bs_xc(i,k)
+                        !write(*,*) "fracmix:"
+                        !write(*,"(8E10.3)") t(i,k), q(i,k), t_up(i,k+1), q_up(i,k+1)+qliq_up(i,k+1)+qice_up(i,k+1), &
+                        !   p(i,k), w_up(i,k+1), bs_cridis, bs_xc(i,k)
 
                         call cal_entdet(flagbspdf, bs_xc(i,k), ent_turb(i,k), det_turb(i,k))
                         ent_turb(i,k) = ent_turb(i,k) * ratio_ent_rad/cldrad(i,k)
                         det_turb(i,k) = det_turb(i,k) * ratio_ent_rad/cldrad(i,k)
                     end if
+                    
+                    ! enhanced turbulent ent/det by w
+                    if (turb_enhance > 0) then
+                        ent_turb(i,k) = ent_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
+                        det_turb(i,k) = det_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
+                    end if
+                    
+                    ! treat turbulent ent/det as shallow plumes
+                    ent_rate_sh_up(i,k) = ent_turb(i,k)
+                    det_rate_sh_up(i,k) = det_turb(i,k)
 
                     ! total entrainment and detrainment
-                    if (flagtotent == 1) then
-                        ent_rate_dp_up(i,k) = max( 0.0, min( max_ent_rate, &
-                            ent_org(i,k) ) )
-                        det_rate_dp_up(i,k) = max( 0.0, min( max_det_rate, &
-                            det_org(i,k) ) ) 
+                    if (flagtotent == 1) then  ! deep (org) only
+                        ent_rate = max( 0.0, min( max_ent_rate, &
+                            ent_rate_dp_up(i,k) ) )
+                        det_rate = max( 0.0, min( max_det_rate, &
+                            det_rate_dp_up(i,k) ) ) 
                     end if
-                    if (flagtotent == 2) then
-                        ent_rate_dp_up(i,k) = max( 0.0, min( max_ent_rate, &
-                            ent_turb(i,k) ) )
-                        det_rate_dp_up(i,k) = max( 0.0, min( max_det_rate, &
-                            det_turb(i,k) ) ) 
+                    if (flagtotent == 2) then  ! shallow (turb) only
+                        ent_rate = max( 0.0, min( max_ent_rate, &
+                            ent_rate_sh_up(i,k) ) )
+                        det_rate = max( 0.0, min( max_det_rate, &
+                            det_rate_sh_up(i,k) ) ) 
                     end if
-                    if (flagtotent == 3) then
-                        ent_rate_dp_up(i,k) = max( 0.0, min( max_ent_rate, &
-                            ent_org(i,k) + ent_turb(i,k) ) )
-                        det_rate_dp_up(i,k) = max( 0.0, min( max_det_rate, &
-                            det_org(i,k) + det_turb(i,k) ) ) 
+                    if (flagtotent == 3) then  ! deep (i.e. organized) + shallow (i.e. turbulence)
+                        ent_rate = max( 0.0, min( max_ent_rate, &
+                            ent_rate_dp_up(i,k) + ent_rate_sh_up(i,k) ) )
+                        det_rate = max( 0.0, min( max_det_rate, &
+                            det_rate_dp_up(i,k) + det_rate_sh_up(i,k) ) ) 
                     end if
 
-                    ent_rate = ent_rate_dp_up(i,k) ! + ent_rate_sh_up(i,k)
-                    det_rate = det_rate_dp_up(i,k) ! + det_rate_sh_up(i,k)
-
+                    ! final output from iteration
                     if (flagmeaniter == 1) then
                         if (iteration == maxiteration-2) then
                             ent1 = ent_rate
@@ -2727,8 +2819,8 @@ end subroutine cal_mse_up_old
 ! ==============================================================================
 subroutine cal_mse_dn( &
 !input
-        ent_opt, kuptop, trig, dz, zint, p, rho, t, twet, lvmid, &
-        qint, dseint, accuprec, evaprate, dn_frac, &
+        ent_opt, kuptop, trig, dz, zint, p, pint, rho, t, twet, twetint, lvmid, &
+        qint, dseint, accuprec, evaprate, buoy_mid, dn_frac, &
 !output
         dse_dn, q_dn, normassflx_dn )
 
@@ -2739,14 +2831,17 @@ subroutine cal_mse_dn( &
     real(r8), dimension(ncol, nlev),  intent(in) :: dz    ! [m]
     real(r8), dimension(ncol, nlevp),  intent(in) :: zint    ! [m]
     real(r8), dimension(ncol, nlev),  intent(in) :: p     ! [Pa]
+    real(r8), dimension(ncol, nlevp),  intent(in) :: pint     ! [Pa]
     real(r8), dimension(ncol, nlev),  intent(in) :: rho   ! [kg/m3]
     real(r8), dimension(ncol, nlev),  intent(in) :: t     ! [K]
     real(r8), dimension(ncol, nlev), intent(in)  :: twet  ! [K]
+    real(r8), dimension(ncol, nlevp), intent(in)  :: twetint  ! [K]
     real(r8), dimension(ncol, nlev), intent(in)  :: lvmid  ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(in) :: qint  ! [kg/kg]
     real(r8), dimension(ncol, nlevp), intent(in) :: dseint  ! [J/kg]
     real(r8), dimension(ncol, nlev), intent(in)  :: accuprec ! [#]
     real(r8), dimension(ncol, nlev), intent(in)  :: evaprate ! [1/m]
+    real(r8), dimension(ncol, nlev), intent(in)  :: buoy_mid
     real(r8), intent(in)  :: dn_frac ! [#]
 
 !output
@@ -2756,38 +2851,53 @@ subroutine cal_mse_dn( &
 
 !local
     real(r8) :: fac
-    integer :: i,j,k
+    integer  :: i,j,k, kdntop
+    real(r8), dimension(ncol, nlevp) :: qswetint, dsewetint
 
-    dse_dn = 0._r8
-    q_dn = 0._r8
+    dsewetint = cpair * twetint + gravit * zint
+    call cal_qsat2d(twetint(:,:), pint(:,:), qswetint(:,:))
+
+    dse_dn = dseint
+    q_dn = qint
     normassflx_dn = 0._r8
 
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
-        k = kuptop(i)
+        ! downdraft starts at the layer lower than the neutral buoyancy layer
+        kdntop = nlev
+        do k = kuptop(i), nlev
+            if (buoy_mid(i,k) > 0) then
+                kdntop = k
+                exit
+            end if
+        end do
+        kdntop = min(kdntop+1, nlev)
+        
+        normassflx_dn(i,kdntop) = -1.0_r8 * dn_frac
+        q_dn(i,kdntop) = qint(i,kdntop)
+        dse_dn(i,kdntop) = dseint(i,kdntop)
 
-        normassflx_dn(i,k) = -1.0_r8 * dn_frac
-        q_dn(i,k) = qint(i,k)
-        dse_dn(i,k) = dseint(i,k)
-
-        do k=kuptop(i), nlev
+        do k=kdntop, nlev
             normassflx_dn(i,k+1) = normassflx_dn(i,k) + dn_be*rho(i,k) * &
-                max(0.0, twet(i,k)-t(i,k)) * accuprec(i,k) * dz(i,k)
+                min(0.0, twet(i,k)-t(i,k)) * accuprec(i,k) * dz(i,k)
             if (zpbltop > 0) then
                 fac = min(1.0, max(0.0, (zint(i,k+1)-zint(i,nlevp))/zpbltop ))
             else
                 fac = 1.0
             end if
             normassflx_dn(i,k+1) = normassflx_dn(i,k+1) * fac
-            if (abs(normassflx_dn(i,k+1)) < 1.0e-3) then
-                dse_dn(i,k+1) = dse_dn(i,k)
-                q_dn(i,k+1) = q_dn(i,k)
-            else
-                dse_dn(i,k+1) = (normassflx_dn(i,k)*dse_dn(i,k) + &
-                    lvmid(i,k)*evaprate(i,k)*dz(i,k)) / normassflx_dn(i,k+1)
-                q_dn(i,k+1) = (normassflx_dn(i,k)*q_dn(i,k) - &
-                    evaprate(i,k)*dz(i,k)) / normassflx_dn(i,k+1)
-            end if
+            q_dn(i,k+1) = qswetint(i,k+1)
+            dse_dn(i,k+1) = dsewetint(i,k+1)
+
+            !if (abs(normassflx_dn(i,k+1)) < 1.0e-3) then
+            !    dse_dn(i,k+1) = dse_dn(i,k)
+            !    q_dn(i,k+1) = q_dn(i,k)
+            !else
+            !    dse_dn(i,k+1) = (normassflx_dn(i,k)*dse_dn(i,k) + &
+            !        lvmid(i,k)*evaprate(i,k)*dz(i,k)) / normassflx_dn(i,k+1)
+            !    q_dn(i,k+1) = (normassflx_dn(i,k)*q_dn(i,k) - &
+            !        evaprate(i,k)*dz(i,k)) / normassflx_dn(i,k+1)
+            !end if
         end do
         
         ! normassflx_dn(i,nlev+1) = 0._r8
@@ -2837,7 +2947,10 @@ subroutine cal_evap( &
             accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
             evaprate(i,k) = min( dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
-                    accuprec(i,k) / dn_vt / rho(i,k), accuprec(i,k)/rho(i,k)/dz(i,k) )
+                    accuprec(i,k) / dn_vt / rho(i,k), accuprec(i,k)/rho(i,k)/dz(i,k) ) &
+                    * evap_enhance * ((p(i,k)-p(i,kuptop(i)))/(p(i,nlev)-p(i,kuptop(i))+100.0))**evap_shape
+            evaprate(i,k) = min(evaprate(i,k), accuprec(i,k)/rho(i,k)/dz(i,k))
+
             accuprec(i,k) = max(0.0, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k))
 
         end do
@@ -2936,6 +3049,21 @@ subroutine cal_tendtransport( &
             qtend(i,k) = -( normassflx_up(i,k)*( q_up(i,k)-qint(i,k) ) &
                 - normassflx_up(i,k+1)*( q_up(i,k+1)-qint(i,k+1) ) ) / dz(i,k)/rho(i,k)
         end do
+
+        ! one layer above plume
+        k = max(1, kuptop(i)-1)
+        stend(i,k) = -( 0.0 &
+            - normassflx_up(i,k+1)*( dse_up(i,k+1)-dseint(i,k+1) ) ) / dz(i,k)/rho(i,k)
+        qtend(i,k) = -( 0.0 &
+            - normassflx_up(i,k+1)*( q_up(i,k+1)-qint(i,k+1) ) ) / dz(i,k)/rho(i,k)
+       
+        ! one layer below plume
+        k = min(kupbase(i), nlev)
+        stend(i,k) = -( normassflx_up(i,k)*( dse_up(i,k)-dseint(i,k) ) &
+            - 0.0 ) / dz(i,k)/rho(i,k)
+        qtend(i,k) = -( normassflx_up(i,k)*( q_up(i,k)-qint(i,k) ) &
+            - 0.0 ) / dz(i,k)/rho(i,k)
+
 
     end do
 
