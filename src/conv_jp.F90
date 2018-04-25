@@ -1561,12 +1561,12 @@ subroutine conv_jp_tend( &
     write(*,"(a20,i4,a20,i4)") "uptop:", kuptop
     write(*,"(a20,i4,a20,i4)") "trigdp:", trigdp, "trigsh:", trigsh
     write(*,"(a20,f20.10)") "zsrf:",zsrf 
-    write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
+    !write(*,"(a20,f20.10)") "bflsdilucape:", bfls_dilucape
     write(*,"(a20,50f20.10)") "dilucape:", dilucape(1,1:nplume_tot)
     write(*,"(a20,50f20.10)") "cwf:", cwf(1,1:nplume_tot)
-    write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
-    write(*,"(a20,f20.10)") "capefc:", capefc
-    write(*,"(a20,f20.10)") "capeclm:", capeclm
+    !write(*,"(a20,f20.10)") "dilucape_closure:", dilucape_closure
+    !!write(*,"(a20,f20.10)") "capefc:", capefc
+    !write(*,"(a20,f20.10)") "capeclm:", capeclm
     !write(*,"(a20,f20.10)") "mconv:", mconv
     write(*,"(a20,50f20.10)") "massflxbase_p:", massflxbase_p(1,1:nplume_tot)
     !write(*,"(a20,f20.10)") "massflxbase_cape:", massflxbase_cape

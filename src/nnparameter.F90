@@ -18,8 +18,6 @@ module nnparameter
     !   [1000, 1999]: NN(U,V,T,Q,QSAT,Z,windspeed,MSE,MSESAT,omega -> stend,qtend,prec)
     !   [*1]: use stend to calculate the weights for each plume
     !   [*2]: use qtend to calculate the weights for each plume
-    !   [*01, *02]: use normalized profile
-    !   [*11, *12]: use original profile
     integer :: nn_type = 0
 
     ! Use NN or not: 0: no, 1: yes
@@ -425,104 +423,70 @@ subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight, v
     real(r8), intent(in) :: p(nlevin), dp(nlevin), nn_stend(nlevin), stend(nlevin), nn_qtend(nlevin), qtend(nlevin)
     real(r8), intent(out) :: weight
     integer, intent(out) :: valid
-    real(r8) :: err_stend(nlevin), err_qtend(nlevin)
-    real(r8) :: mstend, mqtend, mnnstend, mnnqtend, prec_q1, prec_q2, nnprec_q1, nnprec_q2
-    real(r8) :: normstend(nlevin), normqtend(nlevin), normnnstend(nlevin), normnnqtend(nlevin)
-    integer :: i, rr, rrr, k
+    real(r8) :: diver_stend, diver_qtend, eps   ! diversity from NN prediction
+    real(r8) :: normstend, normqtend, normnnstend, normnnqtend  ! 2nd-order-norm (length)
+    integer :: i, k, r
 
     weight = 0.0
     valid = 0
+    eps = 1e-15
+    r = mod(nn_type, 10)
     
     if (nn_type >= 100) then
 
-        rr = mod(nn_type, 10)
-        rrr = mod(nn_type, 100)
-        
-        prec_q1 = 0.0
-        prec_q2 = 0.0
-        nnprec_q1 = 0.0
-        nnprec_q2 = 0.0
-        do k = 1, nlevin, 1
-            if (p(k)>=20000.0 .and. p(k)<=95000.0) then
-                prec_q1 = prec_q1 +  stend(k)*dp(k)/9.8/2.501e6*86400  ! J/kg/s -> mm/day
-                prec_q2 = prec_q2 - qtend(k)*dp(k)/9.8*86400  ! kg/kg/s -> mm/day
-                nnprec_q1 = nnprec_q1 + nn_stend(k)*dp(k)/9.8/2.501e6*86400  ! J/kg/s -> mm/day
-                nnprec_q2 = nnprec_q2 - nn_qtend(k)*dp(k)/9.8*86400  ! kg/kg/s -> mm/day
+        normstend = 0.0
+        normqtend = 0.0
+        normnnstend = 0.0
+        normnnqtend = 0.0
+        do k = 1, nlevin
+            if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
+                normstend = normstend + stend(k)*stend(k)
+                normqtend = normqtend + qtend(k)*qtend(k)
+                normnnstend = normnnstend + nn_stend(k)*nn_stend(k)
+                normnnqtend = normnnqtend + nn_qtend(k)*nn_qtend(k)
             end if
         end do
-        if ( prec_q1 > 0.1 .and. nnprec_q1 > 0.1) then
-            valid = 1
-            ! first, normalize the profile
-            mstend = 0.0
-            mqtend = 0.0
-            mnnstend = 0.0
-            mnnqtend = 0.0
-            do i = 1, nlevin, 1
-                if (p(i) >= nn_ptop .and. p(i) <=nn_pbot ) then
-                    mstend = mstend + dp(i)*abs(stend(i))/(nn_pbot - nn_ptop)
-                    mqtend = mqtend + dp(i)*abs(qtend(i))/(nn_pbot - nn_ptop)
-                    mnnstend = mnnstend + dp(i)*abs(nn_stend(i))/(nn_pbot - nn_ptop)
-                    mnnqtend = mnnqtend + dp(i)*abs(nn_qtend(i))/(nn_pbot - nn_ptop)
-                end if
-            end do
-            if (mstend > 1e-12) then
-                normstend = stend/mstend
-            else
-                normstend = stend
-            end if
 
-            if (mqtend > 1e-12) then
-                normqtend = qtend / mqtend
-            else
-                normqtend = qtend
-            end if
-
-            if (mnnstend > 1e-12) then
-                normnnstend = nn_stend/mnnstend
-            else
-                normnnstend = nn_stend
-            end if
-
-            if (mnnqtend > 1e-12) then
-                normnnqtend = nn_qtend/mnnqtend
-            else
-                normnnqtend = nn_qtend
-            end if
-            
-            ! then, calculate the differences between NN profiles and ECP profiles
-            if (rrr < 10) then
-                err_stend =  normstend - normnnstend
-                err_qtend =  normqtend - normnnqtend
-            end if
-            if (rrr >= 10 .and. rr<20) then
-                err_stend =  stend - nn_stend
-                err_qtend =  qtend - nn_qtend
-
-            end if
-
-            ! calculate the weight based on the differences
-            weight = 0.0
-            do i = 1, nlevin, 1
-                if (p(i) >= nn_ptop .and. p(i) <= nn_pbot) then
-                    ! use the error of stend as weight
-                    ! nn_type = 101, 201, 1001
-                    if (rr == 1) then 
-                        weight = weight + dp(i) * err_stend(i) * err_stend(i)
+        ! use NN_stend as constraint
+        if (r == 1) then
+            if (normstend > eps .and. normnnstend > eps) then
+                valid = 1
+                do k = 1, nlevin
+                    if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
+                        weight = weight + stend(k)*nn_stend(k)
                     end if
-                    ! use the error of qtend as weight
-                    ! nn_type = 102, 202, 1002
-                    if (rr == 2) then 
-                        weight = weight + dp(i) * err_qtend(i) * err_qtend(i)
-                    end if
-                end if
-            end do
-
-            if (weight < 1.0e-15) then
-                weight = 1.0e15
-            else
-                weight = 1.0/weight
+                end do
+                weight = weight / sqrt(normstend) / sqrt(normnnstend)
             end if
         end if
+
+        ! use NN_qtend as constraint
+        if (r == 2) then
+            if (normqtend > eps .and. normnnqtend > eps) then
+                valid = 1
+                do k = 1, nlevin
+                    if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
+                        weight = weight + qtend(k)*nn_qtend(k)
+                    end if
+                end do
+                weight = weight / sqrt(normqtend) / sqrt(normnnqtend)
+            end if
+        end if
+
+        ! use both NN_stend and NN_qtend as constraint
+        if (r == 3) then
+            if ( (normstend+normqtend) > eps .and. (normnnstend+normnnqtend) > eps) then
+                valid = 1
+                do k = 1, nlevin
+                    if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
+                        weight = weight + stend(k)*nn_stend(k)
+                        weight = weight + qtend(k)*nn_qtend(k)
+                    end if
+                end do
+                weight = weight / sqrt(normstend+normqtend) / sqrt(normnnstend+normnnqtend)
+            end if
+        end if
+    
     end if
 end subroutine cal_weight
 
