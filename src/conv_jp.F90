@@ -1180,12 +1180,16 @@ subroutine conv_jp_tend( &
                 ! New version: detrain occurs through cloud layers
                 do k = kuptop(i)-1, kupbase(i)-1, 1
                     qliqtend_det(i,k) = max(0.0, &
-                        normassflx_up_tmp(i,k+1) * (det_rate_dp_up(i,k) + det_rate_sh_up(i,k)) * (qliq_up(i,k+1) + qice_up(i,k+1))  &
+!!MZMZ downdraft detrainment is set to have zero condensate
+!!                        normassflx_up_tmp(i,k+1) * (det_rate_dp_up(i,k) + det_rate_sh_up(i,k)) * (qliq_up(i,k+1) + qice_up(i,k+1))  &
+                        normassflx_up_tmp(i,k+1) * det_rate_dp_up(i,k)  * (qliq_up(i,k+1) + qice_up(i,k+1))  &
                         /rho(i,k) )
                     !write(*,*) "qliqtend_net:", k, qliqtend_det(i,k), normassflx_up_tmp(i,k+1), &
                     !    det_rate_dp_up(i,k), det_rate_sh_up(i,k), &
                     !    qliq_up(i,k+1), qice_up(i,k+1), rho(i,k)
                 end do
+
+!!MZMZ top layer needed
 
                 ! Old version: detrain occurs only at the cloud top layer
                 !k = kuptop(i)-1
@@ -1950,7 +1954,7 @@ subroutine cal_mse_up( &
         end if
         cldh_bak = cldh(i)
 
-
+                kuptop(i) = 1  !!MZMZ
         do itercldh = 1,cldhiteration, 1
             do k=kupbase(i)-1, 1, -1
 
@@ -2001,13 +2005,17 @@ subroutine cal_mse_up( &
                         tmp = orgent_beta0 * cldsr(i,k)/sqrt(1+cldsr(i,k)*cldsr(i,k)) * &
                             sqrt(abs(buoy_mid(i,k))*cldh(i)) / ( 2*cldrad(i,k)*max(wupmin,w_up_mid(i,k)) )
                         if ( buoy_mid(i,k) <= 0 ) then
-                            ent_org(i,k) = 0.0
+                            ent_org(i,k) = 0. !0.0004
                             det_org(i,k) = tmp * org_enhance &
-                                * ((p(i,kupbase(i))-p(i,k))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
+!!MZMZ incorrect paranthesis location of 10., kuptop not available     
+!!                                * ((p(i,kupbase(i))-p(i,k))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
+                                * ((p(i,kupbase(i))-p(i,k))/(p(i,kupbase(i))-p(i,kuptop(i))+10.))**org_shape
+
                         else
                             ent_org(i,k) = tmp * org_enhance & 
-                                * ((p(i,k)-p(i,kuptop(i)))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
-                            det_org(i,k) = 0.0                        
+!!                                * ((p(i,k)-p(i,kuptop(i)))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
+                                * (p(i,k)/p(i,kupbase(i)))**org_shape
+                            det_org(i,k) = 0. !0.0002 
                         end if
                     end if
                     if (flagorgent == 2) then
@@ -2254,6 +2262,8 @@ subroutine cal_mse_up( &
                         exit
                     end if
                 end if
+
+                kuptop(i) = k  !!MZMZ
 
             end do  ! loop for levels
            
