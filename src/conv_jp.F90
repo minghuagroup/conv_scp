@@ -2,7 +2,7 @@
 module conv_jp
 !------------------------------------------------------
 ! Stochastic Convective Parameterization Scheme
-! contributors: Xin Xie, Haiyang Yu
+! contributors: Minghua Zhang, Xin Xie, Haiyang Yu
 !------------------------------------------------------
 ! Convention:
 ! SI unit
@@ -70,6 +70,7 @@ module conv_jp
     integer :: ecp_nplume_sh = unset_int
     integer :: ecp_nplume_dp = unset_int
     real(r8) :: ecp_turb_enhance = unset_r8
+    real(r8) :: ecp_basemass_enhance = unset_r8
     real(r8) :: ecp_org_enhance = unset_r8
     real(r8) :: ecp_org_shape = unset_r8
     real(r8) :: ecp_evap_enhance = unset_r8
@@ -124,7 +125,7 @@ module conv_jp
 !--------------------------------------------------------------
     integer,  parameter :: ischeme = 2          ! 1: CS2010;  2: MZhang Group
     integer,  parameter :: flagbspdf = 2        ! 1: uniform distribution;  2: new pdf
-    integer,  parameter :: cldhiteration = 1    ! iteration for cloud height
+    integer,  parameter :: cldhiteration = 2    ! iteration for cloud height
     integer,  parameter :: flagorgent = 6       ! 1: using beta0 and minMSE as the division between entr and detr
                                                 ! 2: new organized entr and detr, and use half of H as division
                                                 ! 3,4: only organized entr, no orgnized detr
@@ -138,6 +139,7 @@ module conv_jp
     real(r8) :: trig_eps0  = unset_r8   ! trigger parameters: w -> R (default: 0.003)
     real(r8) :: trig_c2    = unset_r8   ! trigger parameters: w -> R: 23.5 ~ 240m; default: 117.5 ~ 1km
     real(r8) :: turb_enhance = unset_r8   ! enhance turbulence entrainment and detrainment (1.0)
+    real(r8) :: basemass_enhance = unset_r8   ! enhance cloud base mass flux for shallow plumes (>1.0)
     real(r8) :: org_enhance = unset_r8   ! enhance organized entrainment and detrainment (2.0)
     real(r8) :: org_shape = unset_r8     ! shape parameter of organized entrainment and detrainment (2.0)
     real(r8) :: evap_enhance = unset_r8   ! enhance evaporation (5.0)
@@ -166,7 +168,7 @@ module conv_jp
 !--------------------------------------------------------------
     integer, parameter :: flagmeaniter = 0      ! 0: no mean;  
                                                 ! 1: mean of entr/detr of the last iteration
-    integer, parameter :: maxiteration = 2      ! maximum iteration number
+    integer, parameter :: maxiteration = 2      ! maximum iteration number for mseQi
     integer, parameter :: ctopflag = 2          ! 1: B<0; 2: w<0
     integer, parameter :: buoyflag = 2          ! 1: B=Tv'/Tv; 2: B=Tv'/Tv - qliq - qice
     integer, parameter :: mse2tsatflag = 1      ! 1: Taylor; 2: bi-section
@@ -300,7 +302,8 @@ subroutine ecp_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'ecp_readnl'
 
-   namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, ecp_turb_enhance, ecp_fixcldsr, &
+   namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, &
+       ecp_turb_enhance, ecp_basemass_enhance, ecp_fixcldsr, &
        ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, ecp_org_enhance, ecp_org_shape, &
        ecp_w_up_init_sh_beg, ecp_w_up_init_sh_end, ecp_w_up_init_dp_beg, ecp_w_up_init_dp_end, &
        ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac_sh, ecp_dn_frac_dp, &
@@ -341,6 +344,7 @@ subroutine ecp_readnl(nlfile)
         trig_eps0 = ecp_trig_eps0
         trig_c2   = ecp_trig_c2
         turb_enhance = ecp_turb_enhance
+        basemass_enhance = ecp_basemass_enhance
         org_enhance = ecp_org_enhance
         org_shape = ecp_org_shape
         fixcldsr  = ecp_fixcldsr
@@ -382,6 +386,7 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(trig_eps0,  1, mpir8,  0, mpicom)
    call mpibcast(trig_c2,    1, mpir8,  0, mpicom)
    call mpibcast(turb_enhance,    1, mpir8,  0, mpicom)
+   call mpibcast(basemass_enhance,    1, mpir8,  0, mpicom)
    call mpibcast(org_enhance,    1, mpir8,  0, mpicom)
    call mpibcast(org_shape,    1, mpir8,  0, mpicom)
    call mpibcast(fixcldsr,   1, mpir8,  0, mpicom)
@@ -418,6 +423,7 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "trig_eps0: ", trig_eps0
     write(*, *) "trig_c2: ", trig_c2
     write(*, *) "turb_enhance: ", turb_enhance
+    write(*, *) "basemass_enhance: ", basemass_enhance
     write(*, *) "org_enhance: ", org_enhance
     write(*, *) "org_shape: ", org_shape
     write(*, *) "fixcldsr: ", fixcldsr
@@ -774,17 +780,20 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol) :: bg_factor
 
 ! Haiyang Yu: weights of plumes
+    real(r8), dimension(inncol) :: totalweight
     real(r8), dimension(inncol, 50) :: weights
-    integer :: validplume, valid
+    integer, dimension(inncol) :: validplume
+    integer :: valid
 
 !for test
     real(r8), dimension(inncol) :: tmp ! [1] number of convective lev
-    real(r8) :: diffz, dw_up_init
+    real(r8) :: diffz, dw_up_init, basemass_scale
     logical :: flag
 
 ! weights of plumes
     weights = 0.0
-    validplume = 0
+    totalweight = 0.0
+    validplume(:) = 0
     valid = 0
 
 !setting the internal dimension size same as the input
@@ -880,15 +889,6 @@ subroutine conv_jp_tend( &
 
     trigdp = 1
     trigsh = 1 
-
-    !if (nn_type > 0) then
-    !    do i=1, inncol
-    !        if (nn_prec(i)*86400*1000.0 < 0.1) then
-    !            trigdp(i) = 0
-    !            trigsh(i) = 0
-    !        end if
-    !    end do
-    !end if
 
 !------------------------------------------------------
 !Calculate basic properties
@@ -1045,18 +1045,17 @@ subroutine conv_jp_tend( &
         q_dn = 0._r8
         normassflx_dn = 0._r8
 
-        if ( iconv == 1 ) then
+        if ( iconv == 1 ) then   ! shallow plumes
             call cal_launchtocldbase( 2, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                 mse, mseint, msesat, msesatint, landfrac, lhflx,  &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
             kupbase = kuplaunch
 
-        else if ( iconv == 2 ) then
+        else if ( iconv == 2 ) then    ! deep plumes
             call cal_launchtocldbase( 1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                 mse, mseint, msesat, msesatint, landfrac, lhflx,  &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
             kupbase = kuplcl
-!            kupbase = kuplaunch
 
         end if
 
@@ -1073,7 +1072,6 @@ subroutine conv_jp_tend( &
 
 
         do j = ind_offset+1, ind_offset+nplume
-!        do j = ind_offset+nplume, ind_offset+1, -1
 
             greg_ent_a = greg_ent_a_beg + (j-ind_offset-1)*greg_ent_a_delta
             greg_ce    = greg_ce_beg + (j-ind_offset-1)*greg_ce_delta
@@ -1094,8 +1092,6 @@ subroutine conv_jp_tend( &
 
             normassflx_up_tmp = normassflx_up
             normassflx_dn_tmp = 0._r8
-
-            ! trigdp = 1
 
 !updraft properties
             if (ischeme == 2) then
@@ -1180,8 +1176,9 @@ subroutine conv_jp_tend( &
                 ! New version: detrain occurs through cloud layers
                 do k = kuptop(i)-1, kupbase(i)-1, 1
                     qliqtend_det(i,k) = max(0.0, &
-                        normassflx_up_tmp(i,k+1) * (det_rate_dp_up(i,k) + det_rate_sh_up(i,k)) * (qliq_up(i,k+1) + qice_up(i,k+1))  &
-                        /rho(i,k) )
+                        normassflx_up_tmp(i,k+1) * min(det_rate_dp_up(i,k) + det_rate_sh_up(i,k), max_det_rate) &
+                            * (qliq_up(i,k+1) + qice_up(i,k+1)) / rho(i,k) )
+                    
                     !write(*,*) "qliqtend_net:", k, qliqtend_det(i,k), normassflx_up_tmp(i,k+1), &
                     !    det_rate_dp_up(i,k), det_rate_sh_up(i,k), &
                     !    qliq_up(i,k+1), qice_up(i,k+1), rho(i,k)
@@ -1198,9 +1195,14 @@ subroutine conv_jp_tend( &
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
                 if (iconv == 1) then  ! shallow plumes 
+                    if (basemass_enhance > 1.0) then
+                        basemass_scale = max(0.0, -(basemass_enhance-1.0)/w_up_init_end * w_up_init(i) + basemass_enhance )
+                    else
+                        basemass_scale = w_up_init_end/w_up_init(i)
+                    end if
                     massflxbase_p(i,j) = min( 0.1, max( 0., &
                         massflxbase_p(i,j) + dtime*( max( (dilucape(i,j) - capelmt_sh), 0._r8 )/(2*pmf_alpha) &
-                        * (w_up_init_end/w_up_init(i)) &
+                        * basemass_scale &
                         - massflxbase_p(i,j)/(2*pmf_tau) ) ) )
                 else    ! deep plumes
                     massflxbase_p(i,j) = min( 0.1, max( 0., &
@@ -1279,14 +1281,14 @@ subroutine conv_jp_tend( &
                 
                 !----------------------------------------------------------------------
                 ! Haiyang Yu: calculate the weight for each plume
-                ! if NN is not called, weights = 1.0
                     call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), nn_qtend(i,:), qtend(i,:), weights(i,j), valid)
-                    validplume = validplume + valid
+                    validplume(i) = validplume(i) + valid
+                    totalweight(i) = totalweight(i) + weights(i,j)
 #ifdef SCMDIAG
     write(*, *) "weight of plume", j, " = ", weights(i,j)
 #endif
 
-                if (nn_flag > 0 .and. valid > 0) then
+                if (nn_flag > 0) then
                     stend(i,:) = stend(i,:) * weights(i,j)
                     qtend(i,:) = qtend(i,:) * weights(i,j)
                     qliqtend_det(i,:) = qliqtend_det(i,:) * weights(i,j)
@@ -1322,9 +1324,9 @@ subroutine conv_jp_tend( &
 
 #ifdef SCMDIAG
             call subcol_netcdf_putclm( "ent_rate", nlev, &
-                ent_rate_dp_up(1,:)+ent_rate_sh_up(1,:), j )
+                min( max_ent_rate, ent_rate_dp_up(1,:)+ent_rate_sh_up(1,:)), j )
             call subcol_netcdf_putclm( "det_rate", nlev, &
-                det_rate_dp_up(1,:)+det_rate_sh_up(1,:), j )
+                min( max_det_rate, det_rate_dp_up(1,:)+det_rate_sh_up(1,:)), j )
             call subcol_netcdf_putclm( "ent_rate_dp", nlev, ent_rate_dp_up(1,:), j )
             call subcol_netcdf_putclm( "det_rate_dp", nlev, det_rate_dp_up(1,:), j )
             call subcol_netcdf_putclm( "ent_rate_sh", nlev, ent_rate_sh_up(1,:), j )
@@ -1394,15 +1396,22 @@ subroutine conv_jp_tend( &
     !----------------------------------------------------------------------
     ! Haiyang Yu: normalized with weights
     do i = 1, inncol
-        if (nn_flag >0 .and. validplume>0) then
-            stendsum(i,:) = stendsum(i,:) / sum(weights(i,1:nplume_tot)) 
-            qtendsum(i,:) = qtendsum(i,:) / sum(weights(i,1:nplume_tot)) 
-            qliqtendsum(i,:) = qliqtendsum(i,:) / sum(weights(i,1:nplume_tot)) 
-            precratesum(i,:) = precratesum(i,:) / sum(weights(i,1:nplume_tot)) 
-            precsum(i) = precsum(i) / sum(weights(i,1:nplume_tot))  
-            surfprec(i) = surfprec(i) / sum(weights(i,1:nplume_tot)) 
-            massflxbasesum(i) = massflxbasesum(i) / sum(weights(i,1:nplume_tot))
-            massflxsum(i,:) = massflxsum(i,:) / sum(weights(i,1:nplume_tot))
+        if (nn_flag > 0) then
+            if ( validplume(i) > 0 .and. abs(totalweight(i)) > 1e-6) then
+                totalweight(i) = 1.0 / totalweight(i)
+            else
+                totalweight(i) = 0.0
+            end if
+
+            stendsum(i,:) = stendsum(i,:) * totalweight(i)
+            qtendsum(i,:) = qtendsum(i,:) * totalweight(i)
+            qliqtendsum(i,:) = qliqtendsum(i,:) * totalweight(i)
+            precratesum(i,:) = precratesum(i,:) * totalweight(i)
+            precsum(i) = precsum(i) * totalweight(i)
+            surfprec(i) = surfprec(i) * totalweight(i)
+            massflxbasesum(i) = massflxbasesum(i) * totalweight(i)
+            massflxsum(i,:) = massflxsum(i,:) * totalweight(i)
+            
         else
             ! without NN: mean
             if (meanorsum == 1) then
@@ -1855,7 +1864,8 @@ subroutine cal_mse_up( &
     real(r8), dimension(ncol)  :: cldh              ! cloud height [m]
     real(r8), dimension(ncol)  :: cldradinit        ! initial cloud radius [m]
    
-    real(r8) :: cldh_bak, ent_bak, det_bak 
+    real(r8) :: cldh_bak, ent_bak, det_bak
+    integer  :: ktop_tmp
     real(r8) :: tmp_t_up, tmp_q_up, tmp_buoy, tmp_zuptop_max
 
     real(r8) :: xc, tv, tv_up,  w2, qw, Fp, Fi, Ek
@@ -1914,7 +1924,7 @@ subroutine cal_mse_up( &
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
 
-        ! firstly, get the undiluted clout top height, and initialize cldh
+        ! firstly, get the undiluted cloud top height, and initialize cldh
         do k=kupbase(i)-1, 1, -1
             call cal_mse2tsat( mse_up(i,kupbase(i)), tint(i,k), &
                 qsatint(i,k), msesatint(i,k), tmp_t_up )
@@ -1928,8 +1938,11 @@ subroutine cal_mse_up( &
                 exit
             end if
         end do
-        if ( k<1 ) tmp_zuptop_max = zint(i, 1)        
         
+        ktop_tmp = max(1, k)  
+        tmp_zuptop_max = zint(i, ktop_tmp)        
+        
+
         ! initialize cloud base properties
         k = kupbase(i)
         tv = tint(i,k)*(1 + tveps*qint(i,k) )
@@ -1951,7 +1964,8 @@ subroutine cal_mse_up( &
         cldh_bak = cldh(i)
 
 
-        do itercldh = 1,cldhiteration, 1
+        do itercldh = 1, cldhiteration, 1
+
             do k=kupbase(i)-1, 1, -1
 
                 do iteration = 1, maxiteration, 1
@@ -1998,15 +2012,19 @@ subroutine cal_mse_up( &
                         end if
                     end if
                     if (flagorgent == 6) then
-                        tmp = orgent_beta0 * cldsr(i,k)/sqrt(1+cldsr(i,k)*cldsr(i,k)) * &
-                            sqrt(abs(buoy_mid(i,k))*cldh(i)) / ( 2*cldrad(i,k)*max(wupmin,w_up_mid(i,k)) )
+                        if (abs(buoy_mid(i,k)) > 1e-15) then
+                            tmp = orgent_beta0 * cldsr(i,k)/sqrt(1+cldsr(i,k)*cldsr(i,k)) * &
+                                sqrt(abs(buoy_mid(i,k))*cldh(i)) / ( 2*cldrad(i,k)*max(wupmin,w_up_mid(i,k)) )
+                        else
+                            tmp = 0.0
+                        end if
                         if ( buoy_mid(i,k) <= 0 ) then
                             ent_org(i,k) = 0.0
                             det_org(i,k) = tmp * org_enhance &
-                                * ((p(i,kupbase(i))-p(i,k))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
+                                * (max(0.0, pint(i,kupbase(i))-p(i,k))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
                         else
                             ent_org(i,k) = tmp * org_enhance & 
-                                * ((p(i,k)-p(i,kuptop(i)))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
+                                * (max(0.0, p(i,k)-p(i,ktop_tmp))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
                             det_org(i,k) = 0.0                        
                         end if
                     end if
@@ -2035,6 +2053,9 @@ subroutine cal_mse_up( &
                         ent_org(i,k) = tmp
                         det_org(i,k) = 0.0
                     end if
+                    ent_org(i,k) = min(max_ent_rate, max(0.0, ent_org(i,k)))
+                    det_org(i,k) = min(max_det_rate, max(0.0, det_org(i,k)))
+
                     ! treat organized ent/det as deep plumes
                     ent_rate_dp_up(i,k) = ent_org(i,k)
                     det_rate_dp_up(i,k) = det_org(i,k)
@@ -2095,6 +2116,9 @@ subroutine cal_mse_up( &
                         ent_turb(i,k) = ent_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
                         det_turb(i,k) = det_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
                     end if
+
+                    ent_turb(i,k) = min(max_ent_rate, max(0.0, ent_turb(i,k)))
+                    det_turb(i,k) = min(max_det_rate, max(0.0, det_turb(i,k)))
                     
                     ! treat turbulent ent/det as shallow plumes
                     ent_rate_sh_up(i,k) = ent_turb(i,k)
@@ -2150,11 +2174,11 @@ subroutine cal_mse_up( &
                     ! get w**2(i,k)
                     w2 = w_up(i,k+1)*w_up(i,k+1) + 2*dz(i,k)*(orgent_a*buoy_mid(i,k) / &
                         (1+cldsr(i,k)*cldsr(i,k)) - ent_rate*w_up_mid(i,k)*w_up_mid(i,k) )
-                    w_up(i,k)  = sqrt(max(w2, 0.0))
+                    w_up(i,k)  = sqrt(max(w2, 1e-15))
 
                     ! alias of nominater and denominater
                     nom   = 1.0/dz(i,k) - 0.5*ent_rate
-                    denom = 1.0/dz(i,k) + 0.5*ent_rate
+                    denom = max(1e-15, 1.0/dz(i,k) + 0.5*ent_rate)
 
 
                     ! normalized mass flux
@@ -2171,7 +2195,7 @@ subroutine cal_mse_up( &
                     mse_up(i,k) =  1./denom*( &
                           ent_rate * mse(i,k) &
                         + nom * mse_up(i,k+1) &
-                        + mseqi(i,k) / normassflx_up_mid(i,k) )
+                        + mseqi(i,k) / max(1e-15, normassflx_up_mid(i,k)) )
                     ! in-cloud temperature and moisture
                     ! ---- method 1: Taylor expanding ----
                     if (mse2tsatflag == 1) then
@@ -2198,7 +2222,7 @@ subroutine cal_mse_up( &
                             + nom * q_up(i,k+1) )
                         t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) &
                             - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) ) &
-                            / (cpair-(cpliq-cpwv)*q_up(i,k))
+                            / max(1e-15, cpair-(cpliq-cpwv)*q_up(i,k))
                     end if
 
                     ! phase conversion rate
@@ -2219,11 +2243,11 @@ subroutine cal_mse_up( &
                     qliq_up(i,k) =  1.0/denom*( &
                           nom * qliq_up(i,k+1) &
                         + rho(i,k)*(condrate(i,k)-frezrate(i,k)-rainrate(i,k)) / &
-                            normassflx_up_mid(i,k) ) 
+                            max(1e-15, normassflx_up_mid(i,k)) ) 
                     qice_up(i,k) =  1./denom*( &
                           nom * qice_up(i,k+1) &
                         + rho(i,k)*(frezrate(i,k)-snowrate(i,k)) / &
-                            normassflx_up_mid(i,k) )
+                            max(1e-15, normassflx_up_mid(i,k)) )
 
                     ! contribution of freezing to moisture static energy
                     if (iteration < maxiteration .and. mseqiflag > 0) then
@@ -2256,13 +2280,15 @@ subroutine cal_mse_up( &
                 end if
 
             end do  ! loop for levels
-           
+          
+            ktop_tmp = max(1, k)    ! update for calculating the shapes of ent_org and det_org
+
             if (fixcldsr < 0) then
                 if (k == kupbase(i)-1) then
                     cldh(i) = 0.0
                     exit
                 else
-                    cldh(i) = min( tmp_zuptop_max, zint(i,k+1) ) - zint(i,kupbase(i))
+                    cldh(i) = max( 1.0, min( tmp_zuptop_max, zint(i,k+1) ) - zint(i,kupbase(i)) )
                     
                     if (abs(cldh(i)-cldh_bak) < 1.0) then
                         exit
@@ -2276,29 +2302,35 @@ subroutine cal_mse_up( &
 
 
         if (k>=1) then
-            mse_up(i,k) = mseint(i,k)
-            t_up(i,k) = tint(i,k)
-            q_up(i,k) = qint(i,k)
-            qliq_up(i,k) = 0._r8
-            qice_up(i,k) = 0._r8
-            w_up(i,k) = 0._r8
-            buoy(i,k) = 0._r8
-            det_rate_dp_up(i,k) = 0._r8
-            normassflx_up(i,k) = 0._r8
+            mse_up(i,1:k) = mseint(i,1:k)
+            t_up(i,1:k) = tint(i,1:k)
+            q_up(i,1:k) = qint(i,1:k)
+            qliq_up(i,1:k) = 0._r8
+            qice_up(i,1:k) = 0._r8
+            w_up(i,1:k) = 0._r8
+            buoy(i,1:k) = 0._r8
+            det_rate_dp_up(i,1:k) = 0._r8
+            det_rate_sh_up(i,1:k) = 0._r8
+            det_org(i,1:k) = 0.0
+            det_turb(i,1:k) = 0.0
+            ent_rate_dp_up(i,1:k) = 0.0
+            ent_rate_sh_up(i,1:k) = 0.0
+            det_org(i,1:k) = 0.0
+            det_turb(i,1:k) = 0.0
+            normassflx_up(i,1:k) = 0._r8
 
-            condrate(i,k) = 0._r8
-            rainrate(i,k) = 0._r8
-            snowrate(i,k) = 0._r8
-            precrate(i,k) = 0._r8
-            mseqi(i,k) = 0._r8
-            qliq_up(i,k) = 0._r8
-            qice_up(i,k) = 0._r8
+            condrate(i,1:k) = 0._r8
+            rainrate(i,1:k) = 0._r8
+            snowrate(i,1:k) = 0._r8
+            precrate(i,1:k) = 0._r8
+            mseqi(i,1:k) = 0._r8
+            qliq_up(i,1:k) = 0._r8
+            qice_up(i,1:k) = 0._r8
 
 
             kuptop(i) = k+1
             if ( kuptop(i) /= nlev ) then
                 zuptop(i) = zint( i, kuptop(i) )
-!                zuptop(i) = zint( i, nlevp )
             end if
 
 !not penetrating more than one level
@@ -2315,6 +2347,13 @@ subroutine cal_mse_up( &
             w_up(i,k) = 0._r8
             buoy(i,k) = 0._r8
             det_rate_dp_up(i,k) = 0._r8
+            det_rate_sh_up(i,k) = 0._r8
+            det_org(i,k) = 0.0
+            det_turb(i,k) = 0.0
+            ent_rate_dp_up(i,k) = 0.0
+            ent_rate_sh_up(i,k) = 0.0
+            det_org(i,k) = 0.0
+            det_turb(i,k) = 0.0
             normassflx_up(i,k) = 0._r8
 
             condrate(i,k) = 0._r8
@@ -2948,7 +2987,7 @@ subroutine cal_evap( &
             call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
             evaprate(i,k) = min( dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
                     accuprec(i,k) / dn_vt / rho(i,k), accuprec(i,k)/rho(i,k)/dz(i,k) ) &
-                    * evap_enhance * ((p(i,k)-p(i,kuptop(i)))/(p(i,nlev)-p(i,kuptop(i))+100.0))**evap_shape
+                    * evap_enhance * ((p(i,k)-p(i,kuptop(i)))/(p(i,nlev)-p(i,kuptop(i))+10.0))**evap_shape
             evaprate(i,k) = min(evaprate(i,k), accuprec(i,k)/rho(i,k)/dz(i,k))
 
             accuprec(i,k) = max(0.0, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k))

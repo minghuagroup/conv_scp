@@ -224,7 +224,7 @@ subroutine readnnparameter(nlfile)
     end do   ! end of loop of ilayer
 
 
-! #ifdef SCMDIAG
+#ifdef SCMDIAG
     write(*, *) "nn_flag", nn_flag
     write(*, *) "nn_type: ", nn_type
     write(*, *) "nn_ptop: ", nn_ptop
@@ -240,7 +240,7 @@ subroutine readnnparameter(nlfile)
     write(*, *) "nn_xfactor", nn_xfactor
     write(*, *) "nn_yoffset", nn_yoffset
     write(*, *) "nn_yfactor", nn_yfactor
-! #endif
+#endif
 
 
 #ifdef SPMD
@@ -438,12 +438,16 @@ subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight, v
         normqtend = 0.0
         normnnstend = 0.0
         normnnqtend = 0.0
+        diver_stend = 0.0
+        diver_qtend = 0.0
         do k = 1, nlevin
             if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
                 normstend = normstend + stend(k)*stend(k)
                 normqtend = normqtend + qtend(k)*qtend(k)
                 normnnstend = normnnstend + nn_stend(k)*nn_stend(k)
                 normnnqtend = normnnqtend + nn_qtend(k)*nn_qtend(k)
+                diver_stend = diver_stend + nn_stend(k)*stend(k)
+                diver_qtend = diver_qtend + nn_qtend(k)*qtend(k)
             end if
         end do
 
@@ -451,12 +455,7 @@ subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight, v
         if (r == 1) then
             if (normstend > eps .and. normnnstend > eps) then
                 valid = 1
-                do k = 1, nlevin
-                    if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
-                        weight = weight + stend(k)*nn_stend(k)
-                    end if
-                end do
-                weight = weight / sqrt(normstend) / sqrt(normnnstend)
+                weight =  diver_stend / sqrt(normstend) / sqrt(normnnstend) 
             end if
         end if
 
@@ -464,12 +463,7 @@ subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight, v
         if (r == 2) then
             if (normqtend > eps .and. normnnqtend > eps) then
                 valid = 1
-                do k = 1, nlevin
-                    if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
-                        weight = weight + qtend(k)*nn_qtend(k)
-                    end if
-                end do
-                weight = weight / sqrt(normqtend) / sqrt(normnnqtend)
+                weight =  diver_qtend / sqrt(normqtend) / sqrt(normnnqtend) 
             end if
         end if
 
@@ -477,16 +471,18 @@ subroutine cal_weight(nlevin, p, dp, nn_stend, stend, nn_qtend, qtend, weight, v
         if (r == 3) then
             if ( (normstend+normqtend) > eps .and. (normnnstend+normnnqtend) > eps) then
                 valid = 1
-                do k = 1, nlevin
-                    if (p(k) >= nn_ptop .and. p(k) <= nn_pbot) then
-                        weight = weight + stend(k)*nn_stend(k)
-                        weight = weight + qtend(k)*nn_qtend(k)
-                    end if
-                end do
-                weight = weight / sqrt(normstend+normqtend) / sqrt(normnnstend+normnnqtend)
+                weight =  (diver_stend + diver_qtend) / &
+                    sqrt(normstend+normqtend) / sqrt(normnnstend+normnnqtend) 
             end if
         end if
-    
+
+        weight = max(0.0, weight)
+
+        if (isnan(weight)) then
+            valid = 0
+            weight = 0.0
+        end if
+
     end if
 end subroutine cal_weight
 
@@ -509,12 +505,14 @@ subroutine profileadj(nlevin, nn_prec, prec, prof1, prof2, prof3, prof4, prof5)
                 adjfac = 2*prec*nn_prec / (prec*prec + nn_prec*nn_prec)
                 adjfac = adjfac*nn_prec/prec + (1.0-adjfac)
             end if
-            prec = prec * adjfac
-            prof1 = prof1 * adjfac
-            prof2 = prof2 * adjfac
-            prof3 = prof3 * adjfac
-            prof4 = prof4 * adjfac
-            prof5 = prof5 * adjfac
+            if ( .not. (isnan(adjfac)) ) then
+                prec = prec * adjfac
+                prof1 = prof1 * adjfac
+                prof2 = prof2 * adjfac
+                prof3 = prof3 * adjfac
+                prof4 = prof4 * adjfac
+                prof5 = prof5 * adjfac
+            end if
         end if
     end if
 end subroutine profileadj
@@ -543,12 +541,16 @@ subroutine negqtendadj(nlevin, q, qtend, stend, precrate, qliqtend, &
             end if
         end if
     end do
-
-    qtend = qtend * facmin
-    stend = stend * facmin
-    qliqtend = qliqtend * facmin
-    precrate = precrate * facmin
-    massflux = massflux * facmin
+    
+    if (nn_type >= 200 .or. (nn_type<100 .and. nn_type > 0) ) then
+        if ( .not. (isnan(facmin))) then
+            qtend = qtend * facmin
+            stend = stend * facmin
+            qliqtend = qliqtend * facmin
+            precrate = precrate * facmin
+            massflux = massflux * facmin
+        end if
+    end if
 
 end subroutine negqtendadj
 

@@ -2161,7 +2161,7 @@ subroutine tphysbc (ztodt,               &
 #endif
 
     ! yhy
-    write(*,*) "before convect_deep: q = ", state%q(:,:,1)
+    !write(*,*) "before convect_deep: q = ", state%q(:,:,1)
     
     call t_startf ('convect_deep_tend')
     call convect_deep_tend(  &
@@ -2265,7 +2265,7 @@ subroutine tphysbc (ztodt,               &
     call t_stopf('carma_timestep_tend')
 
     ! yhy
-    write(*,*) "before macrop: q = ", state%q(:,:,1)
+    !write(*,*) "before macrop: q = ", state%q(:,:,1)
     if( microp_scheme == 'RK' ) then
 
        !===================================================
@@ -2299,7 +2299,7 @@ subroutine tphysbc (ztodt,               &
        if (macrop_scheme .eq. 'park') then
 
     ! yhy
-    write(*,*) "before Park macrop: q = ", state%q(:,:,1)
+    !write(*,*) "before Park macrop: q = ", state%q(:,:,1)
           call macrop_driver_tend(state, ptend, ztodt, &
                cam_in%landfrac, cam_in%ocnfrac, &
                cam_in%snowhland, & ! sediment
@@ -2308,7 +2308,7 @@ subroutine tphysbc (ztodt,               &
                cam_in%ts,      cam_in%sst, zdu,  pbuf, &
                cmeliq, det_s, det_ice)
     ! yhy
-    write(*,*) "after Park macrop, before update: q = ", state%q(:,:,1)
+    ! write(*,*) "after Park macrop, before update: q = ", state%q(:,:,1)
           !  Since we "added" the reserved liquid back in this routine, we need 
 	  !    to account for it in the energy checker
           flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
@@ -2318,7 +2318,7 @@ subroutine tphysbc (ztodt,               &
           call check_energy_chng(state, tend, "macrop_tend", nstep, ztodt, zero, flx_cnd, det_ice, flx_heat)
        
     ! yhy
-    write(*,*) "after Park macrop, after update: q = ", state%q(:,:,1)
+    ! write(*,*) "after Park macrop, after update: q = ", state%q(:,:,1)
        end if
 
        if (macrop_scheme .eq. 'CLUBB_SGS') then
@@ -2346,7 +2346,7 @@ subroutine tphysbc (ztodt,               &
        call t_stopf('macrop_tend') 
 
     ! yhy
-    write(*,*) "before microp: q = ", state%q(:,:,1)
+    ! write(*,*) "before microp: q = ", state%q(:,:,1)
        !===================================================
        ! Calculate cloud microphysics 
        !===================================================
@@ -2439,7 +2439,7 @@ subroutine tphysbc (ztodt,               &
     !===================================================
 
     ! yhy
-    write(*,*) "before cloud diag: q = ", state%q(:,:,1)
+    ! write(*,*) "before cloud diag: q = ", state%q(:,:,1)
     call t_startf('bc_cld_diag_history_write')
 
     call cloud_diagnostics_calc(state, pbuf)
@@ -2458,7 +2458,7 @@ subroutine tphysbc (ztodt,               &
     call t_startf('radiation')
 
     ! yhy
-    write(*,*) "before radiation: q = ", state%q(:,:,1)
+    ! write(*,*) "before radiation: q = ", state%q(:,:,1)
 
     call radiation_tend(state,ptend, pbuf, &
          cam_out, cam_in, &

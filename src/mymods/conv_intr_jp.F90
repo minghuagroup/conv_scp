@@ -324,24 +324,26 @@ subroutine conv_intr_jp_tend( &
     ! Haiyang Yu: nn_prec adjustment
     if (nn_flag > 0) then
         do i = 1,ncol
-            write(*, *) "yhy:before profile adjustment"
-            do k = 1, pver
-                write(*, "(5E10.2)") stend(i,k), qtend(i,k), precrate(i,k), qliqtend(i,k), mcon(i,k)
-            end do
-            write(*, *) "yhy:prec=", prec(i)
-            write(*, *) "yhy:jctop,jcbot=", jctop(i), jcbot(i)
+            !write(*, *) "yhy:before profile adjustment"
+            !do k = 1, pver
+            !    write(*, "(5E10.2)") stend(i,k), qtend(i,k), precrate(i,k), qliqtend(i,k), mcon(i,k)
+            !end do
+            !write(*, *) "yhy:prec=", prec(i)
+            !write(*, *) "yhy:jctop,jcbot=", jctop(i), jcbot(i)
+            
             if ( landfrac(i)<0.5 ) then
-                write(*,*) 'yhy:nn:',state%lat(i)*180/3.14159, state%lon(i)*180/3.14159, prec(i)*86400*1000.0, nn_prec(i)*86400*1000.0
+                !write(*,*) 'yhy:nn:',state%lat(i)*180/3.14159, state%lon(i)*180/3.14159, prec(i)*86400*1000.0, nn_prec(i)*86400*1000.0
                 call profileadj(pver, nn_prec(i), prec(i), stend(i,:), qtend(i,:), precrate(i,:), qliqtend(i,:), mcon(i,:) )
                 call negqtendadj(pver, state%q(i,:,1), qtend(i,:), stend(i,:), &
                     precrate(i,:), qliqtend(i,:), mcon(i,:), ztodt, qmin(1)*1.001)
             end if
-            write(*, *) "yhy:after profile adjustment"
-            do k = 1, pver
-                write(*, "(5E10.2)") stend(i,k), qtend(i,k), precrate(i,k), qliqtend(i,k), mcon(i,k)
-            end do
-            write(*, *) "yhy:prec=", prec(i)
-            write(*, *) "yhy:jctop,jcbot=", jctop(i), jcbot(i)
+            
+            !!write(*, *) "yhy:after profile adjustment"
+            !do k = 1, pver
+            !    write(*, "(5E10.2)") stend(i,k), qtend(i,k), precrate(i,k), qliqtend(i,k), mcon(i,k)
+            !end do
+            !write(*, *) "yhy:prec=", prec(i)
+            !write(*, *) "yhy:jctop,jcbot=", jctop(i), jcbot(i)
     !            write(*, *) "yhy:after adj:",nn_prec(i), nn_stend(i,:), nn_qtend(i,:), &
     !                ", ecp:", prec(i), stend(i,:), qtend(i,:), &
     !                ", precrate qliq mcon:", precrate(i,:), qliqtend(i,:), mcon(i,:)
@@ -442,12 +444,12 @@ subroutine conv_intr_jp_tend( &
    call physics_update(state_loc, ptend_loc, ztodt)
 
     !yhy
-    write(*, *) "yhy:after phy update"
-    do i = 1, ncol
-        do k = 1, pver
-            write(*,"(E10.4)") state_loc%q(i,k,1)
-        end do
-    end do
+    !write(*, *) "yhy:after phy update"
+    !do i = 1, ncol
+    !    do k = 1, pver
+    !        write(*,"(E10.4)") state_loc%q(i,k,1)
+    !    end do
+    !end do
 
    call physics_state_dealloc(state_loc)
    call physics_ptend_dealloc(ptend_loc)

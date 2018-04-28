@@ -212,7 +212,7 @@ subroutine convect_deep_init(pref_edge)
 ! yhy  
   call addfld ('NNSTEND', 'J/kg/s', pver, 'A', 'NN stend', phys_decomp)
   call addfld ('NNQTEND', 'kg/kg/s', pver, 'A', 'NN qtend', phys_decomp)
-  call addfld ('NNPREC', 'm/s', 1, 'I', 'NN prec', phys_decomp)
+  call addfld ('NNPREC', 'm/s', 1, 'A', 'NN prec', phys_decomp)
 
 !xiex
   bfls_t_idx = pbuf_get_index('BFLS_T')
