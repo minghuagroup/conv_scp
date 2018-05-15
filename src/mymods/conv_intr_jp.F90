@@ -283,7 +283,7 @@ subroutine conv_intr_jp_tend( &
     do i = 1,ncol
         if ( landfrac(i)<0.5 ) then
             call nnmodel(pver, landfrac(i), state%pmid(i,:), state%u(i,:), state%v(i,:), &
-                state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), &
+                state%t(i,:), state%q(i,:,1), z(i,:), omega(i,:), state%ps(i), &
                 nn_stend(i,:), nn_qtend(i,:), nn_prec(i) )
         end if
     end do

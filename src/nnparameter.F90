@@ -5,7 +5,7 @@ module nnparameter
     private
     save
 
-    public :: readnnparameter, nnmodel, negqtendadj, profileadj, cal_weight, nn_flag, nn_type
+    public :: readnnparameter, nnmodel, negqtendadj, profileadj, cal_weight, nn_flag, nn_type, cal_weight_eigen
 
     integer,parameter :: r8 = selected_real_kind(12)
     
@@ -16,6 +16,7 @@ module nnparameter
     !   [100, 199]: NN( MSE,MSESAT,OMEGA -> stend,qtend )
     !   [200, 299]: NN( MSE,MSESAT,OMEGA -> stend,qtend,prec )
     !   [1000, 1999]: NN(U,V,T,Q,QSAT,Z,windspeed,MSE,MSESAT,omega -> stend,qtend,prec)
+    !   [2000, 2999]: NN(T,Q,QSAT,RH,Z,omega,PS -> stend,qtend,prec)
     !   [*1]: use stend to calculate the weights for each plume
     !   [*2]: use qtend to calculate the weights for each plume
     integer :: nn_type = 0
@@ -273,7 +274,7 @@ end subroutine readnnparameter
 ! 3. NN feedforward;
 ! 4. Linear interpolation on the NN output from ERA levels to model layers.
 !-----------------------------------------------------------------------------
-subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
+subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, ps, &
         stend, qtend, prec)
     ! input variables
     integer, intent(in)   :: nlevin
@@ -285,6 +286,7 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
     real(r8), intent(in)  :: q(nlevin)      ! kg/kg
     real(r8), intent(in)  :: z(nlevin)      ! m
     real(r8), intent(in)  :: omega(nlevin)  ! Pa/s
+    real(r8), intent(in)  :: ps             ! Pa
     ! in/output
     real(r8), intent(out)  :: stend(nlevin)      ! J/kg/s
     real(r8), intent(out)  :: qtend(nlevin)      ! kg/kg/s
@@ -294,7 +296,7 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
     real(r8), intent(out)  :: prec  ! m/s
     ! local variables
     real(r8) :: windspeed(nlevin)
-    real(r8) :: qsat(nlevin), mse(nlevin), msesat(nlevin)
+    real(r8) :: qsat(nlevin), rh(nlevin), mse(nlevin), msesat(nlevin)
     real(r8) :: interpcoef(nn_nlev, nlevin)
     real(r8) :: invar(nn_node(1)), outvar(nn_nlabel)
     real(r8) :: cftop, cfbot
@@ -313,6 +315,14 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
         call cal_qsat1d(t, p, qsat)
         mse    = 1004.0*t + 9.8*z + 2.501e6*q
         msesat = 1004.0*t + 9.8*z + 2.501e6*qsat
+        
+        do i = 1, nlevin, 1
+            if (qsat(i) < 1e-12) then
+                rh(i) = 0.0
+            else
+                rh(i) = min(120.0, max(0.0, q(i)/qsat(i) * 100.0) )
+            end if
+        end do
 
         call cal_interpcoef(nlevin, p, interpcoef)
 
@@ -339,6 +349,19 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
                 invar(i+8*nn_nlev)  = sum(interpcoef(i,:) * msesat(:))
                 invar(i+9*nn_nlev)  = sum(interpcoef(i,:) * omega(:))
             end do
+        end if
+        
+        ! order: T_Q_QSAT_RH_Z_OMEGA_PS
+        if (nn_type >=2000 .and. nn_type<3000) then
+            do i = 1, nn_nlev, 1
+                invar(i)            = sum(interpcoef(i,:) * t(:))
+                invar(i+nn_nlev)    = sum(interpcoef(i,:) * q(:))
+                invar(i+2*nn_nlev)  = sum(interpcoef(i,:) * qsat(:))
+                invar(i+3*nn_nlev)  = sum(interpcoef(i,:) * rh(:))
+                invar(i+4*nn_nlev)  = sum(interpcoef(i,:) * z(:) * 9.8)
+                invar(i+5*nn_nlev)  = sum(interpcoef(i,:) * omega(:))
+            end do
+            invar(1+6*nn_nlev)  = ps
         end if
 
         call cal_nnforward(landfrac, invar, outvar)
@@ -415,6 +438,91 @@ subroutine nnmodel(nlevin, landfrac, p, u, v, t, q, z, omega, &
 
 end subroutine nnmodel
     
+!-----------------------------------------------------------------------------
+! Calculate the weights for each plume
+!-----------------------------------------------------------------------------
+subroutine cal_weight_eigen(nlevin, nplume, p, nn_stend, stend, nn_qtend, qtend, nn_prec, prec, weight, valid)
+    integer, intent(in) :: nlevin, nplume
+    real(r8), intent(in) :: p(nlevin), nn_prec, prec(nplume) ! Pa, m/s
+    real(r8), intent(in) :: nn_stend(nlevin), stend(nlevin, nplume) ! J/s
+    real(r8), intent(in) :: nn_qtend(nlevin), qtend(nlevin, nplume) ! kg/kg/s
+    real(r8), intent(out) :: weight(nplume)
+    integer, intent(out) :: valid(nplume)
+
+    real(r8) :: stend_scale, qtend_scale, prec_scale, eps, stendtop, stendbot, qtendtop, qtendbot
+    real(r8) :: w(nplume), work(nplume*3-1), eiginv(nplume, nplume)
+    real(r8) :: cov(nplume, nplume), cross(nplume, 1), tmp(nplume,1)
+    integer :: i, j, k, info, itop_stend, ibot_stend, itop_qtend, ibot_qtend
+
+    weight = 0.0
+    valid = 0
+    eps = 1e-8
+    cov = 0.0
+    cross = 0.0
+    eiginv = 0.0
+    stendtop = 20000.0
+    stendbot = 95000.0
+    qtendtop = 30000.0
+    qtendbot = 95000.0
+    itop_stend = 1
+    ibot_stend = nlevin
+    itop_qtend = 1
+    ibot_qtend = nlevin
+    stend_scale = 86400.0/1004.0  ! J/kg/s -> K/day
+    qtend_scale = -2.501e6*86400/1004.0 ! kg/kg/s -> K/day
+    prec_scale  = 86400*1000.0 / 1004.0 / 80000.0 * 9.8 * 2.501e6  ! m/s -> K/day
+    
+    qtend_scale = 0.0
+    prec_scale = 0.0
+
+    do k = 1, nlevin, 1
+        if ( p(k) <= stendtop ) then
+            itop_stend = k
+        end if
+        if ( p(k) <= qtendtop ) then
+            itop_qtend = k
+        end if
+    end do
+    do k = nlevin, 1, -1
+        if ( p(k) >= stendtop ) then
+            ibot_stend = k
+        end if
+        if ( p(k) >= qtendtop ) then
+            ibot_qtend = k
+        end if
+    end do
+
+    cov = matmul(transpose(stend(itop_stend:ibot_stend, :)), stend(itop_stend:ibot_stend, :))*stend_scale*stend_scale + &
+        matmul(transpose(qtend(itop_qtend:ibot_qtend, :)), qtend(itop_qtend:ibot_qtend, :)) * qtend_scale*qtend_scale
+    do i = 1, nplume, 1
+        cov(i,:) = cov(i,:) + prec(i)*prec(:)*prec_scale*prec_scale
+        cross(i, 1) = sum(nn_stend(itop_stend:ibot_stend)*stend(itop_stend:ibot_stend,i))*stend_scale*stend_scale + &
+            sum(nn_qtend(itop_qtend:ibot_qtend)*qtend(itop_qtend:ibot_qtend,i))*qtend_scale*qtend_scale + &
+            nn_prec*prec(i)*prec_scale*prec_scale
+    end do
+
+    call DSYEV("V", "U", nplume, cov, nplume, w, work, nplume*3-1, info)
+    
+    do i = 1, nplume, 1
+        if (abs(w(i)) < eps) then
+            eiginv(i,i) = 1.0/eps
+        else
+            eiginv(i,i) = 1.0/w(i)
+        end if
+    end do
+
+    tmp = matmul(cov, matmul(eiginv, matmul(transpose(cov), cross) ) )
+    weight = tmp(:,1)
+
+    do i = 1, nplume, 1
+        weight(i) = max(0.0, weight(i))
+        if (abs(weight(i)) > eps) then
+            valid(i) = 1
+        end if
+    end do
+
+end subroutine cal_weight_eigen
+        
 !-----------------------------------------------------------------------------
 ! Calculate the weights for each plume
 !-----------------------------------------------------------------------------
@@ -495,9 +603,12 @@ subroutine profileadj(nlevin, nn_prec, prec, prof1, prof2, prof3, prof4, prof5)
     real(r8),intent(in) :: nn_prec
     real(r8),intent(inout) :: prec, prof1(nlevin), prof2(nlevin), prof3(nlevin), prof4(nlevin), prof5(nlevin)
     real(r8) :: adjfac
+    integer :: remain
 
     adjfac = 1.0
-    if (nn_type >= 200 .or. (nn_type<100 .and. nn_type > 0) ) then
+    remain = mod(nn_type, 1000)
+
+    if (remain >= 200 .or. (remain<100 .and. remain > 0) ) then
         if (prec*86400*1000.0 > 0.1) then
             if (nn_prec < prec) then
                 adjfac = nn_prec / prec
@@ -526,11 +637,13 @@ subroutine negqtendadj(nlevin, q, qtend, stend, precrate, qliqtend, &
     integer,intent(in) :: nlevin
     real(r8),intent(in) :: q(nlevin), dtime, qmin
     real(r8),intent(inout) :: qtend(nlevin), stend(nlevin), precrate(nlevin), qliqtend(nlevin), massflux(nlevin)
-    integer :: k
+    integer :: k, remain
     real(r8) :: fac, facmin
 
     fac = 1.0
     facmin = 1.0
+    remain = mod(nn_type, 1000)
+
     do k=1,nlevin
         if (q(k) + qtend(k)*dtime < qmin) then
             if ( abs(qtend(k)) > 1.0e-12 ) then
@@ -542,7 +655,7 @@ subroutine negqtendadj(nlevin, q, qtend, stend, precrate, qliqtend, &
         end if
     end do
     
-    if (nn_type >= 200 .or. (nn_type<100 .and. nn_type > 0) ) then
+    if (remain >= 200 .or. (remain<100 .and. remain > 0) ) then
         if ( .not. (isnan(facmin))) then
             qtend = qtend * facmin
             stend = stend * facmin

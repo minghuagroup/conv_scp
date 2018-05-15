@@ -129,8 +129,9 @@ module conv_jp
     integer,  parameter :: flagorgent = 6       ! 1: using beta0 and minMSE as the division between entr and detr
                                                 ! 2: new organized entr and detr, and use half of H as division
                                                 ! 3,4: only organized entr, no orgnized detr
-                                                ! 5: when B<=0, use detr
+                                                ! 5: when B<=0, use detrain
                                                 ! 6: same as 5, but add a profile shape
+                                                ! 7: for shallow plume, when dB/dz<0, use detrain
     integer,  parameter :: flagtotent = 3       ! 1: organized only; 2: turbulence only; 3: sum of org and turb
     integer,  parameter :: flagturbent = 1      ! 1: using low interface only; 
                                                 ! 2: use low interface at the first iteration, then averaged
@@ -144,7 +145,7 @@ module conv_jp
     real(r8) :: org_shape = unset_r8     ! shape parameter of organized entrainment and detrainment (2.0)
     real(r8) :: evap_enhance = unset_r8   ! enhance evaporation (5.0)
     real(r8) :: evap_shape = unset_r8     ! shape parameter of evaporation profile (2.0)
-    real(r8), parameter :: fixcldrad0 = -1      ! if +: fixed cloud base radius;  if -: diagnostic from winit
+    real(r8), parameter :: fixcldrad0 = -1.0      ! if +: fixed cloud base radius;  if -: diagnostic from winit
     real(r8) :: fixcldsr   = unset_r8   ! default: 1.0; if +: fixed cloud size ratio;  if -: iteration
     real(r8) :: ratio_ent_rad = unset_r8  ! relation between turbulent entr/detr and cloud radius (0.2)
     real(r8) :: orgent_a     = unset_r8  ! organized entrainment parameters: default is 1.23
@@ -519,7 +520,7 @@ subroutine conv_jp_tend( &
 !Calculate convective tendency
 !------------------------------------------------------
 ! Haiyang Yu
-    use nnparameter, only: cal_weight, nn_flag
+    use nnparameter, only: cal_weight, cal_weight_eigen, nn_flag
 
 ! Main Interface
     integer , intent(in) :: inncol ! size of column dimension
@@ -665,6 +666,7 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol, nlev) :: evaprate  ! [1]  bulk evaporation production
 
     real(r8), dimension(inncol) :: surfprec      ! [1]  bulk evaporation production
+    real(r8), dimension(inncol) :: surfprecsum      ! [1]  bulk evaporation production
     real(r8), dimension(inncol) :: netprec       ! [1]  bulk evaporation production
 
 !calculated w from Grell's en/detrainment rate scheme
@@ -780,10 +782,11 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol) :: bg_factor
 
 ! Haiyang Yu: weights of plumes
+    real(r8), dimension(inncol, nlev, 30) :: all_stend, all_qtend, all_qliqtend, all_precrate, all_massflx
+    real(r8), dimension(inncol, 30) :: weights, all_massflxbase, all_prec, all_surfprec
     real(r8), dimension(inncol) :: totalweight
-    real(r8), dimension(inncol, 50) :: weights
     integer, dimension(inncol) :: validplume
-    integer :: valid
+    integer, dimension(inncol, 30) :: valid
 
 !for test
     real(r8), dimension(inncol) :: tmp ! [1] number of convective lev
@@ -845,6 +848,7 @@ subroutine conv_jp_tend( &
     evaprate = 0._r8
 
     surfprec = 0._r8
+    surfprecsum = 0._r8
 
     w = 0._r8
     tv_closure = 0._r8
@@ -969,7 +973,7 @@ subroutine conv_jp_tend( &
         ! trigdp = 1
 
         if ( iconv == 1 ) then
-
+            ! shallow plumes
             greg_z0 = greg_z0_sh
 
             w_up_init_beg = w_up_init_sh_beg
@@ -988,7 +992,7 @@ subroutine conv_jp_tend( &
             dn_frac = dn_frac_sh
 
         else if ( iconv == 2 ) then
-
+            ! deep plumes
             greg_z0 = greg_z0_dp
 
             w_up_init_beg = w_up_init_dp_beg
@@ -1097,7 +1101,7 @@ subroutine conv_jp_tend( &
             if (ischeme == 2) then
                 ! new scheme: MZhang
                 call cal_mse_up( &
-                    j, rho, rhoint, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
+                    iconv, rho, rhoint, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
                     mse, mseint, msesat, msesatint, &
                     kuplaunch, kupbase, &
                     ent_rate_dp_up, det_rate_dp_up, ent_rate_sh_up, det_rate_sh_up, &
@@ -1275,7 +1279,7 @@ subroutine conv_jp_tend( &
 
      !do k = 1, nlev
      ! write(*, *) "yhy:plume:stend:", j, stendcond(i,:), stendevap(i,:), stendtran_up(i,:), stendtran_dn(i,:)
-     !write(*, *) "yhy:plume:qtend:", k, qtendcond(i,k), qtendevap(i,k), qtendtran_up(i,k), qtendtran_dn(i,k), qliqtend_det(i,k)
+     !write(*, *)ubcol_netcdf_putclm( "weight", 1, weights(1,j), j )"yhy:plume:qtend:", k, qtendcond(i,k), qtendevap(i,k), qtendtran_up(i,k), qtendtran_dn(i,k), qliqtend_det(i,k)
      !end do
 
                 do k=1, nlev
@@ -1284,39 +1288,51 @@ subroutine conv_jp_tend( &
                 netprec(i) = netprec(i)/rhofw
 
                 ! yhy:
-                !do k=1, nlev
-                !    qliq(i,k) = max(1e-13, qliqtend_det(i,k)*dtime)
-                !end do
+                !!do k=1, nlev
+                !!    qliq(i,k) = max(1e-13, qliqtend_det(i,k)*dtime)
+                !!end do
                 
                 !----------------------------------------------------------------------
                 ! Haiyang Yu: calculate the weight for each plume
-                    call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), nn_qtend(i,:), qtend(i,:), weights(i,j), valid)
-                    validplume(i) = validplume(i) + valid
-                    totalweight(i) = totalweight(i) + weights(i,j)
-#ifdef SCMDIAG
-    write(*, *) "weight of plume", j, " = ", weights(i,j)
-#endif
+                !    call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), nn_qtend(i,:), qtend(i,:), weights(i,j), valid)
+                !    validplume(i) = validplume(i) + valid
+                !    totalweight(i) = totalweight(i) + weights(i,j)
+!#ifdef SCMDIAG
+!    write(*, *) "weight of plume", j, " = ", weights(i,j)
+!#endif
 
-                if (nn_flag > 0) then
-                    stend(i,:) = stend(i,:) * weights(i,j)
-                    qtend(i,:) = qtend(i,:) * weights(i,j)
-                    qliqtend_det(i,:) = qliqtend_det(i,:) * weights(i,j)
-                    precrate(i,:) = precrate(i,:) * weights(i,j)
-                    evaprate(i,:) = evaprate(i,:) * weights(i,j)
-                    netprec(i) = netprec(i) * weights(i,j)
-                    surfprec(i) = surfprec(i) * weights(i,j)
-                    massflxbase(i) = massflxbase(i) * weights(i,j)
-                    massflx(i,:) = massflx(i,:) * weights(i,j)
-                end if
+                !if (nn_flag > 0) then
+                !    stend(i,:) = stend(i,:) * weights(i,j)
+                !    qtend(i,:) = qtend(i,:) * weights(i,j)
+                !    qliqtend_det(i,:) = qliqtend_det(i,:) * weights(i,j)
+                !    precrate(i,:) = precrate(i,:) * weights(i,j)
+                !    evaprate(i,:) = evaprate(i,:) * weights(i,j)
+                !    netprec(i) = netprec(i) * weights(i,j)
+                !    surfprec(i) = surfprec(i) * weights(i,j)
+                !    massflxbase(i) = massflxbase(i) * weights(i,j)
+                !    massflx(i,:) = massflx(i,:) * weights(i,j)
+                !end if
                 !----------------------------------------------------------------------
             end do
-            
+
+            do i = 1, inncol, 1
+                all_stend(i,:,j) = stend(i,:)
+                all_qtend(i,:,j) = qtend(i,:)
+                all_qliqtend(i,:,j) = qliqtend_det(i,:)
+                all_precrate(i,:,j) = precrate(i,:) - evaprate(i,:)
+                all_massflx(i,:,j)  = massflx(i,:)
+                all_massflxbase(i,j) = massflxbase(i)
+                all_prec(i,j) = netprec(i)
+                all_surfprec(i,j) = surfprec(i)
+            end do
+
             do i=1, inncol
                 stendsum(i,:) = stendsum(i,:)+stend(i,:)
                 qtendsum(i,:) = qtendsum(i,:)+qtend(i,:)
                 qliqtendsum(i,:) = qliqtendsum(i,:)+qliqtend_det(i,:)
                 precratesum(i,:) = precratesum(i,:)+( precrate(i,:)-evaprate(i,:) )
                 precsum(i) = precsum(i)+netprec(i)
+                surfprecsum(i) = surfprecsum(i) + surfprec(i)
                 massflxbasesum(i) = massflxbasesum(i) + massflxbase(i)
                 massflxsum(i,:) = massflxsum(i,:) + massflx(i,:)
             end do
@@ -1367,6 +1383,7 @@ subroutine conv_jp_tend( &
             call subcol_netcdf_putclm( "normassflx_dn", nlevp, normassflx_dn_tmp(1,:), j )
 
             call subcol_netcdf_putclm( "dilucape", 1, dilucape(1,j), j )
+            ! call subcol_netcdf_putclm( "weight", 1, weights(1,j), j )
             call subcol_netcdf_putclm( "mseqi", nlev, mseqi(1,:), j )
             call subcol_netcdf_putclm( "condrate", nlev, condrate(1,:), j )
             call subcol_netcdf_putclm( "rainrate", nlev, rainrate(1,:), j )
@@ -1392,7 +1409,8 @@ subroutine conv_jp_tend( &
 
             call subcol_netcdf_putclm( "massflxbase", 1, massflxbase(1), j )
             call subcol_netcdf_putclm( "massflx", nlevp, massflx(1,:), j )
-            call subcol_netcdf_putclm( "prec", 1, surfprec(1), j )
+            !call subcol_netcdf_putclm( "prec", 1, surfprec(1), j )
+            call subcol_netcdf_putclm( "prec", 1, netprec(1), j )
 
             tmp2d = trigdp
             call subcol_netcdf_putclm( "trigdp", 1, tmp2d(1), j )
@@ -1405,21 +1423,48 @@ subroutine conv_jp_tend( &
     !----------------------------------------------------------------------
     ! Haiyang Yu: normalized with weights
     do i = 1, inncol
+        
+        call cal_weight_eigen(nlev, nplume_tot, p(i,:), nn_stend(i,:), all_stend(i,:,1:nplume_tot), &
+            nn_qtend(i,:), all_qtend(i,:,1:nplume_tot), nn_prec(i), all_prec(i,1:nplume_tot), &
+            weights(i,1:nplume_tot), valid(i,1:nplume_tot))
+       
+        !if (sum(valid(i,1:nplume_tot)) >= 1) then
+        !if (sum(weights(i,1:nplume_tot)) > 1) then
+        !    weights(i,1:nplume_tot) = weights(i,1:nplume_tot)/sum(weights(i,1:nplume_tot))
+        !end if
+#ifdef SCMDIAG
+        write(*, *) 'weights = ', weights(i,1:nplume_tot)
+        write(*, *) 'valid = ', valid(i,1:nplume_tot)
+#endif
         if (nn_flag > 0) then
-            if ( validplume(i) > 0 .and. abs(totalweight(i)) > 1e-6) then
-                totalweight(i) = 1.0 / totalweight(i)
-            else
-                totalweight(i) = 0.0
-            end if
 
-            stendsum(i,:) = stendsum(i,:) * totalweight(i)
-            qtendsum(i,:) = qtendsum(i,:) * totalweight(i)
-            qliqtendsum(i,:) = qliqtendsum(i,:) * totalweight(i)
-            precratesum(i,:) = precratesum(i,:) * totalweight(i)
-            precsum(i) = precsum(i) * totalweight(i)
-            surfprec(i) = surfprec(i) * totalweight(i)
-            massflxbasesum(i) = massflxbasesum(i) * totalweight(i)
-            massflxsum(i,:) = massflxsum(i,:) * totalweight(i)
+            do k = 1, nlev, 1
+                stendsum(i,k) = sum(all_stend(i,k,1:nplume_tot) * weights(i,1:nplume_tot))
+                qtendsum(i,k) = sum(all_qtend(i,k,1:nplume_tot) * weights(i,1:nplume_tot))
+                qliqtendsum(i,k) = sum(all_qliqtend(i,k,1:nplume_tot) * weights(i,1:nplume_tot))
+                precratesum(i,k) = sum(all_precrate(i,k,1:nplume_tot) * weights(i,1:nplume_tot))
+                massflxsum(i,k) = sum(all_massflx(i,k,1:nplume_tot) * weights(i,1:nplume_tot))
+                massflxbasesum(i) = sum(all_massflxbase(i,1:nplume_tot) * weights(i,1:nplume_tot))
+                precsum(i) = sum(all_prec(i,1:nplume_tot) * weights(i,1:nplume_tot))
+                surfprecsum(i) = sum(all_surfprec(i,1:nplume_tot) * weights(i,1:nplume_tot))
+            end do
+
+            ! qliqtendsum(i,:) = qliqtendsum(i,:) / nplume_tot
+
+            !if ( validplume(i) > 0 .and. abs(totalweight(i)) > 1e-6) then
+            !    totalweight(i) = 1.0 / totalweight(i)
+            !else
+            !    totalweight(i) = 0.0
+            !end if
+
+            !stendsum(i,:) = stendsum(i,:) * totalweight(i)
+            !qtendsum(i,:) = qtendsum(i,:) * totalweight(i)
+            !qliqtendsum(i,:) = qliqtendsum(i,:) * totalweight(i)
+            !precratesum(i,:) = precratesum(i,:) * totalweight(i)
+            !precsum(i) = precsum(i) * totalweight(i)
+            !surfprecsum(i) = surfprecsum(i) * totalweight(i)
+            !massflxbasesum(i) = massflxbasesum(i) * totalweight(i)
+            !massflxsum(i,:) = massflxsum(i,:) * totalweight(i) 
             
         else
             ! without NN: mean
@@ -1429,7 +1474,7 @@ subroutine conv_jp_tend( &
                 qliqtendsum(i,:) = qliqtendsum(i,:) / nplume_tot
                 precratesum(i,:) = precratesum(i,:) / nplume_tot
                 precsum(i) = precsum(i) / nplume_tot 
-                surfprec(i) = surfprec(i) / nplume_tot 
+                surfprecsum(i) = surfprecsum(i) / nplume_tot 
                 massflxbasesum(i) = massflxbasesum(i) / nplume_tot 
                 massflxsum(i,:) = massflxsum(i,:) / nplume_tot 
             end if
@@ -1462,6 +1507,12 @@ subroutine conv_jp_tend( &
     qliqtend = qliqtendsum
     precrate_out = precratesum
     mcon = massflxsum
+
+#ifdef SCMDIAG
+do j = 1, nplume_tot, 1
+    call subcol_netcdf_putclm( "weight", 1, weights(1,j), j )
+end do
+#endif
 
 #ifdef SCMDIAG
 !    call subcol_netcdf_putclm( "stendsum", nlev, stendsum(1,:), 1 )
@@ -1594,7 +1645,7 @@ subroutine conv_jp_tend( &
     !write(*,"(a20,f20.10)") "massflxbase_mconv:", massflxbase_mconv
     !write(*,"(a20,f20.10)") "massflxbase:", massflxbase
     write(*,"(a20,f20.10)") "prec:", prec*3600*24*1000
-    write(*,"(a20,f20.10)") "surfprec:", surfprec*3600*24*1000
+    !write(*,"(a20,f20.10)") "surfprec:", surfprecsum*3600*24*1000
     write(*,"(a20,f20.10)") "minqcheckf:", minqcheckf
 
     !netcdf output
@@ -1799,7 +1850,7 @@ end subroutine cal_launchtocldbase
 ! ==============================================================================
 subroutine cal_mse_up( &
 !input
-        iplume, rho, rhoint, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
+        flag_plume, rho, rhoint, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
         mse, mseint, msesat, msesatint, kuplaunch, kupbase, &
 !in/output
         ent_rate_dp_up, det_rate_dp_up, ent_rate_sh_up, det_rate_sh_up, &
@@ -1812,7 +1863,7 @@ subroutine cal_mse_up( &
      use buoysort, only : cal_buoysort, cal_fracmix, cal_entdet
 
 !input
-    integer, intent(in) :: iplume
+    integer, intent(in) :: flag_plume   ! 1: shallow, 2: deep
     real(r8), dimension(ncol, nlev),  intent(in) :: rho   ! [kg/m3]
     real(r8), dimension(ncol, nlevp), intent(in) :: rhoint   ! [kg/m3]
     real(r8), dimension(ncol, nlev),  intent(in) :: z     ! [m]
@@ -1875,7 +1926,7 @@ subroutine cal_mse_up( &
    
     real(r8) :: cldh_bak, ent_bak, det_bak
     integer  :: ktop_tmp
-    real(r8) :: tmp_t_up, tmp_q_up, tmp_buoy, tmp_zuptop_max
+    real(r8) :: tmp_t_up, tmp_q_up, tmp_buoy, tmp_zuptop_max, tmp_crt
 
     real(r8) :: xc, tv, tv_up,  w2, qw, Fp, Fi, Ek
     real(r8) :: nom, denom, ent_rate, det_rate, tmp
@@ -2055,6 +2106,31 @@ subroutine cal_mse_up( &
 !>>>>>>> b093a2074c5f0d89e1af76e505962d4429426537
                         end if
                     end if
+                    if (flagorgent == 7) then
+                        if (abs(buoy_mid(i,k)) > 1e-15) then
+                            tmp = orgent_beta0 * cldsr(i,k)/sqrt(1+cldsr(i,k)*cldsr(i,k)) * &
+                                sqrt(abs(buoy_mid(i,k))*cldh(i)) / ( 2*cldrad(i,k)*max(wupmin,w_up_mid(i,k)) )
+                        else
+                            tmp = 0.0
+                        end if
+                        if (flag_plume == 1) then
+                            ! shallow
+                            tmp_crt = rhoint(i,k)*buoy(i,k) - rhoint(i,k+1)*buoy(i,k+1)
+                        else
+                            ! deep 
+                            tmp_crt = buoy_mid(i,k)
+                        end if
+                        if ( tmp_crt < 0.0 ) then
+                            ent_org(i,k) = 0. !0.0004
+                            det_org(i,k) = tmp * org_enhance &
+                                * (max(0.0, pint(i,kupbase(i))-p(i,k))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                        else
+                            ent_org(i,k) = tmp * org_enhance & 
+                                * (max(0.0, p(i,k)-p(i,ktop_tmp))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                            det_org(i,k) = 0.0                        
+                        end if
+                    end if
+
                     if (flagorgent == 2) then
                         tmp = 0.8*sqrt( cldsr(i,k)*cldsr(i,k) + cldsr(i,k)*sqrt(cldsr(i,k)*cldsr(i,k)+6) )
                         tmp = tmp*sqrt(abs(cos(3.14159265*(zint(i,k)-zint(i,kupbase(i)))/cldh(i))))
