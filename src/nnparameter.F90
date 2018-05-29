@@ -470,7 +470,7 @@ subroutine cal_weight_eigen(nlevin, nplume, p, nn_stend, stend, nn_qtend, qtend,
     ibot_qtend = nlevin
     stend_scale = 86400.0/1004.0  ! J/kg/s -> K/day
     qtend_scale = -2.501e6*86400/1004.0 ! kg/kg/s -> K/day
-    prec_scale  = 86400*1000.0 / 1004.0 / 80000.0 * 9.8 * 2.501e6  ! m/s -> K/day
+    prec_scale  = 86400*1000.0 / 1004.0 / 60000.0 * 9.8 * 2.501e6  ! m/s -> K/day
     
     !qtend_scale = 0.0
     !prec_scale = 0.0

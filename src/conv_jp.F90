@@ -126,7 +126,7 @@ module conv_jp
     integer,  parameter :: ischeme = 2          ! 1: CS2010;  2: MZhang Group
     integer,  parameter :: flagbspdf = 2        ! 1: uniform distribution;  2: new pdf
     integer,  parameter :: cldhiteration = 2    ! iteration for cloud height
-    integer,  parameter :: flagorgent = 6       ! 1: using beta0 and minMSE as the division between entr and detr
+    integer,  parameter :: flagorgent = 7       ! 1: using beta0 and minMSE as the division between entr and detr
                                                 ! 2: new organized entr and detr, and use half of H as division
                                                 ! 3,4: only organized entr, no orgnized detr
                                                 ! 5: when B<=0, use detrain
@@ -1429,9 +1429,9 @@ subroutine conv_jp_tend( &
             weights(i,1:nplume_tot), valid(i,1:nplume_tot))
        
         !if (sum(valid(i,1:nplume_tot)) >= 1) then
-        !if (sum(weights(i,1:nplume_tot)) > 1) then
-        !    weights(i,1:nplume_tot) = weights(i,1:nplume_tot)/sum(weights(i,1:nplume_tot))
-        !end if
+        if ( abs(sum(weights(i,1:nplume_tot))) > nplume_tot*1.0 ) then
+            weights(i,1:nplume_tot) = weights(i,1:nplume_tot)/sum(weights(i,1:nplume_tot)) * nplume_tot
+        end if
 #ifdef SCMDIAG
         write(*, *) 'weights = ', weights(i,1:nplume_tot)
         write(*, *) 'valid = ', valid(i,1:nplume_tot)
@@ -2033,7 +2033,7 @@ subroutine cal_mse_up( &
 !>>>>>>> b093a2074c5f0d89e1af76e505962d4429426537
             
             do k=kupbase(i)-1, 1, -1
-
+            
                 do iteration = 1, maxiteration, 1
                     
                     ! w, buoyancy, and mass flux at mid-layer
@@ -2116,19 +2116,43 @@ subroutine cal_mse_up( &
                         if (flag_plume == 1) then
                             ! shallow
                             tmp_crt = rhoint(i,k)*buoy(i,k) - rhoint(i,k+1)*buoy(i,k+1)
+                            !tmp_crt = buoy_mid(i,k)
+                            if ( tmp_crt < 0.0 .or. pint(i, kupbase(i)) - p(i,k) >= 20000.0 ) then
+                            !if ( tmp_crt < 0.0 ) then
+                                ent_org(i,k) = 0.0
+                                !det_org(i,k) = tmp * ((w_up_init(i)/2.0)) * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                                det_org(i,k) = tmp * 0.25 * exp(-(p(i,k) - 20000.0) / 40000.0)
+                            else
+                                det_org(i,k) = 0.0
+                                !ent_org(i,k) = tmp * ((w_up_init(i)/2.0)) * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                                ent_org(i,k) = tmp * 0.5 * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                            end if
+                            !org_enhance = 0.5 * (w_up_init(i)/2.0) ** (2.0)
+                            !org_shape = 2.0
                         else
                             ! deep 
                             tmp_crt = buoy_mid(i,k)
+                            if (tmp_crt < 0.0) then
+                                ent_org(i,k) = 0.0
+                                det_org(i,k) = tmp * 0.5 * exp(-(p(i,k) - 20000.0)/20000.0)
+                            else
+                                det_org(i,k) = 0.0
+                                ent_org(i,k) = tmp * 0.25 * exp(-(pint(i,kupbase(i)) - p(i,k) )/40000.0)
+                            end if
+
+                            !org_enhance = 0.25
+                            !org_shape = -2
                         end if
-                        if ( tmp_crt < 0.0 ) then
-                            ent_org(i,k) = 0. !0.0004
-                            det_org(i,k) = tmp * org_enhance &
-                                * (max(0.0, pint(i,kupbase(i))-p(i,k))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
-                        else
-                            ent_org(i,k) = tmp * org_enhance & 
-                                * (max(0.0, p(i,k)-p(i,ktop_tmp))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
-                            det_org(i,k) = 0.0                        
-                        end if
+
+                        !if ( tmp_crt < 0.0 ) then
+                        !    ent_org(i,k) = 0. !0.0004
+                        !    det_org(i,k) = tmp * org_enhance &
+                        !        * (max(0.0, pint(i,kupbase(i))-p(i,k))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                        !else
+                        !    ent_org(i,k) = tmp * org_enhance & 
+                        !        * (max(0.0, p(i,k)-p(i,ktop_tmp))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                        !    det_org(i,k) = 0.0                        
+                        !end if
                     end if
 
                     if (flagorgent == 2) then
