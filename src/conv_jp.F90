@@ -520,7 +520,17 @@ subroutine conv_jp_tend( &
         outstendcond, outqtendcond, &
         outstendtranup, outqtendtranup, &
         outstendtrandn, outqtendtrandn, &
-        outstendevap, outqtendevap  )
+        outstendevap, outqtendevap &
+#ifdef OFFLINECP
+        , all_ent_org, all_det_org, all_ent_turb, all_det_turb, all_massflx, &
+        all_mse_up, all_t_up, all_q_up, all_qliq_up, all_qice_up, all_w_up, all_buoy, all_mseqi, &
+        all_condrate, all_rainrate, all_snowrate, all_precrate, all_accuprec, all_evaprate, &
+        all_stend, all_qtend, all_qliqtend,  &
+        all_stendcond, all_stendevap, all_stendtran_up, all_stendtran_dn, &
+        all_qtendcond, all_qtendevap, all_qtendtran_up, all_qtendtran_dn, &
+        all_cape, all_massflxbase, all_prec, all_surfprec &
+#endif
+        )
 !------------------------------------------------------
 !Calculate convective tendency
 !------------------------------------------------------
@@ -789,9 +799,26 @@ subroutine conv_jp_tend( &
     real(r8), dimension(inncol) :: bg_qtendsum
     real(r8), dimension(inncol) :: bg_factor
 
-! Haiyang Yu: weights of plumes
-    real(r8), dimension(inncol, nlev, 30) :: all_stend, all_qtend, all_qliqtend, all_precrate, all_massflx
-    real(r8), dimension(inncol, 30) :: weights, all_massflxbase, all_prec, all_surfprec
+! Haiyang Yu: all plumes
+#ifdef OFFLINECP
+    real(r8), dimension(inncol, nlevp, 30), intent(out) :: &
+        all_mse_up, all_t_up, all_q_up, all_qliq_up, all_qice_up, all_w_up, all_buoy
+    real(r8), dimension(inncol, nlev, 30), intent(out) :: &
+        all_ent_org, all_det_org, all_ent_turb, all_det_turb, all_massflx, all_mseqi, &
+        all_condrate, all_rainrate, all_snowrate, all_precrate, all_accuprec, all_evaprate, &
+        all_stend, all_qtend, all_qliqtend,  &
+        all_stendcond, all_stendevap, all_stendtran_up, all_stendtran_dn, &
+        all_qtendcond, all_qtendevap, all_qtendtran_up, all_qtendtran_dn
+    real(r8), dimension(inncol, 30), intent(out) :: &
+        all_cape, all_massflxbase, all_prec, all_surfprec
+#else
+    real(r8), dimension(inncol, nlev, 30) :: &
+        all_massflx, all_precrate, all_stend, all_qtend, all_qliqtend
+    real(r8), dimension(inncol, 30) :: &
+        all_massflxbase, all_prec, all_surfprec
+#endif
+    ! internal variables
+    real(r8), dimension(inncol, 30) :: weights
     real(r8), dimension(inncol) :: totalweight
     integer, dimension(inncol) :: validplume
     integer, dimension(inncol, 30) :: valid
@@ -1344,6 +1371,42 @@ subroutine conv_jp_tend( &
             end do
 
             do i = 1, inncol, 1
+#ifdef OFFLINECP
+                all_ent_org(i,:,j) = ent_org(i,:)
+                all_det_org(i,:,j) = det_org(i,:) 
+                all_ent_turb(i,:,j) = ent_turb(i,:)
+                all_det_turb(i,:,j) = det_turb(i,:)
+                all_massflx(i,:,j) = massflx(i,:)
+                all_mse_up(i,:,j) = mse_up(i,:)
+                all_t_up(i,:,j) = t_up(i,:)
+                all_q_up(i,:,j) = q_up(i,:)
+                all_qliq_up(i,:,j) = qliq_up(i,:)
+                all_qice_up(i,:,j) = qice_up(i,:)
+                all_w_up(i,:,j) = w_up(i,:)
+                all_buoy(i,:,j) = buoy(i,:)
+                all_mseqi(i,:,j) = mseqi(i,:)
+                all_condrate(i,:,j) = condrate(i,:)
+                all_rainrate(i,:,j) = rainrate(i,:)
+                all_snowrate(i,:,j) = snowrate(i,:)
+                all_precrate(i,:,j) = precrate(i,:)
+                all_accuprec(i,:,j) = accuprec(i,:)
+                all_evaprate(i,:,j) = evaprate(i,:)
+                all_stend(i,:,j) = stend(i,:)
+                all_qtend(i,:,j) = qtend(i,:)
+                all_qliqtend(i,:,j) = qliqtend_det(i,:)
+                all_stendcond(i,:,j) = stendcond(i,:)
+                all_stendevap(i,:,j) = stendevap(i,:)
+                all_stendtran_up(i,:,j) = stendtran_up(i,:)
+                all_stendtran_dn(i,:,j) = stendtran_dn(i,:)
+                all_qtendcond(i,:,j) = qtendcond(i,:)
+                all_qtendevap(i,:,j) = qtendevap(i,:)
+                all_qtendtran_up(i,:,j) = qtendtran_up(i,:)
+                all_qtendtran_dn(i,:,j) = qtendtran_dn(i,:)
+                all_cape(i,j) = dilucape(i,j)
+                all_massflxbase(i,j) = massflxbase(i)
+                all_prec(i,j) = netprec(i)
+                all_surfprec(i,j) = surfprec(i)
+#else
                 all_stend(i,:,j) = stend(i,:)
                 all_qtend(i,:,j) = qtend(i,:)
                 all_qliqtend(i,:,j) = qliqtend_det(i,:)
@@ -1352,6 +1415,7 @@ subroutine conv_jp_tend( &
                 all_massflxbase(i,j) = massflxbase(i)
                 all_prec(i,j) = netprec(i)
                 all_surfprec(i,j) = surfprec(i)
+#endif
             end do
 
             do i=1, inncol
