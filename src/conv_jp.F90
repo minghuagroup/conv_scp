@@ -59,9 +59,9 @@ module conv_jp
     public :: conv_jp_init, conv_jp_tend
     public :: ecp_readnl
     public :: nplume_sh, nplume_dp
-
+#ifndef OFFLINECP
     integer :: ncol=0, nlev=0, nlevp=0
-
+#endif
     real(r8), parameter :: unset_r8 = huge(1.0_r8)  ! set namelist variables
     integer,  parameter :: unset_int = -1       ! set namelist variables
 !--------------------------------------------------------------
@@ -285,11 +285,11 @@ module conv_jp
 ! initialize the convection scheme
 ! ==============================================================================
 subroutine ecp_readnl(nlfile)
-#ifdef SCMDIAG
+#if ((defined SCMDIAG) | (defined OFFLINECP))
     use shr_nl_mod,  only: shr_nl_find_group_name
 #endif
-    
-#if (! defined SCMDIAG)    
+
+#if ((! defined SCMDIAG) & (! defined OFFLINECP))  
     use namelist_utils,  only: find_group_name
     use spmd_utils,      only: masterproc
     use abortutils,      only: endrun
@@ -312,7 +312,7 @@ subroutine ecp_readnl(nlfile)
        ecp_tpertglob, ecp_qpertglob, ecp_meanorsum, ecp_facdlf, ecp_evap_enhance, ecp_evap_shape
    !-----------------------------------------------------------------------------
 
-#if (! defined SCMDIAG)    
+#if ((! defined SCMDIAG) & (! defined OFFLINECP)) 
    if (masterproc) then
        unitn = getunit()
       open( unitn, file=trim(nlfile), status='old' )
@@ -327,7 +327,7 @@ subroutine ecp_readnl(nlfile)
       call freeunit(unitn)
 #endif
 
-#ifdef SCMDIAG
+#if ((defined SCMDIAG) | (defined OFFLINECP))
       open( 10, file=trim(nlfile), status='old' )
       call shr_nl_find_group_name(10, 'ecp_nl', status=ierr)
       if (ierr == 0) then
@@ -375,7 +375,7 @@ subroutine ecp_readnl(nlfile)
         facdlf = ecp_facdlf
         evap_enhance = ecp_evap_enhance
         evap_shape = ecp_evap_shape
-#if (! defined SCMDIAG)    
+#if ((! defined SCMDIAG) & (! defined OFFLINECP)) 
     end if
 #endif
 
@@ -462,9 +462,11 @@ subroutine conv_jp_init(innlev)
     
 !input
     integer, intent(in) :: innlev
-
+#ifndef OFFLINECP
     nlev  = innlev
     nlevp = innlev+1
+#endif
+
 #ifdef SCMDIAG
     write(*,*) "[conv_jp_init]"
     write(*,*) "Parameter"
@@ -491,6 +493,9 @@ end subroutine conv_jp_init
 subroutine conv_jp_tend( &
 !input
         inncol, &
+#ifdef OFFLINECP
+        nlev, nlevp, &
+#endif
         in_ent_opt, dtime, qmin, &
         lat, landfrac, lhflx, &
         psrf, p, dp, zsrf, z, dz, &
@@ -520,11 +525,14 @@ subroutine conv_jp_tend( &
 !Calculate convective tendency
 !------------------------------------------------------
 ! Haiyang Yu
+#if (! defined OFFLINECP)
     use nnparameter, only: cal_weight, cal_weight_eigen, nn_flag
-
+#endif
 ! Main Interface
     integer , intent(in) :: inncol ! size of column dimension
-
+#ifdef OFFLINECP
+    integer, intent(in) :: nlev, nlevp
+#endif
     integer , intent(in) :: in_ent_opt ! 0=ec, 1=greg
     real(r8), intent(in) :: dtime  ! [s] time step
     real(r8), intent(in) :: qmin   ! [kg/kg] minimum Q
@@ -788,6 +796,10 @@ subroutine conv_jp_tend( &
     integer, dimension(inncol) :: validplume
     integer, dimension(inncol, 30) :: valid
 
+#ifdef OFFLINECP
+    integer :: ncol
+#endif
+
 !for test
     real(r8), dimension(inncol) :: tmp ! [1] number of convective lev
     real(r8) :: diffz, dw_up_init, basemass_scale
@@ -1050,13 +1062,21 @@ subroutine conv_jp_tend( &
         normassflx_dn = 0._r8
 
         if ( iconv == 1 ) then   ! shallow plumes
-            call cal_launchtocldbase( 2, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+            call cal_launchtocldbase( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
+                2, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                 mse, mseint, msesat, msesatint, landfrac, lhflx,  &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
             kupbase = kuplaunch
 
         else if ( iconv == 2 ) then    ! deep plumes
-            call cal_launchtocldbase( 1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+            call cal_launchtocldbase( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
+                1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                 mse, mseint, msesat, msesatint, landfrac, lhflx,  &
                 kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
             kupbase = kuplcl
@@ -1101,6 +1121,9 @@ subroutine conv_jp_tend( &
             if (ischeme == 2) then
                 ! new scheme: MZhang
                 call cal_mse_up( &
+#ifdef OFFLINECP
+                    ncol, nlev, nlevp, &
+#endif
                     iconv, rho, rhoint, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
                     mse, mseint, msesat, msesatint, &
                     kuplaunch, kupbase, &
@@ -1114,6 +1137,9 @@ subroutine conv_jp_tend( &
             if (ischeme == 1) then
                 ! old scheme: GRE and NSJ
                 call cal_mse_up_old( &
+#ifdef OFFLINECP
+                    ncol, nlev, nlevp, &
+#endif
                     ent_opt, rho, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
                     mse, mseint, msesat, msesatint, &
                     kuplaunch, kupbase, &
@@ -1136,6 +1162,9 @@ subroutine conv_jp_tend( &
 
 !evaporation tendency
             call cal_evap( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
                 ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
                 precrate, accuprec, surfprec, evaprate )
 
@@ -1144,6 +1173,9 @@ subroutine conv_jp_tend( &
 
 !downdraft properties
             call cal_mse_dn( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
                 ent_opt, kuptop, trigdp, dz, zint, p, pint, rho, t, twet, twetint, lvmid, &
                 qint, dseint, accuprec, evaprate, buoy_mid, dn_frac, &
                 dse_dn, q_dn, normassflx_dn_tmp)
@@ -1152,12 +1184,18 @@ subroutine conv_jp_tend( &
 
 ! dilute CAPE
             call cal_cape( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
                 dz, buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
                 dilucape(:,j), cwf(:,j), &
                 trigdp)
 
 !updraft transport tendency
             call cal_tendtransport( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
                 dz, kupbase, kuptop, &
                 rho, dseint, qint, dse_up, q_up, &
                 normassflx_up_tmp,  &
@@ -1166,6 +1204,9 @@ subroutine conv_jp_tend( &
 
 !downdraft transport tendency
             call cal_tendtransport( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
                 dz, kupbase, kuptop, &
                 rho, dseint, qint, dse_dn, q_dn, &
                 normassflx_dn_tmp,  &
@@ -1180,19 +1221,9 @@ subroutine conv_jp_tend( &
                 ! New version: detrain occurs through cloud layers
                 do k = kuptop(i)-1, kupbase(i)-1, 1
                     qliqtend_det(i,k) = max(0.0, &
-!<<<<<<< HEAD
                         normassflx_up_tmp(i,k+1) * min(det_rate_dp_up(i,k) + det_rate_sh_up(i,k), max_det_rate) &
                             * (qliq_up(i,k+1) + qice_up(i,k+1)) / rho(i,k) )
                     
-!=======
-!!MZMZ downdraft detrainment is set to have zero condensate
-!!                        normassflx_up_tmp(i,k+1) * (det_rate_dp_up(i,k) + det_rate_sh_up(i,k)) * (qliq_up(i,k+1) + qice_up(i,k+1))  &
-!                        normassflx_up_tmp(i,k+1) * det_rate_dp_up(i,k)  * (qliq_up(i,k+1) + qice_up(i,k+1))  &
-!                        /rho(i,k) )
-!>>>>>>> b093a2074c5f0d89e1af76e505962d4429426537
-                    !write(*,*) "qliqtend_net:", k, qliqtend_det(i,k), normassflx_up_tmp(i,k+1), &
-                    !    det_rate_dp_up(i,k), det_rate_sh_up(i,k), &
-                    !    qliq_up(i,k+1), qice_up(i,k+1), rho(i,k)
                 end do
 
 !!MZMZ top layer needed
@@ -1209,7 +1240,8 @@ subroutine conv_jp_tend( &
                 if ( trigdp(i)<1 ) cycle
                 if (iconv == 1) then  ! shallow plumes 
                     if (basemass_enhance > 1.0) then
-                        basemass_scale = max(0.0, -(basemass_enhance-1.0)/w_up_init_end * w_up_init(i) + basemass_enhance )
+                        basemass_scale = max(0.0, -(basemass_enhance-1.0)/w_up_init_end * w_up_init(i) &
+                            + basemass_enhance )
                     else
                         basemass_scale = w_up_init_end/w_up_init(i)
                     end if
@@ -1277,11 +1309,6 @@ subroutine conv_jp_tend( &
                     + qtendtran_up(i,:) + qtendtran_dn(i,:) &
                     + qliqtend_det(i,:)
 
-     !do k = 1, nlev
-     ! write(*, *) "yhy:plume:stend:", j, stendcond(i,:), stendevap(i,:), stendtran_up(i,:), stendtran_dn(i,:)
-     !write(*, *)ubcol_netcdf_putclm( "weight", 1, weights(1,j), j )"yhy:plume:qtend:", k, qtendcond(i,k), qtendevap(i,k), qtendtran_up(i,k), qtendtran_dn(i,k), qliqtend_det(i,k)
-     !end do
-
                 do k=1, nlev
                     netprec(i) = netprec(i) + max(0.0, - ( qtend(i,k) + qliqtend_det(i,k) )*rho(i,k)*dz(i,k))
                 end do
@@ -1294,7 +1321,8 @@ subroutine conv_jp_tend( &
                 
                 !----------------------------------------------------------------------
                 ! Haiyang Yu: calculate the weight for each plume
-                !    call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), nn_qtend(i,:), qtend(i,:), weights(i,j), valid)
+                !    call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), &
+                !         nn_qtend(i,:), qtend(i,:), weights(i,j), valid)
                 !    validplume(i) = validplume(i) + valid
                 !    totalweight(i) = totalweight(i) + weights(i,j)
 !#ifdef SCMDIAG
@@ -1423,7 +1451,7 @@ subroutine conv_jp_tend( &
     !----------------------------------------------------------------------
     ! Haiyang Yu: normalized with weights
     do i = 1, inncol
-        
+#if (! defined OFFLINECP)        
         call cal_weight_eigen(nlev, nplume_tot, p(i,:), nn_stend(i,:), all_stend(i,:,1:nplume_tot), &
             nn_qtend(i,:), all_qtend(i,:,1:nplume_tot), nn_prec(i), all_prec(i,1:nplume_tot), &
             weights(i,1:nplume_tot), valid(i,1:nplume_tot))
@@ -1467,6 +1495,7 @@ subroutine conv_jp_tend( &
             !massflxsum(i,:) = massflxsum(i,:) * totalweight(i) 
             
         else
+#endif            
             ! without NN: mean
             if (meanorsum == 1) then
                 stendsum(i,:) = stendsum(i,:) / nplume_tot  
@@ -1478,8 +1507,9 @@ subroutine conv_jp_tend( &
                 massflxbasesum(i) = massflxbasesum(i) / nplume_tot 
                 massflxsum(i,:) = massflxsum(i,:) / nplume_tot 
             end if
-        
+#if (! defined OFFLINECP)        
         end if
+#endif
     end do
     !----------------------------------------------------------------------
 
@@ -1698,8 +1728,12 @@ end subroutine conv_jp_tend
 ! calculate the launch processes
 ! ==============================================================================
 subroutine cal_launchtocldbase( &
+#ifdef OFFLINECP
+        ncol, nlev, nlevp, &
+#endif
 !input
-        opt, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, mse, mseint, msesat, msesatint, landfrac, lhflx,  &
+        opt, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+        mse, mseint, msesat, msesatint, landfrac, lhflx,  &
 !output
         kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up,  &
 !in
@@ -1708,6 +1742,9 @@ subroutine cal_launchtocldbase( &
 !launch to LCL, no entrainment up, in-cloud properties
 !------------------------------------------------------
 !input
+#ifdef OFFLINECP
+    integer, intent(in) :: ncol, nlev, nlevp
+#endif
     integer, intent(in) :: opt ! 1:LCL  2:launch point
     real(r8), dimension(ncol, nlev),  intent(in) :: z     ! [m]
     real(r8), dimension(ncol, nlevp), intent(in) :: zint  ! [m]
@@ -1834,7 +1871,8 @@ subroutine cal_launchtocldbase( &
         ! cloud properties below cloud base
         normassflx_up(i,kcbase(i)) = 1.0
         do k=nlevp, kcbase(i)+1, -1
-            normassflx_up(i,k) = ( max( 0.0, (zint(i,k)-zint(i,nlevp))/(zint(i,kuplcl(i))-zint(i,nlevp)) ) )**0.5
+            normassflx_up(i,k) = ( max( 0.0, (zint(i,k)-zint(i,nlevp)) &
+                /(zint(i,kuplcl(i))-zint(i,nlevp)) ) )**0.5
             mse_up(i,k) = mse_up(i, kuplcl(i))
             q_up(i,k) = q_up(i, kuplcl(i))
             t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) )/ &
@@ -1850,6 +1888,9 @@ end subroutine cal_launchtocldbase
 ! ==============================================================================
 subroutine cal_mse_up( &
 !input
+#ifdef OFFLINECP
+        ncol, nlev, nlevp, &
+#endif
         flag_plume, rho, rhoint, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
         mse, mseint, msesat, msesatint, kuplaunch, kupbase, &
 !in/output
@@ -1863,6 +1904,9 @@ subroutine cal_mse_up( &
      use buoysort, only : cal_buoysort, cal_fracmix, cal_entdet
 
 !input
+#ifdef OFFLINECP
+    integer, intent(in) :: ncol, nlev, nlevp
+#endif
     integer, intent(in) :: flag_plume   ! 1: shallow, 2: deep
     real(r8), dimension(ncol, nlev),  intent(in) :: rho   ! [kg/m3]
     real(r8), dimension(ncol, nlevp), intent(in) :: rhoint   ! [kg/m3]
@@ -2087,23 +2131,15 @@ subroutine cal_mse_up( &
                         if ( buoy_mid(i,k) <= 0 ) then
                             ent_org(i,k) = 0. !0.0004
                             det_org(i,k) = tmp * org_enhance &
-!<<<<<<< HEAD
-                                * (max(0.0, pint(i,kupbase(i))-p(i,k))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                                * (max(0.0, pint(i,kupbase(i))-p(i,k)) &
+                                / ( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) &
+                                + 10.0))**org_shape
                         else
                             ent_org(i,k) = tmp * org_enhance & 
-                                * (max(0.0, p(i,k)-p(i,ktop_tmp))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                                * (max(0.0, p(i,k)-p(i,ktop_tmp)) &
+                                /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) &
+                                + 10.0))**org_shape
                             det_org(i,k) = 0.0                        
-!=======
-!!MZMZ incorrect paranthesis location of 10., kuptop not available     
-!!                                * ((p(i,kupbase(i))-p(i,k))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
-!                                * ((p(i,kupbase(i))-p(i,k))/(p(i,kupbase(i))-p(i,kuptop(i))+10.))**org_shape
-!
-!                        else
-!                            ent_org(i,k) = tmp * org_enhance & 
-!!                                * ((p(i,k)-p(i,kuptop(i)))/(p(i,kupbase(i)))-p(i,kuptop(i)+10.))**org_shape
-!                                * (p(i,k)/p(i,kupbase(i)))**org_shape
-!                            det_org(i,k) = 0. !0.0002 
-!>>>>>>> b093a2074c5f0d89e1af76e505962d4429426537
                         end if
                     end if
                     if (flagorgent == 7) then
@@ -2120,11 +2156,13 @@ subroutine cal_mse_up( &
                             if ( tmp_crt < 0.0 .or. pint(i, kupbase(i)) - p(i,k) >= 20000.0 ) then
                             !if ( tmp_crt < 0.0 ) then
                                 ent_org(i,k) = 0.0
-                                !det_org(i,k) = tmp * ((w_up_init(i)/2.0)) * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                                !det_org(i,k) = tmp * ((w_up_init(i)/2.0)) &
+                                !    * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
                                 det_org(i,k) = tmp * 0.25 * exp(-(p(i,k) - 20000.0) / 40000.0)
                             else
                                 det_org(i,k) = 0.0
-                                !ent_org(i,k) = tmp * ((w_up_init(i)/2.0)) * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                                !ent_org(i,k) = tmp * ((w_up_init(i)/2.0)) &
+                                !    * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
                                 ent_org(i,k) = tmp * 0.5 * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
                             end if
                             !org_enhance = 0.5 * (w_up_init(i)/2.0) ** (2.0)
@@ -2147,10 +2185,12 @@ subroutine cal_mse_up( &
                         !if ( tmp_crt < 0.0 ) then
                         !    ent_org(i,k) = 0. !0.0004
                         !    det_org(i,k) = tmp * org_enhance &
-                        !        * (max(0.0, pint(i,kupbase(i))-p(i,k))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                        !        * (max(0.0, pint(i,kupbase(i))-p(i,k)) &
+                        !        /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
                         !else
                         !    ent_org(i,k) = tmp * org_enhance & 
-                        !        * (max(0.0, p(i,k)-p(i,ktop_tmp))/( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                        !        * (max(0.0, p(i,k)-p(i,ktop_tmp)) &
+                        !        /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
                         !    det_org(i,k) = 0.0                        
                         !end if
                     end if
@@ -2509,6 +2549,9 @@ end subroutine cal_mse_up
 ! ==============================================================================
 subroutine cal_mse_up_old( &
 !input
+#ifdef OFFLINECP
+        ncol, nlev, nlevp, &
+#endif
         ent_opt, rho, z, zint, dz, p, pint, t, tint, q, qint, qsat, qsatint, &
         mse, mseint, msesat, msesatint, kuplaunch, kupbase, &
 !in/output
@@ -2520,6 +2563,9 @@ subroutine cal_mse_up_old( &
      use buoysort, only : cal_buoysort
 
 !input
+#ifdef OFFLINECP
+    integer, intent(in) :: ncol, nlev, nlevp
+#endif
     integer, intent(in) :: ent_opt
     real(r8), dimension(ncol, nlev),  intent(in) :: rho   ! [kg/m3]
     real(r8), dimension(ncol, nlev),  intent(in) :: z     ! [m]
@@ -2987,12 +3033,18 @@ end subroutine cal_mse_up_old
 ! ==============================================================================
 subroutine cal_mse_dn( &
 !input
+#ifdef OFFLINECP
+        ncol, nlev, nlevp, &
+#endif
         ent_opt, kuptop, trig, dz, zint, p, pint, rho, t, twet, twetint, lvmid, &
         qint, dseint, accuprec, evaprate, buoy_mid, dn_frac, &
 !output
         dse_dn, q_dn, normassflx_dn )
 
 !input
+#ifdef OFFLINECP
+    integer, intent(in) :: ncol, nlev, nlevp
+#endif
     integer, intent(in) :: ent_opt
     integer , dimension(ncol), intent(in) :: trig     ! [1]
     integer , dimension(ncol), intent(in) :: kuptop    ! [1]
@@ -3080,12 +3132,18 @@ end subroutine cal_mse_dn
 ! ==============================================================================
 subroutine cal_evap( &
 !input
-       ent_opt, kuptop, trig, dz, p, rho, t, twet, q, &
-       precrate, &
+#ifdef OFFLINECP
+        ncol, nlev, nlevp, &
+#endif
+        ent_opt, kuptop, trig, dz, p, rho, t, twet, q, &
+        precrate, &
 !output
-       accuprec, surfprec, evaprate )
+        accuprec, surfprec, evaprate )
 
 !input
+#ifdef OFFLINECP
+    integer, intent(in) :: ncol, nlev, nlevp
+#endif
     integer, intent(in) :: ent_opt
     integer , dimension(ncol), intent(in) :: kuptop    ! [1]
     integer , dimension(ncol), intent(in) :: trig     ! [1]
@@ -3133,6 +3191,9 @@ end subroutine cal_evap
 ! ==============================================================================
 subroutine cal_cape( &
 !input
+#ifdef OFFLINECP
+        ncol, nlev, nlevp, &
+#endif
         dz, buoy_mid, normassflx_up, kupbase, kuptop, &
 !output
         cape, cwf, &
@@ -3142,6 +3203,9 @@ subroutine cal_cape( &
 !calculate CAPE given buoyancy
 !------------------------------------------------------
 !input
+#ifdef OFFLINECP
+    integer, intent(in) :: ncol, nlev, nlevp
+#endif
     real(r8), dimension(ncol, nlev), intent(in) :: dz  ! [m]
     real(r8), dimension(ncol, nlev), intent(in) :: buoy_mid  ! [ms-2]
     real(r8), dimension(ncol, nlevp), intent(in) :: normassflx_up  ! [ms-2]
@@ -3177,6 +3241,9 @@ end subroutine cal_cape
 ! ==============================================================================
 subroutine cal_tendtransport( &
 !input
+#ifdef OFFLINECP
+        ncol, nlev, nlevp, &
+#endif
         dz, kupbase, kuptop, &
         rho, dseint, qint, dse_up, q_up, &
         normassflx_up,  &
@@ -3185,6 +3252,9 @@ subroutine cal_tendtransport( &
 !in/out
         trig)
 !input
+#ifdef OFFLINECP
+    integer, intent(in) :: ncol, nlev, nlevp
+#endif
     real(r8), dimension(ncol, nlev), intent(in) :: dz       ! [m]
     integer, dimension(ncol), intent(in) :: kupbase ! [1]
     integer, dimension(ncol), intent(in) :: kuptop ! [1]

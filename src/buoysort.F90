@@ -9,18 +9,18 @@ module buoysort
 
     integer,parameter :: r8 = selected_real_kind(12)
 
-    real(r8), parameter :: criqc  = 0.7e-3_r8 
+    real(r8), parameter :: criqc  = 0.7e-3
     real(r8), parameter :: latvap = 2.501e6
     real(r8), parameter :: latice = 3.34e5
     real(r8), parameter :: latall = latvap+latice
 
-    real(r8), parameter :: mwh2o = 34._r8
-    real(r8), parameter :: mwdry = 28.966_R8 
+    real(r8), parameter :: mwh2o = 34.
+    real(r8), parameter :: mwdry = 28.966
     real(r8), parameter :: ep2 = mwh2o/mwdry
 
-    real(r8), parameter :: g = 9.8_r8
+    real(r8), parameter :: g = 9.8
 
-    real(r8), parameter :: p00   = 1.e5_r8
+    real(r8), parameter :: p00   = 1.e5
     real(r8), parameter :: rair   = 287.042311365
     real(r8), parameter :: cpair  = 1004.64
     real(r8), parameter :: rovcp=rair/cpair
@@ -189,7 +189,7 @@ subroutine cal_entdet(flagbspdf, xc, ent, det)
 
     if (flagbspdf == 1) then
         ent    = xc**2
-        det    = 1._r8 - 2._r8*xc + xc**2
+        det    = 1.0 - 2.0*xc + xc**2
     end if
 
     if (flagbspdf == 2) then
@@ -219,8 +219,8 @@ subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, 
 !    real(r8), intent(out) :: fer, fdr
     real(r8) :: fer, fdr
 
-    real(r8), parameter :: rbuoy = 1._r8
-    real(r8), parameter :: rkm = 14.0_r8
+    real(r8), parameter :: rbuoy = 1.0
+    real(r8), parameter :: rkm = 14.0
 
     real(r8) :: exne, exql, exqi, thlue, qtue
 
@@ -248,7 +248,7 @@ subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, 
     exne = (p/p00)**rovcp
 
     call conden(p,thle,qte,thj,qvj,qlj,qij,qse,id_check)
-    thv0j = thj * ( 1._r8 + tveps * qvj - qlj - qij )
+    thv0j = thj * ( 1.0 + tveps * qvj - qlj - qij )
     tj   = thj * exne
 !thle = thle + (latvap/cpair/exne)*exql + (latall/cpair/exne)*exqi
     qsat_arg = thle*exne
@@ -266,7 +266,7 @@ subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, 
            qtue  = qtue - exql - exqi
            thlue = thlue + (latvap/cpair/exne)*exql + (latall/cpair/exne)*exqi 
       endif
-    thvj = thj * ( 1._r8 + tveps * qvj - qlj - qij )
+    thvj = thj * ( 1.0 + tveps * qvj - qlj - qij )
     tj   = thj * exne
 !thlue = thlue + (latvap/cpair/exne)*exql + (latall/cpair/exne)*exqi
     qsat_arg = thlue*exne
@@ -278,13 +278,13 @@ subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, 
 !    write(*,"(5f20.10)") thlue, qtue, qs, excessu
 
 
-    if ( ( excessu .le. 0._r8 .and. excess0 .le. 0._r8 ) .or. ( excessu .ge. 0._r8 .and. excess0 .ge. 0._r8 ) ) then
-        xc = min(1._r8,max(0._r8,1._r8-2._r8*rbuoy*g*cridis/wue**2._r8*(1._r8-thvj/thv0j)))
+    if ( ( excessu .le. 0.0 .and. excess0 .le. 0.0 ) .or. ( excessu .ge. 0.0 .and. excess0 .ge. 0.0 ) ) then
+        xc = min(1.0,max(0.0,1.0-2.0*rbuoy*g*cridis/wue**2.0*(1.0-thvj/thv0j)))
               ! Below 3 lines are diagnostic output not influencing
               ! numerical calculations.
-        aquad = 0._r8
-        bquad = 0._r8
-        cquad = 0._r8
+        aquad = 0.0
+        bquad = 0.0
+        cquad = 0.0
     else
           ! -------------------------------------------------- !
           ! Case 2 : When either cumulus or env. is saturated. !
@@ -294,11 +294,11 @@ subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, 
         qtxsat  = qtue  + xsat * ( qte - qtue )
         call conden(p,thlxsat,qtxsat,thj,qvj,qlj,qij,qse,id_check)
         if( id_check .eq. 1 ) then
-            exit_conden = 1._r8
+            exit_conden = 1.0
             id_exit = .true.
             write(*,*) 'error'
         end if
-        thvxsat = thj * ( 1._r8 + tveps * qvj - qlj - qij )
+        thvxsat = thj * ( 1.0 + tveps * qvj - qlj - qij )
               ! -------------------------------------------------- !
               ! kk=1 : Cumulus Segment, kk=2 : Environment Segment !
               ! -------------------------------------------------- !
@@ -306,34 +306,34 @@ subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, 
 !            write(*,*) "kk=", kk
             if( kk .eq. 1 ) then
                 thv_x0 = thvj
-                thv_x1 = ( 1._r8 - 1._r8/xsat ) * thvj + ( 1._r8/xsat ) * thvxsat
+                thv_x1 = ( 1.0 - 1.0/xsat ) * thvj + ( 1.0/xsat ) * thvxsat
             else
                 thv_x1 = thv0j
-                thv_x0 = ( xsat / ( xsat - 1._r8 ) ) * thv0j + ( 1._r8/( 1._r8 - xsat ) ) * thvxsat
+                thv_x0 = ( xsat / ( xsat - 1.0 ) ) * thv0j + ( 1.0/( 1.0 - xsat ) ) * thvxsat
             endif
             aquad =  wue**2
-            bquad =  2._r8*rbuoy*g*cridis*(thv_x1 - thv_x0)/thv0j - 2._r8*wue**2
-            cquad =  2._r8*rbuoy*g*cridis*(thv_x0 -  thv0j)/thv0j +       wue**2
+            bquad =  2.0*rbuoy*g*cridis*(thv_x1 - thv_x0)/thv0j - 2.0*wue**2
+            cquad =  2.0*rbuoy*g*cridis*(thv_x0 -  thv0j)/thv0j +       wue**2
 
             !write(*,*)
             !write(*,"(5a20)") "a", "b", "c", "b2-4ab"
             !write(*,"(5f20.10)") aquad, bquad, cquad, bquad**2-4._r8*aquad*cquad
 
             if( kk .eq. 1 ) then
-                if( ( bquad**2-4._r8*aquad*cquad ) .ge. 0._r8 ) then
+                if( ( bquad**2-4.0*aquad*cquad ) .ge. 0.0 ) then
                     call roots(aquad,bquad,cquad,xs1,xs2,stat)
-                    x_cu = min(1._r8,max(0._r8,min(xsat,min(xs1,xs2))))
+                    x_cu = min(1.0,max(0.0,min(xsat,min(xs1,xs2))))
 !                    write(*,*) "solve x_cu", x_cu, xs1, xs2
                 else
                     x_cu = xsat
                 endif
             else
-                if( ( bquad**2-4._r8*aquad*cquad) .ge. 0._r8 ) then
+                if( ( bquad**2-4.0*aquad*cquad) .ge. 0.0 ) then
                     call roots(aquad,bquad,cquad,xs1,xs2,stat)
-                    x_en = min(1._r8,max(0._r8,max(xsat,min(xs1,xs2))))
+                    x_en = min(1.0,max(0.0,max(xsat,min(xs1,xs2))))
 !                    write(*,*) "solve x_en", x_en, xs1, xs2
                 else
-                    x_en = 1._r8
+                    x_en = 1.0
                 endif
             endif
 
@@ -352,9 +352,9 @@ subroutine cal_buoysort(flagbspdf, cridis, z, p, rho, thle, qte, thlue0, qtue0, 
 
     if (flagbspdf == 1) then
         ee2    = xc**2
-        ud2    = 1._r8 - 2._r8*xc + xc**2
+        ud2    = 1.0 - 2.0*xc + xc**2
 
-        rei = ( 0.5_r8 * rkm / z / g /rho )
+        rei = ( 0.5 * rkm / z / g /rho )
 
     !    if( xc .gt. 0.5_r8 ) rei = min(rei,0.9_r8*log(dp0(k)/g/dt/umf(km1) + 1._r8)/dpe/(2._r8*xc-1._r8))
         fer = rei * ee2
@@ -401,26 +401,30 @@ subroutine roots(a,b,c,r1,r2,status)
 
     status = 0
 
-    if( a .eq. 0._r8 ) then                            ! Form b*x + c = 0
-        if( b .eq. 0._r8 ) then                        ! Failure: c = 0
+    if( a .eq. 0.0 ) then                            ! Form b*x + c = 0
+        if( b .eq. 0.0 ) then                        ! Failure: c = 0
             status = 1
         else                                           ! b*x + c = 0
             r1 = -c/b
         endif
         r2 = r1
     else
-        if( b .eq. 0._r8 ) then                        ! Form a*x**2 + c = 0
-            if( a*c .gt. 0._r8 ) then                  ! Failure: x**2 = -c/a < 0
+        if( b .eq. 0.0 ) then                        ! Form a*x**2 + c = 0
+            if( a*c .gt. 0.0 ) then                  ! Failure: x**2 = -c/a < 0
                 status = 2
             else                                       ! x**2 = -c/a 
                 r1 = sqrt(-c/a)
             endif
             r2 = -r1
         else                                            ! Form a*x**2 + b*x + c = 0
-            if( (b**2 - 4._r8*a*c) .lt. 0._r8 ) then   ! Failure, no real roots
+            if( (b**2 - 4.0*a*c) .lt. 0.0 ) then   ! Failure, no real roots
                 status = 3
             else
-                q  = -0.5_r8*(b + sign(1.0_r8,b)*sqrt(b**2 - 4._r8*a*c))
+                if (b < 0) then
+                    q  = -0.5*(b - sqrt(b**2 - 4.0*a*c))
+                else
+                    q  = -0.5*(b + sqrt(b**2 - 4.0*a*c))
+                end if
                 r1 =  q/a
                 r2 =  c/q
             endif
@@ -461,8 +465,8 @@ subroutine conden(p,thl,qt,th,qv,ql,qi,rvls,id_check)
   !                we may use ( 268.15, 238.15 ) with 30K ramping instead of 20 K,
   !                in computing ice fraction below. 
   !                Note that 'cldfrc_fice' uses ( 243.15, 263.15 ) with 20K ramping for stratus.
-    nu   = max(min((268._r8 - tc)/20._r8,1.0_r8),0.0_r8)  ! Fraction of ice in the condensate. 
-    leff = (1._r8 - nu)*latvap + nu*latall                      ! This is an estimate that hopefully speeds convergence
+    nu   = max(min((268.0 - tc)/20.0,1.0),0.0)  ! Fraction of ice in the condensate. 
+    leff = (1.0 - nu)*latvap + nu*latall                      ! This is an estimate that hopefully speeds convergence
 
     ! --------------------------------------------------------------------------- !
     ! Below "temps" and "rvls" are just initial guesses for iteration loop below. !
@@ -476,9 +480,9 @@ subroutine conden(p,thl,qt,th,qv,ql,qi,rvls,id_check)
     if( qs .ge. qt ) then
         id_check = 0
         qv = qt
-        qc = 0._r8
-        ql = 0._r8
-        qi = 0._r8
+        qc = 0.0
+        ql = 0.0
+        qi = 0.0
         th = tc/exnf(p)
     else
         do iteration = 1, 10
@@ -486,12 +490,12 @@ subroutine conden(p,thl,qt,th,qv,ql,qi,rvls,id_check)
             call cal_qsat(temps, p, qs)
             rvls   = qs
         end do
-        qc = max(qt - qs,0._r8)
+        qc = max(qt - qs,0.0)
         qv = qt - qc
-        ql = qc*(1._r8 - nu)
+        ql = qc*(1.0 - nu)
         qi = nu*qc
         th = temps/exnf(p)
-        if( abs((temps-(leff/cpair)*qc)-tc) .ge. 1._r8 ) then
+        if( abs((temps-(leff/cpair)*qc)-tc) .ge. 1.0 ) then
             id_check = 1
         else
             id_check = 0

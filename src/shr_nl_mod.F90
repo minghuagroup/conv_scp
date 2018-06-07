@@ -8,8 +8,7 @@ private
 
 save
 
-public :: &
-     shr_nl_find_group_name ! seek through a file to find a specified namelist
+public ::  shr_nl_find_group_name ! seek through a file to find a specified namelist
 
 contains
 

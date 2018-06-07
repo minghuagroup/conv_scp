@@ -1,11 +1,17 @@
 module nnparameter
+    
+#if (! defined OFFLINECP)
     use netcdf
+#endif
 
     implicit none
     private
     save
 
-    public :: readnnparameter, nnmodel, negqtendadj, profileadj, cal_weight, nn_flag, nn_type, cal_weight_eigen
+    public :: readnamelist, nnmodel, negqtendadj, profileadj, cal_weight, nn_flag, nn_type, cal_weight_eigen
+#if (! defined OFFLINECP)
+    public :: readnnparameter
+#endif
 
     integer,parameter :: r8 = selected_real_kind(12)
     
@@ -52,14 +58,14 @@ module nnparameter
 contains
    
 !-----------------------------------------------------------------------------
-! read namelist and initialize the nn model 
+! read namelist 
 !-----------------------------------------------------------------------------
-subroutine readnnparameter(nlfile)
-#ifdef SCMDIAG
+subroutine readnamelist(nlfile)
+#if ((defined SCMDIAG) | (defined OFFLINECP))
     use shr_nl_mod,  only: shr_nl_find_group_name
 #endif
     
-#if (! defined SCMDIAG)    
+#if ((! defined SCMDIAG) & (! defined OFFLINECP))
     use namelist_utils,  only: find_group_name
     use spmd_utils,      only: masterproc
     use abortutils,      only: endrun
@@ -70,7 +76,7 @@ subroutine readnnparameter(nlfile)
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
-   integer :: fid, dimids(nf90_max_var_dims), levid, ilayer
+   integer :: fid, levid, ilayer
    integer :: xoffsetid, xfactorid, yoffsetid, yfactorid
    integer :: wid_sea, wid_land
    integer :: bid_sea, bid_land
@@ -79,7 +85,7 @@ subroutine readnnparameter(nlfile)
 
    namelist /nn_nl/ nn_flag, nn_type, nn_fname, nn_nlayer, nn_ptop, nn_pbot
 
-#if (! defined SCMDIAG)    
+#if ((! defined SCMDIAG) & (! defined OFFLINECP)) 
    if (masterproc) then
        unitn = getunit()
       open( unitn, file=trim(nlfile), status='old' )
@@ -95,7 +101,7 @@ subroutine readnnparameter(nlfile)
 #endif
 
 
-#ifdef SCMDIAG
+#if ((defined SCMDIAG) | (defined OFFLINECP))
       open( 10, file=trim(nlfile), status='old' )
       call shr_nl_find_group_name(10, 'nn_nl', status=ierr)
       if (ierr == 0) then
@@ -107,10 +113,25 @@ subroutine readnnparameter(nlfile)
       close(10)
 #endif
    
-#if (! defined SCMDIAG)    
+#if ((! defined SCMDIAG) & (! defined OFFLINECP))  
     end if
 #endif
 
+end subroutine readnamelist
+
+
+#if (! defined OFFLINECP)
+!-----------------------------------------------------------------------------
+! initialize the nn model 
+!-----------------------------------------------------------------------------
+subroutine readnnparameter()
+implicit none
+   ! Local variables
+   integer :: fid, dimids(nf90_max_var_dims), levid, ilayer
+   integer :: xoffsetid, xfactorid, yoffsetid, yfactorid
+   integer :: wid_sea, wid_land
+   integer :: bid_sea, bid_land
+   integer :: unitn, ierr, i, j, k
 
 #ifdef SPMD
    ! Broadcast namelist variables
@@ -266,6 +287,8 @@ subroutine readnnparameter(nlfile)
 #endif
 
 end subroutine readnnparameter
+
+#endif
 
 !-----------------------------------------------------------------------------
 ! Neural network model for convection parameterization
@@ -764,6 +787,7 @@ subroutine cal_nnforward(landfrac, invar, outvar)
 
 end subroutine cal_nnforward
 
+#if (! defined OFFLINECP)
 !-----------------------------------------------------------------------------
 ! netcdf file check
 !-----------------------------------------------------------------------------
@@ -775,7 +799,7 @@ subroutine netcdf_check( status )
         stop "Stopped"
     end if
 end subroutine netcdf_check
-
+#endif
 
 end module nnparameter
 

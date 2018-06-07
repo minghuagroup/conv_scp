@@ -137,7 +137,7 @@ subroutine convect_deep_init(pref_edge)
 
 !------------------------------------
 ! Haiyang Yu
-    use nnparameter, only: readnnparameter
+    use nnparameter, only: readnnparameter, readnamelist
 !-------------------------------------
 
   implicit none
@@ -146,7 +146,8 @@ subroutine convect_deep_init(pref_edge)
   integer k
 
   ! Haiyang Yu
-    call readnnparameter('atm_in')
+    call readnamelist('atm_in')
+    call readnnparameter()
 
   select case ( deep_scheme )
   case('off') !     ==> no deep convection
