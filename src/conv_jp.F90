@@ -73,6 +73,7 @@ module conv_jp
     real(r8) :: ecp_basemass_enhance = unset_r8
     real(r8) :: ecp_org_enhance = unset_r8
     real(r8) :: ecp_org_shape = unset_r8
+    integer  :: ecp_flagorgent = unset_int
     real(r8) :: ecp_evap_enhance = unset_r8
     real(r8) :: ecp_evap_shape = unset_r8
     real(r8) :: ecp_trig_eps0 = unset_r8
@@ -126,7 +127,7 @@ module conv_jp
     integer,  parameter :: ischeme = 2          ! 1: CS2010;  2: MZhang Group
     integer,  parameter :: flagbspdf = 2        ! 1: uniform distribution;  2: new pdf
     integer,  parameter :: cldhiteration = 2    ! iteration for cloud height
-    integer,  parameter :: flagorgent = 7       ! 1: using beta0 and minMSE as the division between entr and detr
+    integer :: flagorgent = unset_int       ! 1: using beta0 and minMSE as the division between entr and detr
                                                 ! 2: new organized entr and detr, and use half of H as division
                                                 ! 3,4: only organized entr, no orgnized detr
                                                 ! 5: when B<=0, use detrain
@@ -305,7 +306,7 @@ subroutine ecp_readnl(nlfile)
 
    namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, &
        ecp_turb_enhance, ecp_basemass_enhance, ecp_fixcldsr, &
-       ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, ecp_org_enhance, ecp_org_shape, &
+       ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, ecp_org_enhance, ecp_org_shape, ecp_flagorgent, &
        ecp_w_up_init_sh_beg, ecp_w_up_init_sh_end, ecp_w_up_init_dp_beg, ecp_w_up_init_dp_end, &
        ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac_sh, ecp_dn_frac_dp, &
        ecp_pmf_alpha_sh, ecp_pmf_tau_sh, ecp_pmf_alpha_dp, ecp_pmf_tau_dp, ecp_capelmt_sh, ecp_capelmt_dp, &
@@ -348,6 +349,7 @@ subroutine ecp_readnl(nlfile)
         basemass_enhance = ecp_basemass_enhance
         org_enhance = ecp_org_enhance
         org_shape = ecp_org_shape
+        flagorgent = ecp_flagorgent
         fixcldsr  = ecp_fixcldsr
         ratio_ent_rad = ecp_ratio_ent_rad
         orgent_a      = ecp_orgent_a
@@ -390,6 +392,7 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(basemass_enhance,    1, mpir8,  0, mpicom)
    call mpibcast(org_enhance,    1, mpir8,  0, mpicom)
    call mpibcast(org_shape,    1, mpir8,  0, mpicom)
+   call mpibcast(flagorgent,    1, mpiint,  0, mpicom)
    call mpibcast(fixcldsr,   1, mpir8,  0, mpicom)
    call mpibcast(ratio_ent_rad,  1, mpir8,  0, mpicom)
    call mpibcast(orgent_a,  1, mpir8,  0, mpicom)
@@ -427,6 +430,7 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "basemass_enhance: ", basemass_enhance
     write(*, *) "org_enhance: ", org_enhance
     write(*, *) "org_shape: ", org_shape
+    write(*, *) "flagorgent: ", flagorgent
     write(*, *) "fixcldsr: ", fixcldsr
     write(*, *) "ratio_ent_rad: ", ratio_ent_rad
     write(*, *) "orgent_a: ", orgent_a
@@ -448,7 +452,7 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "capelmt_sh: ", capelmt_sh
     write(*, *) "capelmt_dp: ", capelmt_dp
     write(*, *) "tpertglob: ", tpertglob
-    write(*, *) "qpertglob: ", tpertglob
+    write(*, *) "qpertglob: ", qpertglob
     write(*, *) "facdlf: ", facdlf
     write(*, *) "evap_enhance: ", evap_enhance
     write(*, *) "evap_shape: ", evap_shape
@@ -553,7 +557,7 @@ subroutine conv_jp_tend( &
        ! T and Q state after the large-scale forcing is applied, current state
     real(r8), dimension(inncol, nlev), intent(in) :: bfls_t, bfls_q ! [K] ; [kg/kg]
        ! T and Q state before the large-scale forcing is applied
-    real(r8), dimension(inncol, nlev), intent(in) :: omega ! [m/s]
+    real(r8), dimension(inncol, nlev), intent(in) :: omega ! [Pa/s]
     real(r8), dimension(inncol), intent(in) :: pblh  ! [m/s]
     real(r8), dimension(inncol), intent(in) :: tpert  ! [K]
     real(r8), dimension(inncol), intent(in) :: nn_prec  ! [m/s] NNprec
@@ -729,9 +733,9 @@ subroutine conv_jp_tend( &
     real(r8),dimension(inncol, nlev) :: w         ! [m/s] environment vertical velocity
     real(r8),dimension(inncol) :: mconv           ! [1] moisture convergence
     real(r8),dimension(inncol) :: conv            ! [1] wind convergence
-    real(r8),dimension(inncol, nlev) :: dilucape  ! [1] CAPE cloud work function
+    real(r8),dimension(inncol, nlev), intent(out) :: dilucape  ! [1] CAPE cloud work function
     real(r8),dimension(inncol, nlev) :: cwf       ! [1] CAPE cloud work function
-    real(r8),dimension(inncol) :: bfls_dilucape   ! [1] CAPE cloud work function before LS forcing
+    real(r8),dimension(inncol), intent(out) :: bfls_dilucape   ! [1] CAPE cloud work function before LS forcing
     real(r8),dimension(inncol) :: dilucape_closure
 
     real(r8),dimension(inncol) :: capeclm
@@ -1376,7 +1380,7 @@ subroutine conv_jp_tend( &
                 all_det_org(i,:,j) = det_org(i,:) 
                 all_ent_turb(i,:,j) = ent_turb(i,:)
                 all_det_turb(i,:,j) = det_turb(i,:)
-                all_massflx(i,:,j) = massflx(i,:)
+                all_massflx(i,:,j) = normassflx_up_tmp(i,:)
                 all_mse_up(i,:,j) = mse_up(i,:)
                 all_t_up(i,:,j) = t_up(i,:)
                 all_q_up(i,:,j) = q_up(i,:)
@@ -2216,47 +2220,46 @@ subroutine cal_mse_up( &
                         if (flag_plume == 1) then
                             ! shallow
                             tmp_crt = rhoint(i,k)*buoy(i,k) - rhoint(i,k+1)*buoy(i,k+1)
-                            !tmp_crt = buoy_mid(i,k)
-                            if ( tmp_crt < 0.0 .or. pint(i, kupbase(i)) - p(i,k) >= 20000.0 ) then
-                            !if ( tmp_crt < 0.0 ) then
-                                ent_org(i,k) = 0.0
-                                !det_org(i,k) = tmp * ((w_up_init(i)/2.0)) &
-                                !    * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
-                                det_org(i,k) = tmp * 0.25 * exp(-(p(i,k) - 20000.0) / 40000.0)
-                            else
-                                det_org(i,k) = 0.0
-                                !ent_org(i,k) = tmp * ((w_up_init(i)/2.0)) &
-                                !    * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
-                                ent_org(i,k) = tmp * 0.5 * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
-                            end if
-                            !org_enhance = 0.5 * (w_up_init(i)/2.0) ** (2.0)
-                            !org_shape = 2.0
+                            !if ( tmp_crt < 0.0 .or. pint(i, kupbase(i)) - p(i,k) >= 20000.0 ) then
+                            !!if ( tmp_crt < 0.0 ) then
+                            !    ent_org(i,k) = 0.0
+                            !    !det_org(i,k) = tmp * ((w_up_init(i)/2.0)) &
+                            !    !    * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                            !    det_org(i,k) = tmp * 0.25 * exp(-(p(i,k) - 20000.0) / 40000.0)
+                            !else
+                            !    det_org(i,k) = 0.0
+                            !    !ent_org(i,k) = tmp * ((w_up_init(i)/2.0)) &
+                            !    !    * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                            !    ent_org(i,k) = tmp * 0.5 * exp(-(pint(i,kupbase(i)) - p(i,k)) / 20000.0)
+                            !end if
+                            !!org_enhance = 0.5 * (w_up_init(i)/2.0) ** (2.0)
+                            !!org_shape = 2.0
                         else
                             ! deep 
                             tmp_crt = buoy_mid(i,k)
-                            if (tmp_crt < 0.0) then
-                                ent_org(i,k) = 0.0
-                                det_org(i,k) = tmp * 0.5 * exp(-(p(i,k) - 20000.0)/20000.0)
-                            else
-                                det_org(i,k) = 0.0
-                                ent_org(i,k) = tmp * 0.25 * exp(-(pint(i,kupbase(i)) - p(i,k) )/40000.0)
-                            end if
+                            !if (tmp_crt < 0.0) then
+                            !    ent_org(i,k) = 0.0
+                            !    det_org(i,k) = tmp * 0.5 * exp(-(p(i,k) - 20000.0)/20000.0)
+                            !else
+                            !    det_org(i,k) = 0.0
+                            !    ent_org(i,k) = tmp * 0.25 * exp(-(pint(i,kupbase(i)) - p(i,k) )/40000.0)
+                            !end if
 
                             !org_enhance = 0.25
                             !org_shape = -2
                         end if
 
-                        !if ( tmp_crt < 0.0 ) then
-                        !    ent_org(i,k) = 0. !0.0004
-                        !    det_org(i,k) = tmp * org_enhance &
-                        !        * (max(0.0, pint(i,kupbase(i))-p(i,k)) &
-                        !        /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
-                        !else
-                        !    ent_org(i,k) = tmp * org_enhance & 
-                        !        * (max(0.0, p(i,k)-p(i,ktop_tmp)) &
-                        !        /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
-                        !    det_org(i,k) = 0.0                        
-                        !end if
+                        if ( tmp_crt < 0.0 ) then
+                            ent_org(i,k) = 0. !0.0004
+                            det_org(i,k) = tmp * org_enhance &
+                                * (max(0.0, pint(i,kupbase(i))-p(i,k)) &
+                                /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                        else
+                            ent_org(i,k) = tmp * org_enhance & 
+                                * (max(0.0, p(i,k)-p(i,ktop_tmp)) &
+                                /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) + 10.0))**org_shape
+                            det_org(i,k) = 0.0                        
+                        end if
                     end if
 
                     if (flagorgent == 2) then
