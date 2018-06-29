@@ -67,6 +67,7 @@ module conv_jp
 !--------------------------------------------------------------
 ! tunable variables from namelist
 !--------------------------------------------------------------
+    integer :: ecp_ctopflag = unset_int
     integer :: ecp_nplume_sh = unset_int
     integer :: ecp_nplume_dp = unset_int
     real(r8) :: ecp_turb_enhance = unset_r8
@@ -76,6 +77,7 @@ module conv_jp
     integer  :: ecp_flagorgent = unset_int
     real(r8) :: ecp_evap_enhance = unset_r8
     real(r8) :: ecp_evap_shape = unset_r8
+    real(r8) :: ecp_qnegtop = unset_r8
     real(r8) :: ecp_trig_eps0 = unset_r8
     real(r8) :: ecp_trig_c2 = unset_r8
     real(r8) :: ecp_fixcldsr = unset_r8
@@ -86,6 +88,8 @@ module conv_jp
     real(r8) :: ecp_w_up_init_sh_end = unset_r8
     real(r8) :: ecp_w_up_init_dp_beg = unset_r8
     real(r8) :: ecp_w_up_init_dp_end = unset_r8
+    real(r8) :: ecp_w_init_shape_sh = unset_r8
+    real(r8) :: ecp_w_init_shape_dp = unset_r8
     real(r8) :: ecp_rain_z0 = unset_r8
     real(r8) :: ecp_rain_zp = unset_r8
     real(r8) :: ecp_dn_be = unset_r8
@@ -126,6 +130,7 @@ module conv_jp
 !--------------------------------------------------------------
     integer,  parameter :: ischeme = 2          ! 1: CS2010;  2: MZhang Group
     integer,  parameter :: flagbspdf = 2        ! 1: uniform distribution;  2: new pdf
+    integer,  parameter :: flagqcheck = 2       ! 1: Xin's method;  2: new method
     integer,  parameter :: cldhiteration = 2    ! iteration for cloud height
     integer :: flagorgent = unset_int       ! 1: using beta0 and minMSE as the division between entr and detr
                                                 ! 2: new organized entr and detr, and use half of H as division
@@ -133,11 +138,13 @@ module conv_jp
                                                 ! 5: when B<=0, use detrain
                                                 ! 6: same as 5, but add a profile shape
                                                 ! 7: for shallow plume, when dB/dz<0, use detrain
+                                                ! 8: when dB/dz<0, use detrain
     integer,  parameter :: flagtotent = 3       ! 1: organized only; 2: turbulence only; 3: sum of org and turb
     integer,  parameter :: flagturbent = 1      ! 1: using low interface only; 
                                                 ! 2: use low interface at the first iteration, then averaged
     integer,  parameter :: flagbuoysort = 2     ! 1: old codes from CAM UW
                                                 ! 2: new codes 
+    real(r8) :: qnegtop = unset_r8
     real(r8) :: trig_eps0  = unset_r8   ! trigger parameters: w -> R (default: 0.003)
     real(r8) :: trig_c2    = unset_r8   ! trigger parameters: w -> R: 23.5 ~ 240m; default: 117.5 ~ 1km
     real(r8) :: turb_enhance = unset_r8   ! enhance turbulence entrainment and detrainment (1.0)
@@ -171,7 +178,7 @@ module conv_jp
     integer, parameter :: flagmeaniter = 0      ! 0: no mean;  
                                                 ! 1: mean of entr/detr of the last iteration
     integer, parameter :: maxiteration = 2      ! maximum iteration number for mseQi
-    integer, parameter :: ctopflag = 2          ! 1: B<0; 2: w<0
+    integer :: ctopflag = unset_int          ! 1: B<0; 2: w<0
     integer, parameter :: buoyflag = 2          ! 1: B=Tv'/Tv; 2: B=Tv'/Tv - qliq - qice
     integer, parameter :: mse2tsatflag = 1      ! 1: Taylor; 2: bi-section
     integer, parameter :: mseqiflag = 1         ! 1: use Qi; 0: Qi=0
@@ -182,7 +189,7 @@ module conv_jp
 
     real(r8), parameter :: max_ent_rate = 4.e-3_r8      ! maximum entrainment rate (1/m)
     real(r8), parameter :: max_det_rate = 4.e-3_r8      ! maximum detrainment rate (1/m)
-    real(r8), parameter :: zuplaunchtop = 3000.0      ! default: 3000; max cloud parcel launch height [m]
+    real(r8), parameter :: zuplaunchtop = 6000.0      ! default: 3000; max cloud parcel launch height [m]
     real(r8), parameter :: zuplaunchlow = 0.0         ! default: 0; min cloud parcel launch height [m]
     
     integer :: nplume_sh = unset_int               ! shallow plumes
@@ -198,7 +205,8 @@ module conv_jp
     real(r8), parameter :: greg_ce_sh_end    = 0.8_r8
     real(r8) :: w_up_init_sh_beg  = unset_r8 ! 0.1
     real(r8) :: w_up_init_sh_end  = unset_r8 ! 1.2
-
+    real(r8) :: w_init_shape_sh  = unset_r8
+    real(r8) :: w_init_shape_dp  = unset_r8
 !--------------------------------------------------------------
 ! deep plumes parameters
 !--------------------------------------------------------------
@@ -270,7 +278,7 @@ module conv_jp
     integer :: nplume
     integer :: nplume_tot, ind_offset
     real(r8) :: w_up_init_beg 
-    real(r8) :: w_up_init_end 
+    real(r8) :: w_up_init_end, w_init_shape
     real(r8) :: greg_ent_a_beg, greg_ent_a_end, greg_ent_a_delta
     real(r8) :: greg_ce_beg, greg_ce_end, greg_ce_delta
     real(r8) :: greg_z0, greg_ent_a, greg_ce
@@ -304,10 +312,11 @@ subroutine ecp_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'ecp_readnl'
 
-   namelist /ecp_nl/ ecp_nplume_sh, ecp_nplume_dp, ecp_trig_eps0, ecp_trig_c2, &
+   namelist /ecp_nl/ ecp_ctopflag, ecp_nplume_sh, ecp_nplume_dp, ecp_qnegtop, ecp_trig_eps0, ecp_trig_c2, &
        ecp_turb_enhance, ecp_basemass_enhance, ecp_fixcldsr, &
        ecp_ratio_ent_rad, ecp_orgent_a, ecp_orgent_beta0, ecp_org_enhance, ecp_org_shape, ecp_flagorgent, &
        ecp_w_up_init_sh_beg, ecp_w_up_init_sh_end, ecp_w_up_init_dp_beg, ecp_w_up_init_dp_end, &
+       ecp_w_init_shape_sh, ecp_w_init_shape_dp, &
        ecp_rain_z0, ecp_rain_zp, ecp_dn_be, ecp_dn_ae, ecp_dn_vt, ecp_dn_frac_sh, ecp_dn_frac_dp, &
        ecp_pmf_alpha_sh, ecp_pmf_tau_sh, ecp_pmf_alpha_dp, ecp_pmf_tau_dp, ecp_capelmt_sh, ecp_capelmt_dp, &
        ecp_tpertglob, ecp_qpertglob, ecp_meanorsum, ecp_facdlf, ecp_evap_enhance, ecp_evap_shape
@@ -341,8 +350,10 @@ subroutine ecp_readnl(nlfile)
 #endif
 
     ! set local variables
+        ctopflag  = ecp_ctopflag
         nplume_sh = ecp_nplume_sh
         nplume_dp = ecp_nplume_dp
+        qnegtop   = ecp_qnegtop
         trig_eps0 = ecp_trig_eps0
         trig_c2   = ecp_trig_c2
         turb_enhance = ecp_turb_enhance
@@ -358,6 +369,9 @@ subroutine ecp_readnl(nlfile)
         w_up_init_sh_end = ecp_w_up_init_sh_end
         w_up_init_dp_beg = ecp_w_up_init_dp_beg
         w_up_init_dp_end = ecp_w_up_init_dp_end
+        w_init_shape_sh = ecp_w_init_shape_sh
+        w_init_shape_dp = ecp_w_init_shape_dp
+
         rain_z0 = ecp_rain_z0
         rain_zp = ecp_rain_zp
         dn_be   = ecp_dn_be
@@ -383,9 +397,11 @@ subroutine ecp_readnl(nlfile)
 
 #ifdef SPMD
    ! Broadcast namelist variables
+   call mpibcast(ctopflag,  1, mpiint,  0, mpicom)
    call mpibcast(nplume_sh,  1, mpiint,  0, mpicom)
    call mpibcast(nplume_dp,  1, mpiint,  0, mpicom)
    call mpibcast(meanorsum,  1, mpiint,  0, mpicom)
+   call mpibcast(qnegtop,  1, mpir8,  0, mpicom)
    call mpibcast(trig_eps0,  1, mpir8,  0, mpicom)
    call mpibcast(trig_c2,    1, mpir8,  0, mpicom)
    call mpibcast(turb_enhance,    1, mpir8,  0, mpicom)
@@ -401,6 +417,8 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(w_up_init_sh_end,  1, mpir8,  0, mpicom)
    call mpibcast(w_up_init_dp_beg,  1, mpir8,  0, mpicom)
    call mpibcast(w_up_init_dp_end,  1, mpir8,  0, mpicom)
+   call mpibcast(w_init_shape_sh,  1, mpir8,  0, mpicom)
+   call mpibcast(w_init_shape_dp,  1, mpir8,  0, mpicom)
    call mpibcast(rain_z0,  1, mpir8,  0, mpicom)
    call mpibcast(rain_zp,  1, mpir8,  0, mpicom)
    call mpibcast(dn_be,  1, mpir8,  0, mpicom)
@@ -421,9 +439,11 @@ subroutine ecp_readnl(nlfile)
    call mpibcast(evap_shape,  1, mpir8,  0, mpicom)
 #endif
 
+    write(*, *) "ctopflag: ", ctopflag
     write(*, *) "nplume_sh: ", nplume_sh
     write(*, *) "nplume_dp: ", nplume_dp
     write(*, *) "meanorsum: ", meanorsum
+    write(*, *) "qnegtop: ", qnegtop
     write(*, *) "trig_eps0: ", trig_eps0
     write(*, *) "trig_c2: ", trig_c2
     write(*, *) "turb_enhance: ", turb_enhance
@@ -439,6 +459,8 @@ subroutine ecp_readnl(nlfile)
     write(*, *) "w_up_init_sh_end: ", w_up_init_sh_end
     write(*, *) "w_up_init_dp_beg: ", w_up_init_dp_beg
     write(*, *) "w_up_init_dp_end: ", w_up_init_dp_end
+    write(*, *) "w_init_shape_sh: ", w_init_shape_sh
+    write(*, *) "w_init_shape_dp: ", w_init_shape_dp
     write(*, *) "rain_z0: ", rain_z0
     write(*, *) "rain_zp: ", rain_zp
     write(*, *) "dn_be: ", dn_be
@@ -756,7 +778,7 @@ subroutine conv_jp_tend( &
 ! These variables are used to prevent negative water vapor
     real(r8), dimension(inncol, nlev) :: qcheck ! [1]  used to check negative q
     real(r8), dimension(inncol) :: qcheckout    ! [1]  used to check negative q
-    real(r8) :: qcheckf, minqcheckf             ! [1]
+    real(r8) :: qguess, qcheckf, minqcheckf             ! [1]
 
     real(r8), dimension(inncol) :: tmp2d    ! [1]  used to check negative q
 
@@ -822,6 +844,7 @@ subroutine conv_jp_tend( &
         all_massflxbase, all_prec, all_surfprec
 #endif
     ! internal variables
+    real(r8), dimension(inncol) :: tpert_plume, qpert_plume
     real(r8), dimension(inncol, 30) :: weights
     real(r8), dimension(inncol) :: totalweight
     integer, dimension(inncol) :: validplume
@@ -934,8 +957,6 @@ subroutine conv_jp_tend( &
     write(*,*) "[conv_jp_tend]"
 #endif
 
-    trigdp = 1
-    trigsh = 1 
 
 !------------------------------------------------------
 !Calculate basic properties
@@ -946,16 +967,18 @@ subroutine conv_jp_tend( &
 !------------------------------------------------------
 
     do i=1, inncol
-        zint(i,nlevp) = max(0., zsrf(i) )
+        if (p(i,nlev) > psrf(i)) then
+            zint(i,nlevp) = 0.0
+            pint(i,nlevp) = p(i,nlev) + dp(i,nlev)/2.0
+        else
+            zint(i,nlevp) = max(0., zsrf(i) )
+            pint(i,nlevp) = psrf(i)
+        end if
     end do
 
 !estimate z at the interface from z and dz
     do k=nlev,1,-1
         zint(:,k) = zint(:,k+1)+dz(:,k)
-    end do
-
-    pint(:,nlevp) = psrf(:)
-    do k=nlev,1,-1
         pint(:,k) = pint(:,k+1)-dp(:,k)
     end do
 
@@ -1010,17 +1033,15 @@ subroutine conv_jp_tend( &
 
     nplume_tot = nplume_sh + nplume_dp
 
-! --- the big loop for dp and sh convection
+    ! --- the big loop for dp and sh convection
     do iconv = 1, 2
-
-        ! trigdp = 1
-
         if ( iconv == 1 ) then
             ! shallow plumes
             greg_z0 = greg_z0_sh
 
             w_up_init_beg = w_up_init_sh_beg
             w_up_init_end = w_up_init_sh_end
+            w_init_shape = w_init_shape_sh
 
             greg_ent_a_beg = greg_ent_a_sh_beg
             greg_ent_a_end = greg_ent_a_sh_end
@@ -1040,6 +1061,7 @@ subroutine conv_jp_tend( &
 
             w_up_init_beg = w_up_init_dp_beg
             w_up_init_end = w_up_init_dp_end
+            w_init_shape = w_init_shape_dp
 
             greg_ent_a_beg = greg_ent_a_dp_beg
             greg_ent_a_end = greg_ent_a_dp_end
@@ -1068,81 +1090,102 @@ subroutine conv_jp_tend( &
             cycle
         end if
 
-! do some variable cleaning here
-! variables w_up, buoy
-        mse_up = 0._r8
-        dse_up = 0._r8
-        t_up = 0._r8
-        q_up = 0._r8
-        ent_rate_dp_up = 0._r8
-        det_rate_dp_up = 0._r8
-        ent_rate_sh_up = 0._r8
-        det_rate_sh_up = 0._r8
-        normassflx_up = 0._r8
-    
-        ent_org = 0.0_r8
-        det_org = 0.0_r8
-        ent_turb = 0.0_r8
-        det_turb = 0.0_r8
-        cldrad = 0.0_r8
-
-        mse_dn = 0._r8
-        dse_dn = 0._r8
-        t_dn = 0._r8
-        q_dn = 0._r8
-        normassflx_dn = 0._r8
-
-        if ( iconv == 1 ) then   ! shallow plumes
-            call cal_launchtocldbase( &
-#ifdef OFFLINECP
-                ncol, nlev, nlevp, &
-#endif
-                2, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
-                mse, mseint, msesat, msesatint, landfrac, lhflx,  &
-                kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
-            kupbase = kuplaunch
-
-        else if ( iconv == 2 ) then    ! deep plumes
-            call cal_launchtocldbase( &
-#ifdef OFFLINECP
-                ncol, nlev, nlevp, &
-#endif
-                1, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
-                mse, mseint, msesat, msesatint, landfrac, lhflx,  &
-                kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
-            kupbase = kuplcl
-
-        end if
-
-        dse_up = cpair*t_up+gravit*zint
-
-        jcbot = kupbase
-        do i = 1, inncol
-            if (jcbot(i) > nlev) then
-                jcbot(i) = nlev
-            end if
-        end do
-
-        jctop = kupbase
-
-
+        ! small loop for each regime: shallow or deep
         do j = ind_offset+1, ind_offset+nplume
+    
+            trigdp(:) = 1
+            trigsh(:) = 1 
 
             greg_ent_a = greg_ent_a_beg + (j-ind_offset-1)*greg_ent_a_delta
             greg_ce    = greg_ce_beg + (j-ind_offset-1)*greg_ce_delta
 
             w_up_init = w_up_init_beg + (j-ind_offset-1) * dw_up_init
+            
+            !w_up_init = (((w_up_init - w_up_init_beg)/(w_up_init_end - w_up_init_beg))**w_init_shape) * &
+            !    (w_up_init_end - w_up_init_beg) + w_up_init_beg
+
+            w_up_init = (exp((w_up_init - w_up_init_beg)/ &
+                (w_up_init_end - w_up_init_beg)*w_init_shape)-1) / (exp(w_init_shape) - 1) * &
+                (w_up_init_end - w_up_init_beg) + w_up_init_beg
+
+            !tpert_plume(:) = w_up_init/w_up_init_end * tpertglob
+            !qpert_plume(:) = w_up_init/w_up_init_end * qpertglob
+            !tpert_plume(:) = (1.0-w_up_init/w_up_init_end) * tpertglob
+            !qpert_plume(:) = (1.0-w_up_init/w_up_init_end) * qpertglob
+            tpert_plume(:) = tpertglob
+            qpert_plume(:) = qpertglob
 
 #ifdef SCMDIAG
             write(*, *) "---------------------------------------------------"
             write(*,'(a10,i5,a10,f10.5)') "plume:", j, ", w = ",w_up_init
 #endif
 
+            ! do some variable cleaning here
+            ! variables w_up, buoy
+            mse_up = 0._r8
+            dse_up = 0._r8
+            t_up = 0._r8
+            q_up = 0._r8
+            ent_rate_dp_up = 0._r8
+            det_rate_dp_up = 0._r8
+            ent_rate_sh_up = 0._r8
+            det_rate_sh_up = 0._r8
+            normassflx_up = 0._r8
+        
+            ent_org = 0.0_r8
+            det_org = 0.0_r8
+            ent_turb = 0.0_r8
+            det_turb = 0.0_r8
+            cldrad = 0.0_r8
+
+            mse_dn = 0._r8
+            dse_dn = 0._r8
+            t_dn = 0._r8
+            q_dn = 0._r8
+            normassflx_dn = 0._r8
+
+            if ( iconv == 1 ) then   ! shallow plumes
+                call cal_launchtocldbase( &
+#ifdef OFFLINECP
+                    ncol, nlev, nlevp, &
+#endif
+                    2, zsrf, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+                    mse, mseint, msesat, msesatint, landfrac, lhflx, tpert_plume, qpert_plume, &
+                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
+                kupbase = kuplaunch
+
+            else if ( iconv == 2 ) then    ! deep plumes
+                call cal_launchtocldbase( &
+#ifdef OFFLINECP
+                    ncol, nlev, nlevp, &
+#endif
+                    1, zsrf, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+                    mse, mseint, msesat, msesatint, landfrac, lhflx, tpert_plume, qpert_plume, &
+                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
+                kupbase = kuplcl
+
+            end if
+
+#ifdef OFFLINECP
+    write(*, *) 'plume = ', j, ', lanuch process trig = ', trigdp, ', w = ', w_up_init
+#endif
+            dse_up = cpair*t_up+gravit*zint
+
+            jcbot = kupbase
+            do i = 1, inncol
+                if (jcbot(i) > nlev) then
+                    jcbot(i) = nlev
+                end if
+            end do
+
+            jctop = kupbase
+
+
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
-                mse_up(i, 1:kupbase(i)-1) = mseint(i, 1:kupbase(i)-1)
-                t_up(i, 1:kupbase(i)-1) = tint(i, 1:kupbase(i)-1)
-                q_up(i, 1:kupbase(i)-1) = qint(i, 1:kupbase(i)-1)
+                !mse_up(i, 1:kupbase(i)-1) = mseint(i, 1:kupbase(i)-1)
+                !t_up(i, 1:kupbase(i)-1) = tint(i, 1:kupbase(i)-1)
+                !q_up(i, 1:kupbase(i)-1) = qint(i, 1:kupbase(i)-1)
             end do
 
             normassflx_up_tmp = normassflx_up
@@ -1180,6 +1223,9 @@ subroutine conv_jp_tend( &
                     trigdp)
              end if
 
+#ifdef OFFLINECP
+    write(*, *) 'plume = ', j, ', updraft trig = ', trigdp
+#endif
             do i=1, inncol
                 if ( trigdp(i)<1 ) cycle
                 if ( kuptop(i) < jctop(i) ) then
@@ -1196,9 +1242,12 @@ subroutine conv_jp_tend( &
 #ifdef OFFLINECP
                 ncol, nlev, nlevp, &
 #endif
-                ent_opt, kuptop, trigdp, dz, p, rho, t, twet, q, &
+                ent_opt, kuptop, trigdp, zsrf, z, dz, p, rho, t, twet, q, &
                 precrate, accuprec, surfprec, evaprate )
 
+#ifdef OFFLINECP
+    write(*, *) 'plume = ', j, ', evap trig = ', trigdp
+#endif
             stendevap = -latvap*evaprate
             qtendevap =  evaprate
 
@@ -1211,6 +1260,9 @@ subroutine conv_jp_tend( &
                 qint, dseint, accuprec, evaprate, buoy_mid, dn_frac, &
                 dse_dn, q_dn, normassflx_dn_tmp)
 
+#ifdef OFFLINECP
+    write(*, *) 'plume = ', j, ', downdraft trig = ', trigdp
+#endif
             mse_dn = dse_dn + lvint*q_dn
 
 ! dilute CAPE
@@ -1222,6 +1274,9 @@ subroutine conv_jp_tend( &
                 dilucape(:,j), cwf(:,j), &
                 trigdp)
 
+#ifdef OFFLINECP
+    write(*, *) 'plume = ', j, ', calcuate cape trig = ', trigdp
+#endif
 !updraft transport tendency
             call cal_tendtransport( &
 #ifdef OFFLINECP
@@ -1233,6 +1288,9 @@ subroutine conv_jp_tend( &
                 stendtran_up, qtendtran_up, &
                 trigdp)
 
+#ifdef OFFLINECP
+    write(*, *) 'plume = ', j, ', trans_up trig = ', trigdp
+#endif
 !downdraft transport tendency
             call cal_tendtransport( &
 #ifdef OFFLINECP
@@ -1243,6 +1301,9 @@ subroutine conv_jp_tend( &
                 normassflx_dn_tmp,  &
                 stendtran_dn, qtendtran_dn, &
                 trigdp)
+#ifdef OFFLINECP
+    write(*, *) 'plume = ', j, ', trans_down trig = ', trigdp
+#endif
 
 !liquid detrainment tendency
             do i=1, inncol
@@ -1345,33 +1406,6 @@ subroutine conv_jp_tend( &
                 end do
                 netprec(i) = netprec(i)/rhofw
 
-                ! yhy:
-                !!do k=1, nlev
-                !!    qliq(i,k) = max(1e-13, qliqtend_det(i,k)*dtime)
-                !!end do
-                
-                !----------------------------------------------------------------------
-                ! Haiyang Yu: calculate the weight for each plume
-                !    call cal_weight(nlev, p(i,:), dp(i,:), nn_stend(i,:), stend(i,:), &
-                !         nn_qtend(i,:), qtend(i,:), weights(i,j), valid)
-                !    validplume(i) = validplume(i) + valid
-                !    totalweight(i) = totalweight(i) + weights(i,j)
-!#ifdef SCMDIAG
-!    write(*, *) "weight of plume", j, " = ", weights(i,j)
-!#endif
-
-                !if (nn_flag > 0) then
-                !    stend(i,:) = stend(i,:) * weights(i,j)
-                !    qtend(i,:) = qtend(i,:) * weights(i,j)
-                !    qliqtend_det(i,:) = qliqtend_det(i,:) * weights(i,j)
-                !    precrate(i,:) = precrate(i,:) * weights(i,j)
-                !    evaprate(i,:) = evaprate(i,:) * weights(i,j)
-                !    netprec(i) = netprec(i) * weights(i,j)
-                !    surfprec(i) = surfprec(i) * weights(i,j)
-                !    massflxbase(i) = massflxbase(i) * weights(i,j)
-                !    massflx(i,:) = massflx(i,:) * weights(i,j)
-                !end if
-                !----------------------------------------------------------------------
             end do
 
             do i = 1, inncol, 1
@@ -1628,80 +1662,108 @@ end do
 
     qcheckout = 1._r8
     minqcheckf = 1._r8
+    
+    
+    if (flagqcheck == 1) then
+        do i=1, inncol
+    !whole column adjustment
+            minqcheckf = 1._r8
+            do k=nlev, 1, -1
 
-    do i=1, inncol
-!whole column adjustment
-        minqcheckf = 1._r8
-        do k=nlev, 1, -1
-
-            if ( (q(i,k)<=qmin*1.001) .and. (qtend(i,k)<0.) ) then
+                if ( (q(i,k)<=qmin*1.001) .and. (qtend(i,k)<0.) ) then
 #ifdef SCMDIAG 
-                write(*,*) 'too small Q: ', p(i,k), q(i,k), qtend(i,k)*dtime
+                    write(*,*) 'too small Q: ', p(i,k), q(i,k), qtend(i,k)*dtime
 #endif
-                ! Haiyang Yu
-                qtend(i,k) = 0.0
-                stend(i,k) = 0.0
-                qliqtend(i,k) = 0.0
-                mcon(i,k) = 0.0
-                precrate_out(i,k) = 0.0
+                    ! Haiyang Yu
+                    qtend(i,k) = 0.0
+                    stend(i,k) = 0.0
+                    qliqtend(i,k) = 0.0
+                    mcon(i,k) = 0.0
+                    precrate_out(i,k) = 0.0
 
-!                minqcheckf = 0._r8
-!                trigdp(i) = -91
-!                exit
+    !                minqcheckf = 0._r8
+    !                trigdp(i) = -91
+    !                exit
+                end if
+
+                qcheckf = q(i,k)+qtend(i,k)*dtime
+
+                if( qcheckf<qmin ) then
+                    if (abs(qtend(i,k)) > 1e-15) then
+                        qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
+                    else
+                        qcheckf = 1.0
+                    end if
+                    if( qcheckf<minqcheckf ) then
+                        minqcheckf = qcheckf
+                    end if
+                end if
+
+            end do
+
+            if( minqcheckf<1.0_r8 ) then
+                massflxbase(i) = minqcheckf*massflxbase(i)
+
+                stendcond(i,:) = minqcheckf*stendcond(i,:)
+                qtendcond(i,:) = minqcheckf*qtendcond(i,:)
+                stendtran_up(i,:) = minqcheckf*stendtran_up(i,:)
+                qtendtran_up(i,:) = minqcheckf*qtendtran_up(i,:)
+                stendevap(i,:) = minqcheckf*stendevap(i,:)
+                qtendevap(i,:) = minqcheckf*qtendevap(i,:)
+                
+                qliqtend(i,:) = minqcheckf*qliqtend(i,:)
+                mcon(i,:) = minqcheckf*mcon(i,:)
+
+                stend(i,:) = minqcheckf*stend(i,:)
+                qtend(i,:) = minqcheckf*qtend(i,:)
+                prec(i) = minqcheckf*prec(i)
+                precrate_out(i,:) = minqcheckf*precrate_out(i,:)
+
+                stendcomp(i,:) = minqcheckf*stendcomp(i,:)
+                qtendcomp(i,:) = minqcheckf*qtendcomp(i,:)
+
+                tmp1stend(i,:) = minqcheckf*tmp1stend(i,:)
+                tmp1qtend(i,:) = minqcheckf*tmp1qtend(i,:)
+                tmp2stend(i,:) = minqcheckf*tmp2stend(i,:)
+                tmp2qtend(i,:) = minqcheckf*tmp2qtend(i,:)
             end if
 
-            qcheckf = q(i,k)+qtend(i,k)*dtime
+            qcheckout(i) = minqcheckf
+        end do
+    end if
 
-            if( qcheckf<qmin ) then
-                if (abs(qtend(i,k)) > 1e-15) then
-                    qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
+    if (flagqcheck == 2) then
+        do i = 1, inncol
+            do k = nlev, 1, -1
+                if (p(i,k) <= qnegtop) then
+                    qcheckf = 0.0
                 else
+                    qguess  = q(i,k)+qtend(i,k)*dtime
                     qcheckf = 1.0
+                    if( qguess < qmin .and. abs(qtend(i,k)) > 1e-15) then
+                        qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
+                    end if
                 end if
-                if( qcheckf<minqcheckf ) then
-                    minqcheckf = qcheckf
-                end if
-            end if
-
+#ifdef SCMDIAG
+    write(*,*) "yhyqcheck:", p(i,k), qcheckf, qguess
+#endif
+                qtend(i,k) = qcheckf * qtend(i,k)
+                stend(i,k) = qcheckf * stend(i,k)
+                qliqtend(i,k) = qcheckf * qliqtend(i,k)
+                mcon(i,k) = qcheckf * mcon(i,k)
+                precrate_out(i,k) = qcheckf * precrate_out(i,k)
+            end do
         end do
 
-        if( minqcheckf<1.0_r8 ) then
-            massflxbase(i) = minqcheckf*massflxbase(i)
-
-            stendcond(i,:) = minqcheckf*stendcond(i,:)
-            qtendcond(i,:) = minqcheckf*qtendcond(i,:)
-            stendtran_up(i,:) = minqcheckf*stendtran_up(i,:)
-            qtendtran_up(i,:) = minqcheckf*qtendtran_up(i,:)
-            stendevap(i,:) = minqcheckf*stendevap(i,:)
-            qtendevap(i,:) = minqcheckf*qtendevap(i,:)
-            
-            qliqtend(i,:) = minqcheckf*qliqtend(i,:)
-            mcon(i,:) = minqcheckf*mcon(i,:)
-
-            stend(i,:) = minqcheckf*stend(i,:)
-            qtend(i,:) = minqcheckf*qtend(i,:)
-            prec(i) = minqcheckf*prec(i)
-            precrate_out(i,:) = minqcheckf*precrate_out(i,:)
-
-            stendcomp(i,:) = minqcheckf*stendcomp(i,:)
-            qtendcomp(i,:) = minqcheckf*qtendcomp(i,:)
-
-            tmp1stend(i,:) = minqcheckf*tmp1stend(i,:)
-            tmp1qtend(i,:) = minqcheckf*tmp1qtend(i,:)
-            tmp2stend(i,:) = minqcheckf*tmp2stend(i,:)
-            tmp2qtend(i,:) = minqcheckf*tmp2qtend(i,:)
-        end if
-
-        qcheckout(i) = minqcheckf
-    end do
+    end if
 
 
 !clean output.
-    do i=1, inncol
-        if ( trigdp(i)<1 ) then
-            mse_up(i,:) = 0._r8
-        end if
-    end do
+    !do i=1, inncol
+    !    if ( trigdp(i)<1 ) then
+    !        mse_up(i,:) = 0._r8
+    !    end if
+    !end do
 
     outmb = massflxbasesum
     outtmp2d = qcheckout
@@ -1747,25 +1809,25 @@ end do
     write(*,"(a20,f20.10)") "minqcheckf:", minqcheckf
 
     !netcdf output
-    !call subcol_netcdf_putclm( "mse", nlev, mse(1,:), 1 )
-    !call subcol_netcdf_putclm( "dse", nlev, dse(1,:), 1 )
-    !call subcol_netcdf_putclm( "msesat", nlev, msesat(1,:), 1 )
-    !call subcol_netcdf_putclm( "z", nlev, z(1,:), 1 )
+    call subcol_netcdf_putclm( "mse", nlev, mse(1,:), 1 )
+    call subcol_netcdf_putclm( "dse", nlev, dse(1,:), 1 )
+    call subcol_netcdf_putclm( "msesat", nlev, msesat(1,:), 1 )
+    call subcol_netcdf_putclm( "z", nlev, z(1,:), 1 )
     call subcol_netcdf_putclm( "p", nlev, p(1,:), 1 )
-    !call subcol_netcdf_putclm( "rho", nlev, rho(1,:), 1 )
+    call subcol_netcdf_putclm( "rho", nlev, rho(1,:), 1 )
 
-    !call subcol_netcdf_putclm( "mseint", nlevp, mseint(1,:), 1 )
-    !call subcol_netcdf_putclm( "msesatint", nlevp, msesatint(1,:), 1 )
+    call subcol_netcdf_putclm( "mseint", nlevp, mseint(1,:), 1 )
+    call subcol_netcdf_putclm( "msesatint", nlevp, msesatint(1,:), 1 )
 
-    !call subcol_netcdf_putclm( "zint", nlevp, zint(1,:), 1 )
+    call subcol_netcdf_putclm( "zint", nlevp, zint(1,:), 1 )
     call subcol_netcdf_putclm( "pint", nlevp, pint(1,:), 1 )
-    !call subcol_netcdf_putclm( "tint", nlevp, tint(1,:), 1 )
-    !call subcol_netcdf_putclm( "qint", nlevp, qint(1,:), 1 )
-    !call subcol_netcdf_putclm( "qsatint", nlevp, qsatint(1,:), 1 )
+    call subcol_netcdf_putclm( "tint", nlevp, tint(1,:), 1 )
+    call subcol_netcdf_putclm( "qint", nlevp, qint(1,:), 1 )
+    call subcol_netcdf_putclm( "qsatint", nlevp, qsatint(1,:), 1 )
 
-    !call subcol_netcdf_putclm( "t", nlev, t(1,:), 1 )
-    !call subcol_netcdf_putclm( "q", nlev, q(1,:), 1 )
-    !call subcol_netcdf_putclm( "qsat", nlev, qsat(1,:), 1 )
+    call subcol_netcdf_putclm( "t", nlev, t(1,:), 1 )
+    call subcol_netcdf_putclm( "q", nlev, q(1,:), 1 )
+    call subcol_netcdf_putclm( "qsat", nlev, qsat(1,:), 1 )
 
     !call subcol_netcdf_putclm( "prec", prec(1), 1 )
     !call subcol_netcdf_putclm( "pmassflxbase", massflxbase_p(1), 1 )
@@ -1800,8 +1862,8 @@ subroutine cal_launchtocldbase( &
         ncol, nlev, nlevp, &
 #endif
 !input
-        opt, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
-        mse, mseint, msesat, msesatint, landfrac, lhflx,  &
+        opt, zsrf, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
+        mse, mseint, msesat, msesatint, landfrac, lhflx, tpert_plume, qpert_plume, &
 !output
         kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up,  &
 !in
@@ -1814,6 +1876,7 @@ subroutine cal_launchtocldbase( &
     integer, intent(in) :: ncol, nlev, nlevp
 #endif
     integer, intent(in) :: opt ! 1:LCL  2:launch point
+    real(r8), dimension(ncol),  intent(in) :: zsrf     ! [m]
     real(r8), dimension(ncol, nlev),  intent(in) :: z     ! [m]
     real(r8), dimension(ncol, nlevp), intent(in) :: zint  ! [m]
     real(r8), dimension(ncol, nlev),  intent(in) :: p     ! [m]
@@ -1828,8 +1891,10 @@ subroutine cal_launchtocldbase( &
     real(r8), dimension(ncol, nlevp), intent(in) :: mseint ! [J/kg]
     real(r8), dimension(ncol, nlev),  intent(in) :: msesat ! [J/kg]
     real(r8), dimension(ncol, nlevp), intent(in) :: msesatint ! [J/kg]
-    real(r8), dimension(ncol), intent(in) :: landfrac ! [J/kg]
-    real(r8), dimension(ncol), intent(in) :: lhflx    ! [J/kg]
+    real(r8), dimension(ncol), intent(in) :: landfrac    ! 
+    real(r8), dimension(ncol), intent(in) :: lhflx       ! 
+    real(r8), dimension(ncol), intent(in) :: tpert_plume    !
+    real(r8), dimension(ncol), intent(in) :: qpert_plume    !
 !output
     integer, dimension(ncol), intent(out) :: kuplaunch ! [1]
     integer, dimension(ncol), intent(out) :: kuplcl    ! [1]
@@ -1844,7 +1909,7 @@ subroutine cal_launchtocldbase( &
 
 !local
     integer :: i, k, stat
-    real(r8) :: msemax, q_up_test
+    real(r8) :: msemax, q_up_test, t_up_test
     real(r8) :: diffmse, dt, dq, buoy
     integer, dimension(ncol) :: kuplaunchmin  ! [1]
     integer, dimension(ncol) :: kuplaunchmax  ! [1]
@@ -1861,13 +1926,15 @@ subroutine cal_launchtocldbase( &
 
         if ( trig(i) < 1 ) cycle
         do k=nlevp, 1, -1
-            if ( zint(i,k) >= zuplaunchlow ) then
+            if ( zint(i,k) >= max(zuplaunchlow, zsrf(i)) ) then
                 kuplaunchmin(i) = k
                 exit
             end if
         end do
+        
+
         do k=nlevp, 1, -1
-            if ( zint(i,k) >= zuplaunchtop ) then
+            if ( zint(i,k) >= max(zuplaunchtop, zsrf(i)) ) then
                 kuplaunchmax(i) = k
                 exit
             end if
@@ -1886,65 +1953,65 @@ subroutine cal_launchtocldbase( &
                 kuplaunch(i) = k
             end if
         end do
-
-        if (qpertglob > 1.0) then
-            ! Use qpertglob as the RH of the launching parcel
-            if (qpertglob < 100.0) then
-                t_up(i,kuplaunch(i) ) = tint(i,kuplaunch(i) ) + tpertglob
-                call cal_qsat( t_up(i,kuplaunch(i)), pint(i,kuplaunch(i)), q_up_test)
-                q_up(i,kuplaunch(i)) = q_up_test * qpertglob / 100.0
-                mse_up(i, kuplaunch(i)) = mseint( i,kuplaunch(i) ) + tpertglob*cpair + &
-                    latvap*( q_up(i,kuplaunch(i))-qint(i,kuplaunch(i)) )
-            else
-                t_up(i,kuplaunch(i)) = tint(i,kuplaunch(i))
-                q_up(i,kuplaunch(i)) = qsatint(i,kuplaunch(i))
-                mse_up(i,kuplaunch(i)) = msesatint(i,kuplaunch(i))
-            end if
-        else
-            ! Use tpertglob and qpertglob
-            t_up(i,kuplaunch(i) ) = tint(i,kuplaunch(i) ) + tpertglob
-            q_up(i,kuplaunch(i) ) = qint(i,kuplaunch(i) ) + qpertglob
-            mse_up(i,kuplaunch(i) ) = mseint( i,kuplaunch(i) ) + tpertglob*cpair + qpertglob*latvap
-        end if
         
-        ! cloud base at launch point
+        ! shallow plumes: cloud base at launch point
         if ( opt == 2 ) then
             kcbase(i) = kuplaunch(i)
             kuplcl(i) = kuplaunch(i)
         end if
 
-        ! cloud base at LCL
+        ! deep plumes: cloud base at LCL
         if ( opt == 1 ) then
             do k=kuplaunch(i)-1, 1, -1
-                mse_up(i,k) = mse_up(i,k+1)
-                call cal_mse2tsat(mse_up(i,k), tint(i,k), qsatint(i,k), msesatint(i,k), t_up(i,k))
-                call cal_qsat(t_up(i,k), pint(i,k), q_up_test)
+                !mse_up(i,k) = mse_up(i,k+1)
+                call cal_mse2tsat(mseint(i,kuplaunch(i)), tint(i,k), qsatint(i,k), msesatint(i,k), t_up_test)
+                call cal_qsat(t_up_test, pint(i,k), q_up_test)
             
-                if( q_up(i,k+1) > q_up_test ) then
+                if( qint(i,kuplaunch(i)) >= q_up_test ) then
                     kuplcl(i) = k
                     kcbase(i) = k
-                    t_up(i,k) = tint(i,k)
-                    q_up(i,k) = qsatint(i,k)
-                    mse_up(i,k) = cpair*t_up(i,k) + gravit*zint(i,k) + &
-                        (latvap-(cpliq-cpwv)*(t_up(i,k)-273.15))*q_up(i,k)
+                    !t_up(i,k) = tint(i,k)
+                    !q_up(i,k) = qsatint(i,k)
+                    !mse_up(i,k) = cpair*t_up(i,k) + gravit*zint(i,k) + &
+                    !    (latvap-(cpliq-cpwv)*(t_up(i,k)-273.15))*q_up(i,k)
                     exit
-                else
-                    t_up(i,k) = ( mse_up(i,k)-latvap*q_up(i,k)-gravit*zint(i,k)-(cpliq-cpwv)*273.15*q_up(i,k) ) &
-                        / (cpair-(cpliq-cpwv)*q_up(i,k))
-                    q_up(i,k) = q_up(i,k+1)
+                !else
+                !    t_up(i,k) = ( mse_up(i,k)-latvap*q_up(i,k)-gravit*zint(i,k)-(cpliq-cpwv)*273.15*q_up(i,k) ) &
+                !        / (cpair-(cpliq-cpwv)*q_up(i,k))
+                !    q_up(i,k) = q_up(i,k+1)
                 end if
             end do 
         end if
 
+        if ( opt == 1) then
+            ! deep plumes: use saturated environmental air
+            t_up(i,kcbase(i)) = tint(i,kcbase(i))
+            q_up(i,kcbase(i)) = qsatint(i,kcbase(i)) 
+            mse_up(i,kcbase(i)) = msesatint(i,kcbase(i)) 
+        else
+            ! shallow plumes: use tpert and qpert
+            t_up(i,kcbase(i) ) = tint(i,kcbase(i) ) + tpert_plume(i)
+            q_up(i,kcbase(i) ) = qint(i,kcbase(i) ) + qpert_plume(i)
+            mse_up(i,kcbase(i) ) = mseint(i,kcbase(i)) + tpert_plume(i)*cpair + qpert_plume(i)*latvap
+        end if
+        
         ! cloud properties below cloud base
         normassflx_up(i,kcbase(i)) = 1.0
         do k=nlevp, kcbase(i)+1, -1
-            normassflx_up(i,k) = ( max( 0.0, (zint(i,k)-zint(i,nlevp)) &
-                /(zint(i,kuplcl(i))-zint(i,nlevp)) ) )**0.5
+            if (zint(i,k) > zsrf(i)) then
+            normassflx_up(i,k) = ( max( 0.0, (zint(i,k)-zsrf(i)) &
+                /(zint(i,kuplcl(i))-zsrf(i)) ) )**0.5
             mse_up(i,k) = mse_up(i, kuplcl(i))
             q_up(i,k) = q_up(i, kuplcl(i))
             t_up(i,k) = ( mse_up(i,k) - gravit*zint(i,k) - (latvap+(cpliq-cpwv)*273.15)*q_up(i,k) )/ &
                 (cpair-(cpliq-cpwv)*q_up(i,k))
+        else
+            normassflx_up(i,k) = 0.0
+            mse_up(i,k) = mseint(i,k)
+            q_up(i,k) = qint(i,k)
+            t_up(i,k) = tint(i,k)
+        end if
+
         end do
     end do  ! loop for icol
 
@@ -2135,15 +2202,9 @@ subroutine cal_mse_up( &
         end if
         cldh_bak = cldh(i)
 
-!<<<<<<< HEAD
 
         do itercldh = 1, cldhiteration, 1
 
-!=======
-!                kuptop(i) = 1  !!MZMZ
-!        do itercldh = 1,cldhiteration, 1
-!>>>>>>> b093a2074c5f0d89e1af76e505962d4429426537
-            
             do k=kupbase(i)-1, 1, -1
             
                 do iteration = 1, maxiteration, 1
@@ -2197,6 +2258,27 @@ subroutine cal_mse_up( &
                             tmp = 0.0
                         end if
                         if ( buoy_mid(i,k) <= 0 ) then
+                            ent_org(i,k) = 0. !0.0004
+                            det_org(i,k) = tmp * org_enhance &
+                                * (max(0.0, pint(i,kupbase(i))-p(i,k)) &
+                                / ( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) &
+                                + 10.0))**org_shape
+                        else
+                            ent_org(i,k) = tmp * org_enhance & 
+                                * (max(0.0, p(i,k)-p(i,ktop_tmp)) &
+                                /( max(pint(i,kupbase(i))-p(i,ktop_tmp), 0.0) &
+                                + 10.0))**org_shape
+                            det_org(i,k) = 0.0                        
+                        end if
+                    end if
+                    if (flagorgent == 8) then
+                        if (abs(buoy_mid(i,k)) > 1e-15) then
+                            tmp = orgent_beta0 * cldsr(i,k)/sqrt(1+cldsr(i,k)*cldsr(i,k)) * &
+                                sqrt(abs(buoy_mid(i,k))*cldh(i)) / ( 2*cldrad(i,k)*max(wupmin,w_up_mid(i,k)) )
+                        else
+                            tmp = 0.0
+                        end if
+                        if ( rhoint(i,k)*buoy(i,k) - rhoint(i,k+1)*buoy(i,k+1) <= 0 ) then
                             ent_org(i,k) = 0. !0.0004
                             det_org(i,k) = tmp * org_enhance &
                                 * (max(0.0, pint(i,kupbase(i))-p(i,k)) &
@@ -2347,8 +2429,10 @@ subroutine cal_mse_up( &
                     
                     ! enhanced turbulent ent/det by w
                     if (turb_enhance > 0) then
-                        ent_turb(i,k) = ent_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
-                        det_turb(i,k) = det_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
+                        ent_turb(i,k) = ent_turb(i,k) * turb_enhance
+                        det_turb(i,k) = det_turb(i,k) * turb_enhance
+                        !ent_turb(i,k) = ent_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
+                        !det_turb(i,k) = det_turb(i,k) * turb_enhance/max(wupmin,w_up_mid(i,k))
                     end if
 
                     ent_turb(i,k) = min(max_ent_rate, max(0.0, ent_turb(i,k)))
@@ -2430,6 +2514,11 @@ subroutine cal_mse_up( &
                           ent_rate * mse(i,k) &
                         + nom * mse_up(i,k+1) &
                         + mseqi(i,k) / max(1e-15, normassflx_up_mid(i,k)) )
+                    
+                    if (ctopflag == 3) then
+                        mse_up(i,k) = max( mseint(i,k), mse_up(i,k) )
+                    end if
+                    
                     ! in-cloud temperature and moisture
                     ! ---- method 1: Taylor expanding ----
                     if (mse2tsatflag == 1) then
@@ -2507,7 +2596,7 @@ subroutine cal_mse_up( &
                     end if
                 end if
                 
-                if (ctopflag == 2) then
+                if (ctopflag >= 2) then
                     if (w_up(i,k) < wupmin) then
                         exit
                     end if
@@ -3014,7 +3103,7 @@ subroutine cal_mse_up_old( &
                 end if
             end if
             
-            if (ctopflag == 2) then
+            if (ctopflag >= 2) then
                 if (w_up(i,k) < wupmin) then
                     exit
                 end if
@@ -3202,7 +3291,7 @@ subroutine cal_evap( &
 #ifdef OFFLINECP
         ncol, nlev, nlevp, &
 #endif
-        ent_opt, kuptop, trig, dz, p, rho, t, twet, q, &
+        ent_opt, kuptop, trig, zsrf, z, dz, p, rho, t, twet, q, &
         precrate, &
 !output
         accuprec, surfprec, evaprate )
@@ -3214,7 +3303,8 @@ subroutine cal_evap( &
     integer, intent(in) :: ent_opt
     integer , dimension(ncol), intent(in) :: kuptop    ! [1]
     integer , dimension(ncol), intent(in) :: trig     ! [1]
-    real(r8), dimension(ncol, nlev),  intent(in) :: dz    ! [m]
+    real(r8), dimension(ncol), intent(in) :: zsrf    ! [m]
+    real(r8), dimension(ncol, nlev),  intent(in) :: z, dz    ! [m]
     real(r8), dimension(ncol, nlev),  intent(in) :: p     ! [Pa]
     real(r8), dimension(ncol, nlev),  intent(in) :: rho   ! [kg/m3]
     real(r8), dimension(ncol, nlev),  intent(in) :: t     ! [K]
@@ -3237,15 +3327,16 @@ subroutine cal_evap( &
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
         do k=kuptop(i), nlev
-            accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
-            call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
-            evaprate(i,k) = min( dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
-                    accuprec(i,k) / dn_vt / rho(i,k), accuprec(i,k)/rho(i,k)/dz(i,k) ) &
-                    * evap_enhance * ((p(i,k)-p(i,kuptop(i)))/(p(i,nlev)-p(i,kuptop(i))+10.0))**evap_shape
-            evaprate(i,k) = min(evaprate(i,k), accuprec(i,k)/rho(i,k)/dz(i,k))
+            if (z(i,k) > zsrf(i)) then
+                accuprec(i,k)  = accuprec(i,k-1) + rho(i,k)*precrate(i,k)*dz(i,k)
+                call cal_qsat( twet(i,k), p(i,k), qsat_tmp )
+                evaprate(i,k) = min( dn_ae*max( 0._r8, qsat_tmp-q(i,k) ) * &
+                        accuprec(i,k) / dn_vt / rho(i,k), accuprec(i,k)/rho(i,k)/dz(i,k) ) &
+                        * evap_enhance * ((p(i,k)-p(i,kuptop(i)))/(p(i,nlev)-p(i,kuptop(i))+10.0))**evap_shape
+                evaprate(i,k) = min(evaprate(i,k), accuprec(i,k)/rho(i,k)/dz(i,k))
 
-            accuprec(i,k) = max(0.0, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k))
-
+                accuprec(i,k) = max(0.0, accuprec(i,k) - evaprate(i,k)*rho(i,k)*dz(i,k))
+            end if
         end do
         surfprec(i) = accuprec(i,nlev)
     end do

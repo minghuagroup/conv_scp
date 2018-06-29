@@ -205,7 +205,7 @@ subroutine convect_deep_init(pref_edge)
   call addfld ('STENDCONVDPCOMP', 'K/s',       pver, 'A', 'T tendency - zm compensate tendt',phys_decomp)
   call addfld ('QTENDCONVDPCOMP', 'kg/kg/s',   pver, 'A', 'Q tendency - zm compensate tendq',phys_decomp)
 
-  call addfld ('DILUCAPE',     'J/kg',   1, 'I', &
+  call addfld ('DILUCAPE',     'J/kg',   pver, 'I', &
       'Convectively available potential energy', phys_decomp)
   call addfld ('BFLSDILUCAPE', 'J/kg',   1, 'I', &
       'Convectively available potential energy', phys_decomp)

@@ -388,7 +388,7 @@ subroutine conv_intr_jp_tend( &
 !   call outfld('STENDCONVDPCOMP', stendcomp, pcols, lchnk)
 !   call outfld('QTENDCONVDPCOMP', qtendcomp, pcols, lchnk)
 
-!   call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
+   call outfld('DILUCAPE', dilucape, pcols, lchnk)            ! RBN - CAPE output
 !   call outfld('BFLSDILUCAPE', bfls_dilucape, pcols, lchnk)   ! RBN - CAPE output
 
    do i = 1, ncol

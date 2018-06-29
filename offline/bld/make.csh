@@ -10,6 +10,10 @@ export FC=gfortran
 export FFLAGS="-g"
 #export FFLAGS="-L${LAPACK_LIBDIR} -llapack -lblas -DOFFLINECP"
 
+rm -fv *.F90 *.o *.so *.mod
+echo 'extracting fortran codes'
+python extract_subroutine.py 
+
 $FC -c shr_nl_mod.F90  $FFLAGS 
 $FC -c buoysort.F90 $FFLAGS 
 #$FC -c nnparameter.F90 $FFLAGS 

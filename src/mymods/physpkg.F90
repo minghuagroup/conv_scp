@@ -934,9 +934,9 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call subcol_netcdf_addfld( "snowrate", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "precrate", "kg/kg/s", "mlev")
     call subcol_netcdf_addfld( "accuprec", "kg/m2/s", "mlev")
-
+    
+    call subcol_netcdf_addfld( "dilucape", "J/kg", "slev")
     call subcol_netcdf_addfld( "prec", "1", "slev")
-    call subcol_netcdf_addfld( "dilucape", "1", "slev")
     call subcol_netcdf_addfld( "weight", "1", "slev")
     call subcol_netcdf_addfld( "pmassflxbase", "1", "slev")
     call subcol_netcdf_addfld( "massflxbase", "1", "slev")
