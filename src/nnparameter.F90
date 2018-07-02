@@ -125,6 +125,13 @@ end subroutine readnamelist
 ! initialize the nn model 
 !-----------------------------------------------------------------------------
 subroutine readnnparameter()
+#if ((! defined SCMDIAG) & (! defined OFFLINECP))
+    use namelist_utils,  only: find_group_name
+    use spmd_utils,      only: masterproc
+    use abortutils,      only: endrun
+    use units,           only: getunit, freeunit
+    use mpishorthand
+#endif
 implicit none
    ! Local variables
    integer :: fid, dimids(nf90_max_var_dims), levid, ilayer
