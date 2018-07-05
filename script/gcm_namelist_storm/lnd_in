@@ -1,0 +1,15 @@
+&clm_inparm
+ co2_ppmv		= 3.670000e+02
+ co2_type		= 'diagnostic'
+ dtime		= 1800
+ fatmlndfrc		= '/R3/cesm/inputdata/share/domains/domain.lnd.fv1.9x2.5_gx1v6.090206.nc'
+ finidat		= '/R3/cesm/inputdata/lnd/clm2/initdata/clmi.BCN.2000-01-01_1.9x2.5_gx1v6_simyr2000_c100309.nc'
+ fpftcon		= '/R3/cesm/inputdata/lnd/clm2/pftdata/pft-physiology.clm40.c130424.nc'
+ fsnowaging		= '/R3/cesm/inputdata/lnd/clm2/snicardata/snicar_drdt_bst_fit_60_c070416.nc'
+ fsnowoptics		= '/R3/cesm/inputdata/lnd/clm2/snicardata/snicar_optics_5bnd_c090915.nc'
+ fsurdat		= '/R3/cesm/inputdata/lnd/clm2/surfdata/surfdata_1.9x2.5_simyr2000_c091005.nc'
+ urban_hac		= 'ON_WASTEHEAT'
+ urban_traffic		= .false.
+/
+&clm_rtm_inparm
+/
