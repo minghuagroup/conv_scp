@@ -13,10 +13,8 @@
  case_name		= 'camrun'
  ocean_tight_coupling		= .true.
  orb_iyear		= 1990
-scmlat = -2.101151
-scmlon = 154.6875
-! scmlat		= 36.605
-! scmlon		= 262.515
+ scmlat = -2.101151
+ scmlon = 154.6875
  single_column		= .true.
  start_type		= 'startup'
 /
@@ -24,7 +22,7 @@ scmlon = 154.6875
  atm_cpl_dt		= 1200
  restart_option		= 'monthly'
  start_ymd = 19921219
- start_tod = 0
+ start_tod  = 0
  stop_n = 575
  stop_option = 'nsteps' 
 /
