@@ -58,7 +58,7 @@
 &nn_nl
  nn_fname = '/T3/yhy/data/ERA_Interim/NN/NNparameter/combineDPNN_T_Q_QSAT_RH_Z_OMEGA_PS.nc'
  nn_nlayer = 4
- nn_flag = 1
+ nn_flag = 0
  nn_type = 2203
  nn_ptop = 20000.0
  nn_pbot = 95000.0
