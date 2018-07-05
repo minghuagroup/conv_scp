@@ -49,6 +49,13 @@ use shr_spfn_mod, only: gamma => shr_spfn_gamma_nonintrinsic
        svp_ice => wv_sat_svp_ice, &
        svp_to_qsat => wv_sat_svp_to_qsat
 
+!MZ <XX
+  use dycore,     only: get_resolution
+  use subcolphys, only: subcol_calv
+  use cam_history,    only: outfld
+!>
+
+
 implicit none
 private
 save
@@ -60,7 +67,12 @@ save
 
 public :: &
      micro_mg_init, &
-     micro_mg_tend
+!MZ<
+     micro_mg_tend_MZ , &
+     pgam_lamc_MZ,      &
+     beta4_MZ, &
+     beta6_MZ
+!>
 
 integer, parameter :: r8 = selected_real_kind(12)      ! 8 byte real
 
@@ -341,8 +353,11 @@ end subroutine micro_mg_init
 !===============================================================================
 !microphysics routine for each timestep goes here...
 
-subroutine micro_mg_tend ( &
+subroutine micro_mg_tend_MZ ( &
      microp_uniform, pcols, pver, ncol, top_lev, deltatin,&
+!MZ<
+     ulat, zm, lchnk,&
+!>
      tn, qn, qc, qi, nc,                              &
      ni, p, pdel, cldn, liqcldf,                      &
      relvar, accre_enhan,                             &
@@ -376,6 +391,11 @@ real(r8), intent(in) :: tn(pcols,pver)       ! input temperature (K)
 real(r8), intent(in) :: qn(pcols,pver)       ! input h20 vapor mixing ratio (kg/kg)
 real(r8), intent(in) :: relvar(pcols,pver)   ! relative variance of cloud water (-)
 real(r8), intent(in) :: accre_enhan(pcols,pver) ! optional accretion enhancement factor (-)
+!MZ<
+real(r8), intent(in) :: ulat(pcols)
+real(r8), intent(in) :: zm(pcols,pver)
+integer,  intent(in) :: lchnk 
+!>
 
 ! note: all input cloud variables are grid-averaged
 real(r8), intent(inout) :: qc(pcols,pver)    ! cloud water mixing ratio (kg/kg)
@@ -485,7 +505,23 @@ real(r8), intent(out) :: nfice(pcols,pver)
 character(128),   intent(out) :: errstring       ! Output status (non-blank for error return)
 
 ! local workspace
+!MZ<XX
+real(r8) :: liqshape(pcols, pver)
+real(r8) :: stab(pcols)
 ! all units mks unless otherwise stated
+real(r8) :: sccons2(pcols, pver), sccons3(pcols, pver)
+real(r8) :: sccons9(pcols, pver), sccons10(pcols, pver)
+real(r8) :: sccons12(pcols, pver), sccons15(pcols, pver)
+real(r8) :: sccons18(pcols, pver), sccons19(pcols, pver)
+real(r8) :: sccons20(pcols, pver), sccons21(pcols, pver)
+real(r8) :: scv(pcols, pver)
+
+real(r8) :: res, hscale
+logical :: varvflag
+character(len=32)    :: hgrid
+!>
+
+!>
 
 ! temporary variables for sub-stepping 
 real(r8) :: t1(pcols,pver)
@@ -579,6 +615,14 @@ real(r8) :: Actmp  !area cross section of drops
 real(r8) :: Artmp  !area cross section of rain
 
 real(r8) :: pgam(pver) ! spectral width parameter of droplet size distr
+!MZ<
+integer  :: ipgam          ! option of dispersion formula to use,default 2
+                     !!  1 for CAM, 2 for MZ, 3 for simple MZ, 4 for ECHAM
+real(r8) :: episilon(pver) ! spectral dispersion
+real(r8) :: enhance4(pver) ! enhanced factor normalized to 0.25
+real(r8) :: enhance6(pver) ! enhanced factor normalized to 0.25
+!>
+
 real(r8) :: lammax  ! maximum allowed slope of size distr
 real(r8) :: lammin  ! minimum allowed slope of size distr
 real(r8) :: nacnt   ! number conc of contact ice nuclei
@@ -933,6 +977,53 @@ dum2i(1:ncol,1:pver)=0._r8
 prect1(1:ncol)=0._r8
 preci1(1:ncol)=0._r8
 
+!MZ< XX
+   varvflag = .true.
+   !The following  needs to be changed when the compset res is different
+   if ( varvflag .eq. .true. ) then
+      hgrid = get_resolution()
+      if ( hgrid .eq. '1.9x2.5' ) then
+         res = 1.9_r8
+      else if ( hgrid .eq. '0.9x1.25' ) then
+         res = 0.9_r8
+      else if ( hgrid .eq. 'T42' ) then
+         res = 2.8_r8
+      else
+         res = 2._r8
+      end if
+      res = 0.5_r8 !tuned
+
+      !write(*,*) 'hgrid:',hgrid
+      !write(*,*) 'res:',res
+      do i=1, ncol
+         hscale = res/180*3.14159*cos( ulat(i) )*6100
+         call subcol_calv(pver, hscale, zm(i,:), p(i,:), &
+            tn(i,:), qn(i,:), cldn(i,:), liqshape(i,:), stab(i) )
+      end do
+   else
+      liqshape = 1._r8  !default value
+   end if
+  call outfld('LIQSHAPE', liqshape, pcols, lchnk)
+  call outfld('STAB', stab, pcols, lchnk)
+
+scv = liqshape
+do i=1,ncol
+do k=1,pver
+   sccons2(i,k)=gamma(scv(i,k)+2.47_r8)
+   sccons3(i,k)=gamma(scv(i,k))
+   sccons9(i,k)=gamma(scv(i,k)+2._r8)
+   sccons10(i,k)=gamma(scv(i,k)+1._r8)
+
+   sccons12(i,k)=gamma(scv(i,k)+1.15_r8)
+   sccons15(i,k)=gamma(scv(i,k)+bc/3._r8)
+
+   sccons18(i,k)=scv(i,k)**2.47_r8
+   sccons19(i,k)=scv(i,k)**2._r8
+   sccons20(i,k)=scv(i,k)**1.15_r8
+   sccons21(i,k)=scv(i,k)**(bc/3._r8)
+end do
+end do
+!>
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !Get humidity and saturation vapor pressures
 
@@ -1545,17 +1636,28 @@ do i=1,ncol
 
             ! get pgam from fit to observations of martin et al. 1994
 
-            pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
-            pgam(k)=1._r8/(pgam(k)**2)-1._r8
-            pgam(k)=max(pgam(k),2._r8)
-            pgam(k)=min(pgam(k),15._r8)
+!MZ< --------------------
+            !pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+            !!write(*,*)'episilon old or eta ncic qcic epision'
+            !!write(*,*) i,k,p(i,k),ncic(i,k), qcic(i,k),pgam(k)
+            !pgam(k)=1._r8/(pgam(k)**2)-1._r8
+            !pgam(k)=max(pgam(k),2._r8)
+            !pgam(k)=min(pgam(k),15._r8)
 
-            ! calculate lamc
 
-            lamc(k) = (pi/6._r8*rhow*ncic(i,k)*gamma(pgam(k)+4._r8)/ &
-                 (qcic(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
+          ipgam = 2  !  1 for CAM, 2 for MZ, 3 for simple MZ, 4 for ECHAM
+           !!
+           call pgam_lamc_MZ(ipgam,ncic(i,k),qcic(i,k),rho(i,k), &
+               episilon(k),pgam(k),lamc(k) )
 
-            ! lammin, 50 micron diameter max mean size
+            !write(*,*)'---lamc(k)_cam1:', k,p(i,k),lamc(k),episilon(k),pgam(k)
+
+            enhance4(k) = beta4_MZ(episilon(k))/1.02849371455141_r8 !bet4_MZ(0.25_r8)
+            enhance6(k) = beta6_MZ(episilon(k))/1.08482658018247_r8 !bet6_MZ(0.25_r8)
+
+            !write(*,*) 'enhance4 and enhance6 are:',enhance4(k),enhance6(k)
+
+!>--------------------------
 
             lammin = (pgam(k)+1._r8)/50.e-6_r8
             lammax = (pgam(k)+1._r8)/2.e-6_r8
@@ -1598,23 +1700,30 @@ do i=1,ncol
             ! hm switch for sub-columns, don't include sub-grid qc
             if (microp_uniform) then
 
-               prc(k) = 1350._r8*qcic(i,k)**2.47_r8* &
-                    (ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8)
+
+!MZ< used enhance6(k), can be enhance4(k)
+
+               !prc(k) = 1350._r8*qcic(i,k)**2.47_r8* &
+                    !(ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8)
+               prc(k) = enhance6(k)*1350._r8*qcic(i,k)**2.47_r8* &
+                    (ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8) &
+                            *(rho(i,k)/1.16_r8)**1.47_r8
+!>
                nprc(k) = prc(k)/(4._r8/3._r8*pi*rhow*(25.e-6_r8)**3)
                nprc1(k) = prc(k)/(qcic(i,k)/ncic(i,k))
 
             else
 
-!xiex
-               prc(k) = cons2/(cons3*cons18)*1350._r8*qcic(i,k)**2.47_r8* &
-                    (ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8)
+!MZ<MZ XX added enhance6
+               !prc(k) = cons2/(cons3*cons18)*1350._r8*qcic(i,k)**2.47_r8* &
+                    !!(ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8)
+                    !!(ncic(i,k)/1.e6_r8)**(-1.79_r8) * (rho(i,k)/1.16)**1.47_r8
+               prc(k) = sccons2(i,k)/(sccons3(i,k)*sccons18(i,k)) &
+                     *enhance6(k)*1350._r8*qcic(i,k)**2.47_r8* &
+                    (ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8) * (rho(i,k)/1.16)**1.47_r8
+!>
                nprc(k) = prc(k)/cons22
                nprc1(k) = prc(k)/(qcic(i,k)/ncic(i,k))
-
-               !prc(k) = 2*cons2/(cons3*cons18)*1350._r8*qcic(i,k)**2.47_r8* &
-                    !(ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8)
-               !nprc(k) = 2*prc(k)/cons22
-               !nprc1(k) = 2*prc(k)/(qcic(i,k)/ncic(i,k))
 
             end if               ! sub-column switch
 
@@ -1822,16 +1931,29 @@ do i=1,ncol
 
             else
 
-               mnuccc(k) = cons9/(cons3*cons19)* &
+!MZ< XX
+               !mnuccc(k) = cons9/(cons3*cons19)* &
+                    !pi*pi/36._r8*rhow* &
+                    !cdist1(k)*gamma(7._r8+pgam(k))* &
+                    !bimm*(exp(aimm*(273.15_r8-t(i,k)))-1._r8)/ &
+                    !lamc(k)**3/lamc(k)**3
+
+               !nnuccc(k) = cons10/(cons3*qcvar)* &
+                    !pi/6._r8*cdist1(k)*gamma(pgam(k)+4._r8) &
+                    !*bimm* &
+                    !(exp(aimm*(273.15_r8-t(i,k)))-1._r8)/lamc(k)**3
+
+               mnuccc(k) = sccons9(i,k)/(sccons3(i,k)*sccons19(i,k))* &
                     pi*pi/36._r8*rhow* &
                     cdist1(k)*gamma(7._r8+pgam(k))* &
                     bimm*(exp(aimm*(273.15_r8-t(i,k)))-1._r8)/ &
                     lamc(k)**3/lamc(k)**3
 
-               nnuccc(k) = cons10/(cons3*qcvar)* &
+               nnuccc(k) = sccons10(i,k)/(sccons3(i,k)*scv(i,k))* &
                     pi/6._r8*cdist1(k)*gamma(pgam(k)+4._r8) &
                     *bimm* &
                     (exp(aimm*(273.15_r8-t(i,k)))-1._r8)/lamc(k)**3
+!>
             end if           ! sub-columns
 
 
@@ -1867,15 +1989,26 @@ do i=1,ncol
 
             else
 
-               mnucct(k) = gamma(qcvar+4._r8/3._r8)/(cons3*qcvar**(4._r8/3._r8))*  &
-                    (ndfaer1*(nacon(i,k,1)*tcnt)+ndfaer2*(nacon(i,k,2)*tcnt)+ &
-                    ndfaer3*(nacon(i,k,3)*tcnt)+ndfaer4*(nacon(i,k,4)*tcnt))*pi*pi/3._r8*rhow* &
+!MZ<XX
+
+               !mnucct(k) = gamma(qcvar+4._r8/3._r8)/(cons3*qcvar**(4._r8/3._r8))*  &
+                    !(ndfaer1*(nacon(i,k,1)*tcnt)+ndfaer2*(nacon(i,k,2)*tcnt)+ &
+                    !ndfaer3*(nacon(i,k,3)*tcnt)+ndfaer4*(nacon(i,k,4)*tcnt))*pi*pi/3._r8*rhow* &
+                    !cdist1(k)*gamma(pgam(k)+5._r8)/lamc(k)**4
+
+               !nnucct(k) =  gamma(qcvar+1._r8/3._r8)/(cons3*qcvar**(1._r8/3._r8))*  &
+                    !(ndfaer1*(nacon(i,k,1)*tcnt)+ndfaer2*(nacon(i,k,2)*tcnt)+ &
+                    !ndfaer3*(nacon(i,k,3)*tcnt)+ndfaer4*(nacon(i,k,4)*tcnt))*2._r8*pi*  &
+                    !cdist1(k)*gamma(pgam(k)+2._r8)/lamc(k)
+
+               mnucct(k) = gamma(scv(i,k)+4._r8/3._r8)/(sccons3(i,k)*scv(i,k)**(4._r8/3._r8))*  &
+                    (ndfaer1*(nacon(i,k,1)*tcnt)+ndfaer2*(nacon(i,k,2)*tcnt)+ndfaer3*(nacon(i,k,3)*tcnt)+ndfaer4*(nacon(i,k,4)*tcnt))*pi*pi/3._r8*rhow* &
                     cdist1(k)*gamma(pgam(k)+5._r8)/lamc(k)**4
 
-               nnucct(k) =  gamma(qcvar+1._r8/3._r8)/(cons3*qcvar**(1._r8/3._r8))*  &
-                    (ndfaer1*(nacon(i,k,1)*tcnt)+ndfaer2*(nacon(i,k,2)*tcnt)+ &
-                    ndfaer3*(nacon(i,k,3)*tcnt)+ndfaer4*(nacon(i,k,4)*tcnt))*2._r8*pi*  &
+               nnucct(k) =  gamma(scv(i,k)+1._r8/3._r8)/(sccons3(i,k)*scv(i,k)**(1._r8/3._r8))*  &
+                    (ndfaer1*(nacon(i,k,1)*tcnt)+ndfaer2*(nacon(i,k,2)*tcnt)+ndfaer3*(nacon(i,k,3)*tcnt)+ndfaer4*(nacon(i,k,4)*tcnt))*2._r8*pi*  &
                     cdist1(k)*gamma(pgam(k)+2._r8)/lamc(k)
+!>
 
             end if      ! sub-column switch
 
@@ -2028,13 +2161,22 @@ do i=1,ncol
 
             if (microp_uniform) then
 
-               pra(k) = 67._r8*(qcic(i,k)*qric(i,k))**1.15_r8
+!MZ<
+               !pra(k) = 67._r8*(qcic(i,k)*qric(i,k))**1.15_r8
+               pra(k) = 67._r8*(qcic(i,k)*qric(i,k))**1.15_r8 *(rho(i,k)/1.16)**1.30_r8
+!>
                npra(k) = pra(k)/(qcic(i,k)/ncic(i,k))
 
             else
 
-               pra(k) = accre_enhan(i,k)*(cons12/(cons3*cons20)*67._r8*(qcic(i,k)*qric(i,k))**1.15_r8)
-               npra(k) = pra(k)/(qcic(i,k)/ncic(i,k))
+!MZ<MZ XX
+               !pra(k) = accre_enhan(i,k)*(cons12/(cons3*cons20)*67._r8 $
+                 !*(qcic(i,k)*qric(i,k))**1.15_r8)
+
+               pra(k) = sccons12(i,k)/(sccons3(i,k)*sccons20(i,k))*67._r8 &
+                   *(qcic(i,k)*qric(i,k))**1.15_r8 *(rho(i,k)/1.16)**1.30_r8
+!>
+               !npra(k) = pra(k)/(qcic(i,k)/ncic(i,k)) *(rho(i,k)/1.16)**1.30_r8
 
             end if               ! sub-column switch
 
@@ -2861,6 +3003,7 @@ do i=1,ncol
       !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       ! calculate sedimentation for cloud water and ice
       !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!MZ<
 
       ! update in-cloud cloud mixing ratio and number concentration 
       ! with microphysical tendencies to calculate sedimentation, assign to dummy vars
@@ -2890,11 +3033,15 @@ do i=1,ncol
          dumnc(i,k)=min(dumnc(i,k),dumc(i,k)*1.e20_r8)
          ! add lower limit to in-cloud number concentration
          dumnc(i,k)=max(dumnc(i,k),cdnl/rho(i,k)) ! sghan minimum in #/cm3 
-         pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
-         pgam(k)=1._r8/(pgam(k)**2)-1._r8
-         pgam(k)=max(pgam(k),2._r8)
-         pgam(k)=min(pgam(k),15._r8)
+!MZ<
+         !pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+         !pgam(k)=1._r8/(pgam(k)**2)-1._r8
+         !pgam(k)=max(pgam(k),2._r8)
+         !pgam(k)=min(pgam(k),15._r8)
 
+         call pgam_lamc_MZ(ipgam,dumnc(i,k),dumc(i,k),rho(i,k), &
+               episilon(k),pgam(k),lamc(k) )
+!>
          lamc(k) = (pi/6._r8*rhow*dumnc(i,k)*gamma(pgam(k)+4._r8)/ &
               (dumc(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
          lammin = (pgam(k)+1._r8)/50.e-6_r8
@@ -3248,10 +3395,15 @@ do i=1,ncol
          end if
          dumnc(i,k)=max(dumnc(i,k),cdnl/rho(i,k)) ! sghan minimum in #/cm3 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
-         pgam(k)=1._r8/(pgam(k)**2)-1._r8
-         pgam(k)=max(pgam(k),2._r8)
-         pgam(k)=min(pgam(k),15._r8)
+!<MZ
+         !pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+         !pgam(k)=1._r8/(pgam(k)**2)-1._r8
+         !pgam(k)=max(pgam(k),2._r8)
+         !pgam(k)=min(pgam(k),15._r8)
+
+         call pgam_lamc_MZ(ipgam,dumnc(i,k),dumc(i,k),rho(i,k), &
+               episilon(k),pgam(k),lamc(k) )
+!>
 
          lamc(k) = (pi/6._r8*rhow*dumnc(i,k)*gamma(pgam(k)+4._r8)/ &
               (dumc(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
@@ -3302,13 +3454,19 @@ do i=1,ncol
       dumnc(i,k)=1.e8_r8
 
       if (dumc(i,k).ge.qsmall) then
-         pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
-         pgam(k)=1._r8/(pgam(k)**2)-1._r8
-         pgam(k)=max(pgam(k),2._r8)
-         pgam(k)=min(pgam(k),15._r8)
+!MZ<
+         !pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+         !pgam(k)=1._r8/(pgam(k)**2)-1._r8
+         !pgam(k)=max(pgam(k),2._r8)
+         !pgam(k)=min(pgam(k),15._r8)
 
-         lamc(k) = (pi/6._r8*rhow*dumnc(i,k)*gamma(pgam(k)+4._r8)/ &
-              (dumc(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
+         !lamc(k) = (pi/6._r8*rhow*dumnc(i,k)*gamma(pgam(k)+4._r8)/ &
+              !(dumc(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
+
+          call pgam_lamc_MZ(ipgam,dumnc(i,k),dumc(i,k),rho(i,k), &
+               episilon(k),pgam(k),lamc(k) )
+!>
+
          lammin = (pgam(k)+1._r8)/50.e-6_r8
          lammax = (pgam(k)+1._r8)/2.e-6_r8
          if (lamc(k).lt.lammin) then
@@ -3502,6 +3660,140 @@ do k=top_lev,pver
 enddo
 
 
-end subroutine micro_mg_tend
+end subroutine micro_mg_tend_MZ
+
+!MZ< to end of module
+
+!================================================================================
+subroutine pgam_lamc_MZ(ipgam,ncic,qcic,rho, &
+         eps,pgam,lamc)
+!-----------------------------------------
+! Purpose:calculate mu and lamda in size distrition
+! Author: MZhang 2017-12-01
+!----------------------------------------
+
+    implicit none 
+    integer, intent(in) :: ipgam ! which dispersion scheme
+                                ! 1-> cam6, 2->MZ, 3>MZ_S, 4->ECHAM
+    real(r8), intent(in) :: ncic ! in-cloud number concentration in 1/kg
+    real(r8), intent(in) :: qcic ! in-cloud liq in kg/kg
+    real(r8), intent(in) :: rho  ! air density in kg/m3
+    real(r8), intent(out) :: eps ! dispersion
+    real(r8), intent(out) :: pgam ! mu parameter
+    real(r8), intent(out) :: lamc ! lamda parameter
+
+    real(r8) a, b,c,beta
+
+          beta = 1.0_r8
+
+    select case (ipgam)
+      case(1)  !cam5
+          pgam=0.0005714_r8*(ncic/1.e6_r8*rho)+0.2714_r8
+          eps = pgam
+
+       case(2) !MZhang based on data from Liu and Daum
+
+          a = max(1.0e10_r8,ncic/(qcic*1.e3_r8))
+          a = min(a,1.0e15_r8) 
+
+          beta=  -4.423_r8+0.625_r8*log10(a) !!units in N/cm3* g/cm3
+          beta=max(beta,1.05_r8)
+          beta=min(beta,1.6_r8)
+         
+          eps  = -0.5_r8+0.125_r8*(beta**3._r8+   &
+              sqrt(8._r8*(beta**3._r8) + beta**6._r8)) 
+
+          eps = max(eps,1.e-4_r8)
+          !write(*,*) 'epsX',qcic,ncic,beta,eps
+          eps  = sqrt(eps)
+
+       case(3) !MZhang simpler formula based on data from Liu and Daum
+
+           pgam = 0.3_r8 + 8.3333e-4_r8*(ncic*rho/1.e6_r8)
+           pgam = min(pgam,0.9_r8)
+           eps  = pgam
+
+       case(4) !MZhang simpler formula based on data from Liu and Daum
+
+           beta = 1.19_r8 + 4.5e-4_r8*(ncic*rho/1.e6_r8)
+           beta=max(beta,1.05_r8)
+           beta=min(beta,1.6_r8)
+
+           pgam = beta**3
+
+           a = 4.0_r8
+           b = 4.0_r8 - pgam
+           c = 1.0_r8 - pgam
+           eps = sqrt( b**2 - 4.0_r8*a*c ) 
+           eps = 0.5*(eps - b)/a
+
+       case default   !same as case 1
+
+          pgam=0.0005714_r8*(ncic/1.e6_r8*rho)+0.2714_r8
+          eps = pgam
+          
+      end select    
+
+          pgam = eps
+          pgam=1._r8/(pgam**2._r8)-1._r8
+          pgam=max(pgam,2._r8)
+          pgam=min(pgam,15._r8)
+
+      lamc = (pi/6._r8*rhow*ncic*gamma(pgam+4._r8)/ &
+                    (qcic*gamma(pgam+1._r8)))**(1._r8/3._r8)
+
+    return
+
+end subroutine pgam_lamc_MZ
+
+!========================================
+
+    real(8) function beta4_MZ(eps)
+
+!-----------------------------------------
+! Purpose: calculate beta4 enhancement factor from dispersion
+! Author: MZhang 2017-12-01
+!----------------------------------------
+
+    implicit none 
+    real(r8), intent(in) :: eps ! dispersion  
+
+    real(r8) pgam, a, b
+
+    pgam = eps*eps
+    a =  (1.+3.*pgam)**0.25
+    b = ((1.+2.*pgam)*(1.+pgam))**0.083333 
+
+    beta4_MZ = a/b
+
+    return
+
+    end function beta4_MZ
+
+
+!========================================
+
+    real(8) function beta6_MZ(eps)
+
+!-----------------------------------------
+! Purpose:calculate beta6 enhancement factor from dispersion
+! Author: MZhang 2017-12-01
+!----------------------------------------
+
+    implicit none 
+    real(r8), intent(in) :: eps ! dispersion  
+
+    real(r8) pgam, a, b
+
+    pgam = eps*eps
+
+    a =  (1.+3.*pgam)*(1.+4.*pgam)*(1.+5.*pgam)
+    b =  (1.+pgam)*(1.+2.*pgam) 
+
+    beta6_MZ = (a/b)**0.166667
+
+    return
+
+    end function beta6_MZ
 
 end module micro_mg1_0
