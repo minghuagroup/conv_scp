@@ -1,0 +1,6 @@
+ &shr_strdata_nml
+   dataMode   = 'SSTDATA'
+   domainFile = '/glade/p/cesmdata/inputdata//atm/cam/ocnfrac/domain.camocn.1.9x2.5_gx1v6_090403.nc'
+   streams    = 'docn.stream.txt 0 0 0 '
+   vectors    = 'null'
+ /
