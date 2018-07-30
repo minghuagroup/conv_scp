@@ -609,6 +609,10 @@ subroutine zm_convr(lchnk   ,ncol    , &
       end if
    end do
 
+if(i>0)then
+       write(*,*)'in zyx_conv 2.0',lchnk,lengath,cape
+endif
+
    if (lengath.eq.0) return
    do ii=1,lengath
       i=index(ii)
@@ -709,6 +713,18 @@ subroutine zm_convr(lchnk   ,ncol    , &
          evpg (i,k) = evpg (i,k)* (zfg(i,k)-zfg(i,k+1))/dp(i,k)
       end do
    end do
+
+i=1
+if(i>0)then
+              k=25
+              write(*,"(A50/,A30/,5I10/,3(A10/,3(5E15.7/)) )") &
+                  ' ZZ2ZZZz in zyx_conv at end ....', &
+              'state%lchnk, pcols,pver,ncol',lchnk, pcols,pver,ncol,lengath, &
+              'q(1)',qh(1:15,k),        &
+              'mu',mu(1:15,k),             &
+              'rprdg',rprdg(1:15,k)
+endif
+
 
    call closure(lchnk   , &
                 qg      ,tg      ,pg      ,zg      ,sg      , &
@@ -842,6 +858,19 @@ subroutine zm_convr(lchnk   ,ncol    , &
       end do
    end do
    rliq(:ncol) = rliq(:ncol) /1000._r8
+   if(i>0)then
+      k=25
+      write(*,"(A50/,A30/,4I10/,5(A10/,3(5E15.7/)) )") &
+      ' ZZZZZz in zm_conv at end ....', &
+      'state%lchnk, pcols,pver,ncol',lchnk, pcols,pver,ncol, &
+      'q(1)',qh(1:15,k),        &
+      'mcon',mcon(1:15,k), &
+      'rprd',rprd(1:15,k), &
+      'qliqtendq(1)',dlf(1:15,k),&
+      'qtnd',qtnd(1:15,k)
+    endif
+
+
 
    return
 end subroutine zm_convr

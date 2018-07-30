@@ -434,6 +434,39 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !
    call t_startf ('zm_convr')
 
+   
+i=1
+if(i<0)then
+    k = 25
+              !write(*,*) 'XXXXXXXXx state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver
+            !do i=0,pcols 
+             !if(abs( state%lat(i)*180._r8/3.1416_r8) < 3.0_r8)then
+              !write(*,*) 'state%lon(i)*180._r8/pi'
+              !write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
+              !write(*,*) 'state%lat(i)*180._r8/pi'
+              !write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
+              !write(*,*) 'state%q(:,k,1) -----------'
+              !write(*, "(5E15.7)") state%q(:,k,1)
+              !write(*,*) 'state%q(:,k,2) -----------'
+              !write(*, "(5E15.7)") state%q(:,k,2)
+              !write(*,*) 'ptend%q(:,k,1) -----------'
+              !write(*,*) 'mcon -----------'
+              !write(*, "(5E15.7)") mcon(:,k)
+              !write(*,*) 'rprd -----------'
+              !write(*, "(5E15.7)") rprd(:,k)
+
+              write(*,"(A50/,A30/,4I10/,2(A5/,3(5F15.2/)),4(A10/,3(5E15.7/)) )") &
+              'XXXX Before zm calling zm_conv ',   &
+              'state%lchnk, pcols,pver,ncol',state%lchnk, pcols,pver,ncol, &
+              'lon',state%lon(1:15)*180._r8/3.1416_r8,&
+              'lat',state%lat(1:15)*180._r8/3.1416_r8, &
+              'q(1)',state%q(1:15,k,1),        &
+              'q(2)',state%q(1:15,k,2),        &
+              'mcon',mcon(1:15,k),             &
+              'rprd',rprd(1:15,k)
+endif
+
+
    call zm_convr(   lchnk   ,ncol    , &
                     state%t       ,state%q(:,:,1)     ,prec    ,jctop   ,jcbot   , &
                     pblh    ,state%zm      ,state%phis    ,state%zi      ,ptend_loc%q(:,:,1)    , &
@@ -460,6 +493,45 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
     else
         omega(1:ncol,:) = state%omega
     end if
+
+
+i=1
+if(i<0)then
+    k = 25
+              write(*,*) 'state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver
+            !do i=0,pcols 
+             !if(abs( state%lat(i)*180._r8/3.1416_r8) < 3.0_r8)then
+              !write(*,*) 'state%lon(i)*180._r8/pi'
+              !write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
+              !write(*,*) 'state%lat(i)*180._r8/pi'
+              !write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
+              !write(*,*) 'state%q(:,k,1) -----------'
+              !write(*, "(5E15.7)") state%q(:,k,1)
+              !write(*,*) 'state%q(:,k,2) -----------'
+              !write(*, "(5E15.7)") state%q(:,k,2)
+              !write(*,*) 'ptend%q(:,k,1) -----------'
+              !write(*, "(5E15.7)") ptend_loc%q(:,k,1)
+              !write(*,*) 'ptend%q(:,k,2) -----------'
+              !write(*, "(5E15.7)") ptend_loc%q(:,k,2)
+              !write(*,*) 'mcon -----------'
+              !write(*, "(5E15.7)") mcon(:,k)
+              !write(*,*) 'rprd -----------'
+              !write(*, "(5E15.7)") rprd(:,k)
+
+              write(*,"(A50/,A30/,4I10/,2(A5/,3(5F15.2/)),6(A10/,3(5E15.7/)) )") &
+              'YYYY After calling zm_conv ',   &
+              'state%lchnk, pcols,pver,ncol',state%lchnk, pcols,pver,ncol, &
+              'lon',state%lon(1:15)*180._r8/3.1416_r8,&
+              'lat',state%lat(1:15)*180._r8/3.1416_r8, &
+              'q(1)',state%q(1:15,k,1),        &
+              'q(2)',state%q(1:15,k,2),        &
+              'mcon',mcon(1:15,k),             &
+              'rprd',rprd(1:15,k), &
+              'ptendq(1)',ptend_loc%q(1:15,k,1),        &
+              'ptendq(2)',ptend_loc%q(1:15,k,2)
+endif
+
+
 !MZ
     !if (nn_type > 0) then
     if (nn_flag > 0 .and. nn_type > 0) then
@@ -677,12 +749,38 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    fake_dpdry(:,:) = 0._r8
 
    call t_startf ('convtran1')
+!MZ
+   if(i<0)then
+       write(*,*)'.........before convtran'
+       write(*,*)'lchnk, ncol, pver, pverp',lchnk, ncol, pver, pverp
+       write(*,*)'state1%q',state1%q
+       write(*,*)'mu',mu
+       write(*,*)'md',md
+       write(*,*)'du',du
+       write(*,*)'eu',eu
+       write(*,*)'ed',ed
+       write(*,*)'dp',dp
+       write(*,*)'dsubcld',dsubcld
+       write(*,*)'jt',jt
+       write(*,*)'maxg',maxg
+       write(*,*)'ideep',ideep
+       write(*,*)'lengath',lengath
+       write(*,*)'fracis',fracis
+       write(*,*)'ptend_loc%q',ptend_loc%q
+       write(*,*)'fake_dpdry',fake_dpdry
+   endif
+
    call convtran (lchnk,                                        &
                   ptend_loc%lq,state1%q, pcnst,  mu(:,:,lchnk), md(:,:,lchnk),   &
                   du(:,:,lchnk), eu(:,:,lchnk), ed(:,:,lchnk), dp(:,:,lchnk), dsubcld(:,lchnk),  &
                   jt(:,lchnk),maxg(:,lchnk), ideep(:,lchnk), 1, lengath(lchnk),  &
                   nstep,   fracis,  ptend_loc%q, fake_dpdry)
    call t_stopf ('convtran1')
+
+if(i<0)then
+    write(*,*)'zm ---after convtran'
+    write(*,*)'ptend_loc%q',ptend_loc%q
+endif
 
    call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
    call outfld('ZMDLIQ ',ptend_loc%q(1,1,ixcldliq) ,pcols   ,lchnk   )
@@ -734,6 +832,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
 ! Associate pointers with physics buffer fields
 !
    ifld = pbuf_get_index('FRACIS')
+
    call pbuf_get_field(pbuf, fracis_idx, fracis, start=(/1,1,1/), kount=(/pcols, pver, pcnst/) )
 
 !
@@ -744,6 +843,8 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
 
    nstep = get_nstep()
 
+!   write(*,*) 'lchnk,nstep ',lchnk,nstep
+
    if (any(ptend%lq(:))) then
       ! initialize dpdry for call to convtran
       ! it is used for tracers of dry mixing ratio type
@@ -751,6 +852,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
       do i = 1,lengath(lchnk)
          dpdry(i,:) = state%pdeldry(ideep(i,lchnk),:)/100._r8
       end do
+
 
       call t_startf ('convtran2')
       call convtran (lchnk,                                        &

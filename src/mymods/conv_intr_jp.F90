@@ -426,15 +426,15 @@ subroutine conv_intr_jp_tend( &
                write(iulog,*) tmp<qmin(1), tmp-qmin(1)
                write(iulog,*) 'problem in neg Q', i, k
                write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
-               do j = 1, pver
-                   write(iulog,'(i3,f10.5,3f30.25,l3)') j, &
-                       state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
-                       state_loc%q(i,j,1)>qmin(1)
+               !do j = 1, pver
+                   !write(iulog,'(i3,f10.5,2f30.25,l3)') j, &
+                   !    state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
+                   !    state_loc%q(i,j,1)>qmin(1)
                    write(iulog,'(i3,f10.5,3f30.25,l3)') j, state_loc%pmid(i,j)/100., &
                        state_loc%q(i,j,1), qtend(i,j)*ztodt, outqtend(i,j)*ztodt, &
                        state_loc%q(i,j,1) > qmin(1)
-               end do
-               exit
+               !end do
+               !exit
            end if
        end do
    end do
