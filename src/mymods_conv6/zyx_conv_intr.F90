@@ -965,7 +965,7 @@ endif
 !MZ ------------ mimic conv_intr_jp in SCP  
 !!   if(plume_model == 'cam')then
    if(plume_model == 'scp')then
-!!     goto 1002
+     goto 1002
      !================================
    endif 
 !MZ---------------------

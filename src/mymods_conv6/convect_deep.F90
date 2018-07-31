@@ -636,7 +636,7 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
    case('ZM')
       call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
 
-MZ   case('SCP')
+   case('SCP')
       call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
 
    case('ZYX')
