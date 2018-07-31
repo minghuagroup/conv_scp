@@ -2959,31 +2959,19 @@ end do
 
     if (flagqcheck == 2) then
         do i = 1, inncol
-            
-            minqcheckf = 1.0
-            do k = nlev, 1, -1
-                qcheckf = 1.0
-                if (p(i,k) > qnegtop) then
-                    qguess  = q(i,k)+qtend(i,k)*dtime
-                    if( qguess < qmin .and. abs(qtend(i,k)) > 1e-15) then
-                        qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
-                    end if
-                end if
-                if (qcheckf < minqcheckf) then
-                    minqcheckf = qcheckf
-                end if
-            end do
-
-#ifdef SCMDIAG
-    write(*,*) "yhyminqcheck:", minqcheckf
-#endif
-
             do k = nlev, 1, -1
                 if (p(i,k) <= qnegtop) then
                     qcheckf = 0.0
                 else
-                    qcheckf = minqcheckf
+                    qguess  = q(i,k)+qtend(i,k)*dtime
+                    qcheckf = 1.0
+                    if( qguess < qmin .and. abs(qtend(i,k)) > 1e-15) then
+                        qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
+                    end if
                 end if
+#ifdef SCMDIAG
+    write(*,*) "yhyqcheck:", p(i,k), qcheckf, qguess
+#endif
                 qtend(i,k) = qcheckf * qtend(i,k)
                 stend(i,k) = qcheckf * stend(i,k)
                 qliqtend(i,k) = qcheckf * qliqtend(i,k)
