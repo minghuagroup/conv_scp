@@ -609,7 +609,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       end if
    end do
 
-if(i>0)then
+if(i<0)then
        write(*,*)'in zyx_conv 2.0',lchnk,lengath,cape
 endif
 

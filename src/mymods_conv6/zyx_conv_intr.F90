@@ -25,7 +25,7 @@ use cam_logfile,  only: iulog
 
 !MZ
 use zyx_conv,     only: zyx_conv_init, zyx_conv_tend, zyx_conv_evap, convtran, momtran !, zyx_convi
-use mod_foutput,     only: foutput_1d, foutput_2d
+!use mod_foutput,     only: foutput_1d, foutput_2d
 
 implicit none
 private
@@ -653,38 +653,38 @@ endif
 !!     write(*,*)lengath(lchnk),lengath,lchnk,begchunk,endchunk
 
 ! yhy test:
-    call foutput_1d('zyx intro: zyx_conv_tend: after: ulat: ', state%ulat(:ncol), ncol)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: landfrac: ', landfrac(:ncol), ncol)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: lhflx: ', lhflx(:ncol), ncol)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: ps: ', state%ps(:ncol), ncol)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: t: ', state%t(:ncol,:), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: q1: ', state%q(:ncol,:,1), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: q2: ', state%q(:ncol,:,2), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: q3: ', state%q(:ncol,:,3), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: q4: ', state%q(:ncol,:,4), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: q5: ', state%q(:ncol,:,5), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: omega: ', omega(:ncol,:), ncol, pver)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: pblh: ', pblh(:ncol), ncol)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: massflxbase_p: ', massflxbase_p(:ncol, 1), ncol)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: stend: ', stend(:ncol,:), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: qtend: ', qtend(:ncol,:), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: qliqtend: ', qliqtend(:ncol,:), ncol, pver)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: prec: ', prec(:ncol), ncol)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: mcon: ', mcon(:ncol, :), ncol, pverp)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: dilucape: ', dilucape(:ncol, :), ncol, pver)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: ulat: ', state%ulat(:ncol), ncol)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: landfrac: ', landfrac(:ncol), ncol)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: lhflx: ', lhflx(:ncol), ncol)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: ps: ', state%ps(:ncol), ncol)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: t: ', state%t(:ncol,:), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: q1: ', state%q(:ncol,:,1), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: q2: ', state%q(:ncol,:,2), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: q3: ', state%q(:ncol,:,3), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: q4: ', state%q(:ncol,:,4), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: q5: ', state%q(:ncol,:,5), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: omega: ', omega(:ncol,:), ncol, pver)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: pblh: ', pblh(:ncol), ncol)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: massflxbase_p: ', massflxbase_p(:ncol, 1), ncol)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: stend: ', stend(:ncol,:), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: qtend: ', qtend(:ncol,:), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: qliqtend: ', qliqtend(:ncol,:), ncol, pver)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: prec: ', prec(:ncol), ncol)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: mcon: ', mcon(:ncol, :), ncol, pverp)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: dilucape: ', dilucape(:ncol, :), ncol, pver)
     
-    call foutput_1d('zyx intro: zyx_conv_tend: after: phis: ', state%phis(:ncol), ncol)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: cme: ',  cme(:ncol, :), ncol, pver)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: cape: ', cape(:ncol), ncol)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: dlf: ',  dlf(:ncol, :), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: pflx: ', pflx(:ncol, :), ncol, pverp)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: zdu: ',  zdu(:ncol, :), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: rprd: ', rprd(:ncol, :), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: mu: ',   mu(:ncol, :, lchnk), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: md: ',   md(:ncol, :, lchnk), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: du: ',   du(:ncol, :, lchnk), ncol, pver)
-    call foutput_2d('zyx intro: zyx_conv_tend: after: eu: ',   eu(:ncol, :, lchnk), ncol, pver)
-    call foutput_1d('zyx intro: zyx_conv_tend: after: dsubcld: ',   dsubcld(:ncol, lchnk), ncol)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: phis: ', state%phis(:ncol), ncol)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: cme: ',  cme(:ncol, :), ncol, pver)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: cape: ', cape(:ncol), ncol)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: dlf: ',  dlf(:ncol, :), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: pflx: ', pflx(:ncol, :), ncol, pverp)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: zdu: ',  zdu(:ncol, :), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: rprd: ', rprd(:ncol, :), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: mu: ',   mu(:ncol, :, lchnk), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: md: ',   md(:ncol, :, lchnk), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: du: ',   du(:ncol, :, lchnk), ncol, pver)
+!    call foutput_2d('zyx intro: zyx_conv_tend: after: eu: ',   eu(:ncol, :, lchnk), ncol, pver)
+!    call foutput_1d('zyx intro: zyx_conv_tend: after: dsubcld: ',   dsubcld(:ncol, lchnk), ncol)
 
 
 
@@ -965,7 +965,7 @@ endif
 !MZ ------------ mimic conv_intr_jp in SCP  
 !!   if(plume_model == 'cam')then
    if(plume_model == 'scp')then
-     goto 1002
+!!     goto 1002
      !================================
    endif 
 !MZ---------------------
@@ -1351,28 +1351,28 @@ endif
         call t_stopf ('convtran2')
   end if
 
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q1: ', state%q(:ncol,:,1), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q2: ', state%q(:ncol,:,2), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q3: ', state%q(:ncol,:,3), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q4: ', state%q(:ncol,:,4), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q5: ', state%q(:ncol,:,5), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: mu: ', mu(:ncol,:,lchnk), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: md: ', md(:ncol,:,lchnk), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: du: ', du(:ncol,:,lchnk), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: eu: ', eu(:ncol,:,lchnk), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: ed: ', ed(:ncol,:,lchnk), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: dp: ', dp(:ncol,:,lchnk), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis1: ', fracis(:ncol,:,1), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis2: ', fracis(:ncol,:,2), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis3: ', fracis(:ncol,:,3), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis4: ', fracis(:ncol,:,4), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis5: ', fracis(:ncol,:,5), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend1: ', ptend%q(:ncol,:,1), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend2: ', ptend%q(:ncol,:,2), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend3: ', ptend%q(:ncol,:,3), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend4: ', ptend%q(:ncol,:,4), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend5: ', ptend%q(:ncol,:,5), ncol, pver)
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: dpdry: ', dpdry(:ncol,:), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q1: ', state%q(:ncol,:,1), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q2: ', state%q(:ncol,:,2), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q3: ', state%q(:ncol,:,3), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q4: ', state%q(:ncol,:,4), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q5: ', state%q(:ncol,:,5), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: mu: ', mu(:ncol,:,lchnk), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: md: ', md(:ncol,:,lchnk), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: du: ', du(:ncol,:,lchnk), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: eu: ', eu(:ncol,:,lchnk), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: ed: ', ed(:ncol,:,lchnk), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: dp: ', dp(:ncol,:,lchnk), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis1: ', fracis(:ncol,:,1), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis2: ', fracis(:ncol,:,2), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis3: ', fracis(:ncol,:,3), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis4: ', fracis(:ncol,:,4), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis5: ', fracis(:ncol,:,5), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend1: ', ptend%q(:ncol,:,1), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend2: ', ptend%q(:ncol,:,2), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend3: ', ptend%q(:ncol,:,3), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend4: ', ptend%q(:ncol,:,4), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend5: ', ptend%q(:ncol,:,5), ncol, pver)
+!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: dpdry: ', dpdry(:ncol,:), ncol, pver)
 
 !!      write(*,*) 'in zyx_conv_tend_2 2'
 
