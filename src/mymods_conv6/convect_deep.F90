@@ -620,7 +620,7 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
 
 !   write(*,*) 'in tend_2 1 ',deep_scheme
 
-!!   return
+!   return
 !!!!!!!!!!!!!!!!!!!!!!!1
   ! get deep_scheme setting from phys_control
 !MZ
@@ -636,8 +636,8 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
    case('ZM')
       call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
 
-   case('SCP')
-      call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
+!MZ   case('SCP')
+!      call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
 
    case('ZYX')
 !!      if(plume_model == 'zyx')then 

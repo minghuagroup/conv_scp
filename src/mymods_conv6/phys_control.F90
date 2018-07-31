@@ -114,6 +114,8 @@ subroutine phys_ctl_readnl(nlfile)
       call freeunit(unitn)
    end if
 
+   plume_model = trim(plume_model)
+
 #ifdef SPMD
    ! Broadcast namelist variables
    call mpibcast(deep_scheme,      len(deep_scheme)      , mpichar, 0, mpicom)
