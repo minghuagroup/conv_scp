@@ -438,8 +438,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 i=1
 if(i<0)then
     k = 25
-              !write(*,*) 'XXXXXXXXx state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver
-            !do i=0,pcols 
              !if(abs( state%lat(i)*180._r8/3.1416_r8) < 3.0_r8)then
               !write(*,*) 'state%lon(i)*180._r8/pi'
               !write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
@@ -454,7 +452,9 @@ if(i<0)then
               !write(*, "(5E15.7)") mcon(:,k)
               !write(*,*) 'rprd -----------'
               !write(*, "(5E15.7)") rprd(:,k)
-
+endif
+if(i<0)then
+    k = 25
               write(*,"(A50/,A30/,4I10/,2(A5/,3(5F15.2/)),4(A10/,3(5E15.7/)) )") &
               'XXXX Before zm calling zm_conv ',   &
               'state%lchnk, pcols,pver,ncol',state%lchnk, pcols,pver,ncol, &
@@ -499,25 +499,40 @@ i=1
 if(i<0)then
     k = 25
               write(*,*) 'state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver
-            !do i=0,pcols 
-             !if(abs( state%lat(i)*180._r8/3.1416_r8) < 3.0_r8)then
-              !write(*,*) 'state%lon(i)*180._r8/pi'
-              !write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
-              !write(*,*) 'state%lat(i)*180._r8/pi'
-              !write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
-              !write(*,*) 'state%q(:,k,1) -----------'
-              !write(*, "(5E15.7)") state%q(:,k,1)
-              !write(*,*) 'state%q(:,k,2) -----------'
-              !write(*, "(5E15.7)") state%q(:,k,2)
-              !write(*,*) 'ptend%q(:,k,1) -----------'
-              !write(*, "(5E15.7)") ptend_loc%q(:,k,1)
-              !write(*,*) 'ptend%q(:,k,2) -----------'
-              !write(*, "(5E15.7)") ptend_loc%q(:,k,2)
-              !write(*,*) 'mcon -----------'
-              !write(*, "(5E15.7)") mcon(:,k)
-              !write(*,*) 'rprd -----------'
-              !write(*, "(5E15.7)") rprd(:,k)
+              write(*,*) 'state%lon(i)*180._r8/pi'
+              write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
+              write(*,*) 'state%lat(i)*180._r8/pi'
+              write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
+              write(*,*) 'state%q(:,k,1) -----------'
+              write(*, "(5E15.7)") state%q(:,k,1)
+              write(*,*) 'state%q(:,k,2) -----------'
+              write(*, "(5E15.7)") state%q(:,k,2)
+              write(*,*) 'ptend%q(:,k,1) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,1)
+              write(*,*) 'ptend%q(:,k,2) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,2)
+              write(*,*) 'ptend%q(:,k,3) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,3)
+              write(*,*) 'ptend%q(:,k,4) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,4)
+              write(*,*) 'fracis(:,k,:)'
+              write(*, "(5E15.7)") fracis(:,k,:)
+              write(*,*) 'mcon -----------'
+              write(*, "(5E15.7)") mcon(:,k)
+              write(*,*) 'mu -----------'
+              write(*, "(5E15.7)") mu(:,k,:)
+              write(*,*) 'eu -----------'
+              write(*, "(5E15.7)") eu(:,k,:)
+              write(*,*) 'md -----------'
+              write(*, "(5E15.7)") md(:,k,:)
+              write(*,*) 'dlf -----------'
+              write(*, "(5E15.7)") dlf(:,k)
+              write(*,*) 'rprd -----------'
+              write(*, "(5E15.7)") rprd(:,k)
+endif
 
+if(i<0)then
+    k = 25
               write(*,"(A50/,A30/,4I10/,2(A5/,3(5F15.2/)),6(A10/,3(5E15.7/)) )") &
               'YYYY After calling zm_conv ',   &
               'state%lchnk, pcols,pver,ncol',state%lchnk, pcols,pver,ncol, &
@@ -765,7 +780,7 @@ endif
        write(*,*)'maxg',maxg
        write(*,*)'ideep',ideep
        write(*,*)'lengath',lengath
-       write(*,*)'fracis',fracis
+       write(*,*)'rprd',rprd
        write(*,*)'ptend_loc%q',ptend_loc%q
        write(*,*)'fake_dpdry',fake_dpdry
    endif

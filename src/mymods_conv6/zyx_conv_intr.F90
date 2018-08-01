@@ -25,6 +25,7 @@ use cam_logfile,  only: iulog
 
 !MZ
 use zyx_conv,     only: zyx_conv_init, zyx_conv_tend, zyx_conv_evap, convtran, momtran !, zyx_convi
+use mod_foutput,     only: foutput_1d, foutput_2d
 
 implicit none
 private
@@ -576,21 +577,21 @@ subroutine zyx_conv_intr_tend( &
 i=1
 if(i<0)then
     k = 25
-              !write(*,*) 'XXXXXX state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver,ncol
-              !write(*,*) 'state%lon(i)*180._r8/pi'
-              !write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
-              !write(*,*) 'state%lat(i)*180._r8/pi'
-              !write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
-              !write(*,*) 'state%q(:,k,1) -----------'
-              !write(*, "(5E15.7)") state%q(:,k,1)
-              !write(*,*) 'state%q(:,k,2) -----------'
-              !write(*, "(5E15.7)") state%q(:,k,2)
-              !write(*,*) 'mcon -----------'
-              !write(*, "(5E15.7)") mcon(:,k)
-              !write(*,*) 'rprd -----------'
-              !write(*, "(5E15.7)") rprd(:,k)
-
-    !if(masterproc)then
+              write(*,*) 'XXXXXX state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver,ncol
+              write(*,*) 'state%lon(i)*180._r8/pi'
+              write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
+              write(*,*) 'state%lat(i)*180._r8/pi'
+              write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
+              write(*,*) 'state%q(:,k,1) -----------'
+              write(*, "(5E15.7)") state%q(:,k,1)
+              write(*,*) 'state%q(:,k,2) -----------'
+              write(*, "(5E15.7)") state%q(:,k,2)
+              write(*,*) 'mcon -----------'
+              write(*, "(5E15.7)") mcon(:,k)
+              write(*,*) 'rprd -----------'
+              write(*, "(5E15.7)") rprd(:,k)
+endif
+if(i<0)then
               write(*,"(A50/,A30/,4I10/,2(A5/,3(5F15.2/)),4(A10/,3(5E15.7/)) )") &
               'XXXX before calling zyx_conv ',   &
               'state%lchnk, pcols,pver,ncol',state%lchnk, pcols,pver,ncol, &
@@ -600,7 +601,6 @@ if(i<0)then
               'q(2)',state%q(1:15,k,2),        &
               'mcon',mcon(1:15,k),             &
               'rprd',rprd(1:15,k)
-    !  endif     
 endif
 
 
@@ -651,6 +651,42 @@ endif
 !!     write(*,*)'lengath(lchnk),lengath,lchnk,begchunk,endchunk'
 !!     write(*,*)lengath(lchnk),lengath,lchnk,begchunk,endchunk
 
+! yhy test:
+    call foutput_1d('zyx intro: zyx_conv_tend: after: ulat: ', state%ulat(:ncol), ncol)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: landfrac: ', landfrac(:ncol), ncol)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: lhflx: ', lhflx(:ncol), ncol)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: ps: ', state%ps(:ncol), ncol)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: t: ', state%t(:ncol,:), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: q1: ', state%q(:ncol,:,1), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: q2: ', state%q(:ncol,:,2), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: q3: ', state%q(:ncol,:,3), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: q4: ', state%q(:ncol,:,4), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: q5: ', state%q(:ncol,:,5), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: omega: ', omega(:ncol,:), ncol, pver)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: pblh: ', pblh(:ncol), ncol)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: massflxbase_p: ', massflxbase_p(:ncol, 1), ncol)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: stend: ', stend(:ncol,:), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: qtend: ', qtend(:ncol,:), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: qliqtend: ', qliqtend(:ncol,:), ncol, pver)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: prec: ', prec(:ncol), ncol)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: mcon: ', mcon(:ncol, :), ncol, pverp)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: dilucape: ', dilucape(:ncol, :), ncol, pver)
+    
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: phis: ', state%phis(:ncol), ncol)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: cme: ',  cme(:ncol, :), ncol, pver)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: cape: ', cape(:ncol), ncol)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: dlf: ',  dlf(:ncol, :), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: pflx: ', pflx(:ncol, :), ncol, pverp)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: zdu: ',  zdu(:ncol, :), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: rprd: ', rprd(:ncol, :), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: mu: ',   mu(:ncol, :, lchnk), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: md: ',   md(:ncol, :, lchnk), ncol, pver)
+!!    call foutput_2d('zyx intro: zyx_conv_tend: after: du: ',   du(:ncol, :, lchnk), ncol, pver)
+!!   call foutput_2d('zyx intro: zyx_conv_tend: after: eu: ',   eu(:ncol, :, lchnk), ncol, pver)
+!!   call foutput_1d('zyx intro: zyx_conv_tend: after: dsubcld: ',   dsubcld(:ncol, lchnk), ncol)
+
+
+
 !MZ !!
      do i = 1,lengath(lchnk)
        dp(i,:,lchnk) = 0.01_r8*state%pdel(ideep(i,lchnk),:) !! in mb
@@ -696,27 +732,40 @@ endif
 i=1
 if(i<0)then
     k = 25
-              !write(*,*) 'state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver,ncol
-            !do i=0,pcols 
-             !if(abs( state%lat(i)*180._r8/3.1416_r8) < 3.0_r8)then
-              !write(*,*) 'state%lon(i)*180._r8/pi'
-              !write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
-              !write(*,*) 'state%lat(i)*180._r8/pi'
-              !write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
-              !write(*,*) 'state%q(:,k,1) -----------'
-              !write(*, "(5E15.7)") state%q(:,k,1)
-              !write(*,*) 'state%q(:,k,2) -----------'
-              !write(*, "(5E15.7)") state%q(:,k,2)
-              !write(*,*) 'ptend%q(:,k,1) -----------'
-              !write(*, "(5E15.7)") ptend_loc%q(:,k,1)
-              !write(*,*) 'ptend%q(:,k,2) -----------'
-              !write(*, "(5E15.7)") ptend_loc%q(:,k,2)
-              !write(*,*) 'mcon -----------'
-              !write(*, "(5E15.7)") mcon(:,k)
-              !write(*,*) 'rprd -----------'
-              !write(*, "(5E15.7)") rprd(:,k)
-
-    !if(masterproc)then
+              write(*,*) 'state%lchnk pcols,pver,ncol,nlev ', state%lchnk,pcols,pver
+              write(*,*) 'state%lon(i)*180._r8/pi'
+              write(*,"(5F15.2)") state%lon(:)*180._r8/3.1416_r8
+              write(*,*) 'state%lat(i)*180._r8/pi'
+              write(*,"(5F15.2)") state%lat(:)*180._r8/3.1416_r8
+              write(*,*) 'state%q(:,k,1) -----------'
+              write(*, "(5E15.7)") state%q(:,k,1)
+              write(*,*) 'state%q(:,k,2) -----------'
+              write(*, "(5E15.7)") state%q(:,k,2)
+              write(*,*) 'ptend%q(:,k,1) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,1)
+              write(*,*) 'ptend%q(:,k,2) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,2)
+              write(*,*) 'ptend%q(:,k,3) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,3)
+              write(*,*) 'ptend%q(:,k,4) -----------'
+              write(*, "(5E15.7)") ptend_loc%q(:,k,4)
+              write(*,*) 'fracis(:,k,:)'
+              write(*, "(5E15.7)") fracis(:,k,:)
+              write(*,*) 'mcon -----------'
+              write(*, "(5E15.7)") mcon(:,k)
+              write(*,*) 'mu -----------'
+              write(*, "(5E15.7)") mu(:,k,:)
+              write(*,*) 'md -----------'
+              write(*, "(5E15.7)") md(:,k,:)
+              write(*,*) 'eu -----------'
+              write(*, "(5E15.7)") eu(:,k,:)
+              write(*,*) 'dlf -----------'
+              write(*, "(5E15.7)") dlf(:,k)
+              write(*,*) 'rprd -----------'
+              write(*, "(5E15.7)") rprd(:,k)
+endif
+if(i<0)then
+    k = 25
               write(*,"(A50/,A30/,4I10/,2(A5/,3(5F15.2/)),6(A10/,3(5E15.7/)) )") &
               'YYYY After calling zyx_conv ',   &
               'state%lchnk, pcols,pver,ncol',state%lchnk, pcols,pver,ncol, &
@@ -729,7 +778,6 @@ if(i<0)then
               'ptendq(1)',ptend_loc%q(1:15,k,1),        &
               'ptendq(2)',ptend_loc%q(1:15,k,2)
 
-     ! endif     
 endif
 
 !   call outfld('TMP2D', outtmp2d, pcols, state%lchnk )
@@ -928,10 +976,24 @@ endif
 !MZ ------------ mimic conv_intr_jp in SCP  
 !!   if(plume_model == 'cam')then
    if(plume_model == 'scp')then
-     goto 1002
+     !goto 1002
+     !  mcon = 0.1_r8*mcon  !1 for ZYXscpevp GCM stability test
+     !  mu = 0.1_r8*mu
+     !  md = 0.1_r8*md
+     !  eu = 0.1_r8*eu
+     !  ed = 0.1_r8*ed
+     !  du = 0.1_r8*du
+
+     !  rprd = 0.1*rprd     !2 for rain evaporation CLOUD test
+
      !================================
    endif 
+
+
 !MZ---------------------
+
+     !!rprd = 0.0*rprd
+     !!precrate_out = 0.0*precrate_out
 
 
   ! initialize ptend for next process
@@ -1165,7 +1227,7 @@ write(*,*)'jt',jt
 write(*,*)'maxg',maxg
 write(*,*)'ideep',ideep
 write(*,*)'lengath',lengath
-write(*,*)'fracis',fracis
+write(*,*)'rprd',rprd
 write(*,*)'ptend_loc%q',ptend_loc%q
 write(*,*)'fake_dpdry',fake_dpdry
 endif
@@ -1176,12 +1238,19 @@ endif
                   !du(:,:,lchnk), eu(:,:,lchnk), ed(:,:,lchnk), dp(:,:,lchnk), dsubcld(:,lchnk),  &
                   !jt(:,lchnk),maxg(:,lchnk), ideep(:,lchnk), 1, lengath(lchnk),  &
                   !nstep,   fracis,  ptend_loc%q, fake_dpdry)
-   call convtran (lchnk, ncol, pver, pverp,                                        &
-                  ptend_loc%lq,state_loc%q, pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+   !call convtran (lchnk, ncol, pver, pverp,                                        &
+   !               ptend_loc%lq,state_loc%q, pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+   !               du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), dp(:ncol,:,lchnk), &
+   !               dsubcld(:ncol,lchnk),  &
+   !               jt(:ncol,lchnk),maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+   !               nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:) )
+! yhy test:
+    call convtran (lchnk, ncol, pver, pverp,                                        &
+                  ptend_loc%lq(1:3),state_loc%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
                   du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), dp(:ncol,:,lchnk), &
                   dsubcld(:ncol,lchnk),  &
                   jt(:ncol,lchnk),maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:) )
+                  nstep,   fracis(:ncol,:,1:3),  ptend_loc%q(:ncol,:,1:3), fake_dpdry(:ncol,:) )
    call t_stopf ('convtran1')
 if(i<0)then
 write(*,*)'---zyx after convtran'
@@ -1196,10 +1265,26 @@ endif
 
 1002 continue
 
+!write(*,*) 'in zyx_conv'
+!MZ dummy output =====================1003
+if(i<0)then
+outstendcond  = ptend_loc%q(:,:,1)   
+outqtendcond  = ptend_loc%q(:,:,2)   
+outstendtranup = rprd(:,:)
+outqtendtranup = dlf
+outstendtrandn = ntprprd
+outqtendtrandn = precrate
+   call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
+   call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
+   call outfld('STENDCONVDPTRANUP', outstendtranup, pcols, lchnk)
+   call outfld('QTENDCONVDPTRANUP', outqtendtranup, pcols, lchnk)
+   call outfld('STENDCONVDPTRANDN', outstendtrandn, pcols, lchnk)
+   call outfld('QTENDCONVDPTRANDN', outqtendtrandn, pcols, lchnk)
+endif
+
    call physics_state_dealloc(state_loc)
    call physics_ptend_dealloc(ptend_loc)
 
-!write(*,*) 'in zyx_conv'
 
 end subroutine zyx_conv_intr_tend
 !=========================================================================================
@@ -1289,14 +1374,46 @@ endif
                      !du(:,:,lchnk), eu(:,:,lchnk), ed(:,:,lchnk), dp(:,:,lchnk), dsubcld(:,lchnk),  &
                      !jt(:,lchnk),maxg(:,lchnk),ideep(:,lchnk), 1, lengath(lchnk),  &
                      !nstep,   fracis,  ptend%q, dpdry)
+      !call convtran (lchnk, pcols, pver, pverp,                                        &
+      !               ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+      !               du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
+      !               dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
+      !               jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+      !               nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
+      
+! yhy test:
       call convtran (lchnk, pcols, pver, pverp,                                        &
-                     ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+                     ptend%lq(1:3), state%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
                      du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
                      dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
-                     jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-                     nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
-      call t_stopf ('convtran2')
-   end if
+                     jt(:ncol,lchnk), maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                     nstep, fracis(:ncol,:,1:3),  ptend%q(:ncol,:,1:3), dpdry(:ncol,:) )
+    
+        call t_stopf ('convtran2')
+  end if
+
+  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q1: ', state%q(:ncol,:,1), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q2: ', state%q(:ncol,:,2), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q3: ', state%q(:ncol,:,3), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q4: ', state%q(:ncol,:,4), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q5: ', state%q(:ncol,:,5), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: mu: ', mu(:ncol,:,lchnk), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: md: ', md(:ncol,:,lchnk), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: du: ', du(:ncol,:,lchnk), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: eu: ', eu(:ncol,:,lchnk), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: ed: ', ed(:ncol,:,lchnk), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: dp: ', dp(:ncol,:,lchnk), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis1: ', fracis(:ncol,:,1), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis2: ', fracis(:ncol,:,2), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis3: ', fracis(:ncol,:,3), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis4: ', fracis(:ncol,:,4), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: fracis5: ', fracis(:ncol,:,5), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend1: ', ptend%q(:ncol,:,1), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend2: ', ptend%q(:ncol,:,2), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend3: ', ptend%q(:ncol,:,3), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend4: ', ptend%q(:ncol,:,4), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: qtend5: ', ptend%q(:ncol,:,5), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: dpdry: ', dpdry(:ncol,:), ncol, pver)
 
 !!      write(*,*) 'in zyx_conv_tend_2 2'
 

@@ -609,7 +609,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       end if
    end do
 
-if(i>0)then
+if(i<0)then
        write(*,*)'in zyx_conv 2.0',lchnk,lengath,cape
 endif
 
@@ -715,7 +715,7 @@ endif
    end do
 
 i=1
-if(i>0)then
+if(i<0)then
               k=25
               write(*,"(A50/,A30/,5I10/,3(A10/,3(5E15.7/)) )") &
                   ' ZZ2ZZZz in zyx_conv at end ....', &
@@ -858,7 +858,7 @@ endif
       end do
    end do
    rliq(:ncol) = rliq(:ncol) /1000._r8
-   if(i>0)then
+   if(i<0)then
       k=25
       write(*,"(A50/,A30/,4I10/,5(A10/,3(5E15.7/)) )") &
       ' ZZZZZz in zm_conv at end ....', &

@@ -420,7 +420,7 @@ subroutine ecp_readnl(nlfile)
       close(10)
 #endif
 
-#if ((! defined SCMDIAG) & (! defined OFFLINECP)) 
+!!MZ #if ((! defined SCMDIAG) & (! defined OFFLINECP)) 
    
 !MZ ===== READ CAM VALUES
       unitn = getunit()
@@ -453,7 +453,8 @@ subroutine ecp_readnl(nlfile)
 !      close(unitn)
 !      call freeunit(unitn)
 !   end if
-#endif
+
+!!MZ #endif
 ! ==== MZ done
 
 
@@ -2959,19 +2960,31 @@ end do
 
     if (flagqcheck == 2) then
         do i = 1, inncol
+            
+            minqcheckf = 1.0
             do k = nlev, 1, -1
-                if (p(i,k) <= qnegtop) then
-                    qcheckf = 0.0
-                else
+                qcheckf = 1.0
+                if (p(i,k) > qnegtop) then
                     qguess  = q(i,k)+qtend(i,k)*dtime
-                    qcheckf = 1.0
                     if( qguess < qmin .and. abs(qtend(i,k)) > 1e-15) then
                         qcheckf = (qmin*1.001-q(i,k))/dtime/qtend(i,k)
                     end if
                 end if
+                if (qcheckf < minqcheckf) then
+                    minqcheckf = qcheckf
+                end if
+            end do
+
 #ifdef SCMDIAG
-    write(*,*) "yhyqcheck:", p(i,k), qcheckf, qguess
+    write(*,*) "yhyminqcheck:", minqcheckf
 #endif
+
+            do k = nlev, 1, -1
+                if (p(i,k) <= qnegtop) then
+                    qcheckf = 0.0
+                else
+                    qcheckf = minqcheckf
+                end if
                 qtend(i,k) = qcheckf * qtend(i,k)
                 stend(i,k) = qcheckf * stend(i,k)
                 qliqtend(i,k) = qcheckf * qliqtend(i,k)
@@ -3013,18 +3026,67 @@ end do
 ! convert detrainment from units of "1/m" to "1/mb".
 ! mass flux from kg/m2/s to mb/s
  do k= 1,nlev
-   eu(:,k)   = ent_up_sum(:,k)*dz(:,k)/dp(:,k)*100.
-   du(:,k)   = det_up_sum(:,k)*dz(:,k)/dp(:,k)*100.
+   eu(:,k)   = ent_up_sum(:,k)*dz(:,k)/dp(:,k)*100.  !unit (kg/m2/s)/m * m/mb 
+   du(:,k)   = det_up_sum(:,k)*dz(:,k)/dp(:,k)*100. 
    ed(:,k)   = ent_dn_sum(:,k)*dz(:,k)/dp(:,k)*100.
    dd(:,k)   = det_dn_sum(:,k)*dz(:,k)/dp(:,k)*100.
-   massflxsum(:,k) = massflxsum(:,k)/(100._r8/gravit)
-   massflxsum_dn(:,k) = massflxsum_dn(:,k)/(100._r8/gravit)
+   massflxsum(:,k) = massflxsum(:,k)            
+   massflxsum_dn(:,k) = massflxsum_dn(:,k)     
  end do
 
-   qtnd(:,:) = qtend(:,:)
-   heat(:,:) = heat(:,:)
-   mcon(:,:) = massflxsum(:,:) + massflxsum_dn(:,:) 
-   dlf(:,:)  = qliqtend(:,:)   !kg/kg/s
+!MZ 180801
+   massflxsum =massflxsum /(100._r8/gravit) !kg/m2/s to mb/s 
+   massflxsum_dn =massflxsum_dn /(100._r8/gravit)
+   eu = eu/(100._r8/gravit) !unit mb/s /mb
+   du = du/(100._r8/gravit)
+   ed = ed/(100._r8/gravit)
+   dd = dd/(100._r8/gravit)
+
+!MZ to put a limit on mass flux
+! ----------------------------------   
+
+   mu = massflxsum
+   do i=1,lengath
+      mumax(i) = 0
+   end do
+   do k=msg + 2,nlev
+      do i=1,lengath
+        mumax(i) = max(mumax(i), mu(i,k)/dp(i,k))
+      end do
+   end do
+
+   do i=1,lengath
+      !if (mumax(i) > 0._r8) then
+        !mb(i) = min(mb(i),0.5_r8/(delt*mumax(i)))
+      if (mumax(i) > 1.e-20_r8) then
+        mb(i) = min(1._r8, dtime*mumax(i)  )
+        mb(i) = mb(i)/(dtime*mumax(i)) 
+      else
+        mb(i) = 0._r8
+      endif
+   end do
+!!!!MZ
+   !mb = 0.1*mb
+
+   do i=1,lengath
+     massflxsum(i,:) =massflxsum(i,:) * mb(i)
+     massflxsum_dn(i,:) =massflxsum_dn(i,:) * mb(i) 
+     eu(i,:) = eu(i,:) * mb(i)
+     du(i,:) = du(i,:) * mb(i)
+     ed(i,:) = ed(i,:) * mb(i)
+     dd(i,:) = dd(i,:) * mb(i)
+     qtnd(i,:) = qtend(i,:) * mb(i)
+     heat(i,:) = heat(i,:)  * mb(i)
+     qliqtend(i,:) = qliqtend(i,:) * mb(i)
+     mcon(i,:) = (massflxsum(i,:) + massflxsum_dn(i,:))* mb(i)
+     dlf(i,:)  = qliqtend(i,:) * mb(i)  !kg/kg/s
+     zdu(i,:)  = du(i,:)* mb(i)
+     rprd(i,:) = precratesum(i,:) * mb(i)
+     accuprec(i,:) = accuprec(i,:)* mb(i)
+     cmesum(i,:) = cmesum(i,:)* mb(i)
+   enddo
+! ----------------------------------   
+
    do k=1,nlev 
     pflx(:,k+1) = accuprec(:,k)
    end do
@@ -3039,9 +3101,6 @@ end do
         endif
     enddo
    enddo
-   zdu(:,:)  = du(:,:)
-   rprd(:,:) = precratesum(:,:) 
-
    do k=1,nlev
     mu(:,k)   = 0.5_r8*(massflxsum(:,k)+massflxsum(:,k+1))  
     md(:,k)   = 0.5_r8*(massflxsum_dn(:,k)+massflxsum_dn(:,k+1))  
@@ -3059,7 +3118,8 @@ end do
    prec(:) = 0.0_r8
    do k = nlev,msg + 1,-1
       do i = 1,inncol
-         prec(i) = prec(i) - dp(i,k)* (qtend(i,k)+qliqtend(i,k))
+         !prec(i) = prec(i) - dp(i,k)* (qtend(i,k)+qliqtend(i,k))
+         prec(i) = prec(i) - dp(i,k)* (qtnd(i,k)+qliqtend(i,k))
       end do
    end do
 ! obtain final precipitation rate in m/s.
