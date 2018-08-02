@@ -3022,7 +3022,7 @@ end do
     outqtendevap = qtendevap
 
 
-!CAM MZ type output
+!CAM MZ type output 1003
 ! convert detrainment from units of "1/m" to "1/mb".
 ! mass flux from kg/m2/s to mb/s
  do k= 1,nlev
