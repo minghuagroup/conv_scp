@@ -1164,6 +1164,8 @@ subroutine convtran(lchnk   , &
       kbm = min(kbm,mx(i))
    end do
 
+!   write(*,*)'-- in convtran',doconvtran,ncnst,fracis(:,25,:)
+
 ! Loop ever each constituent
    do m = 2, ncnst
       if (doconvtran(m)) then

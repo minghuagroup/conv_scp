@@ -2401,8 +2401,6 @@ endif
 
 !liquid detrainment tendency
 
-!MZ
-      if(plume_model == 'scp')then
             do i=1, inncol
                 qliqtend_det(i,1:nlev) = 0.0
                 if ( trigdp(i)<1 ) cycle
@@ -2426,23 +2424,6 @@ endif
 
             dlf = qliqtend_det
 
-        else ! qliqtend 'zyx'
-            do i =1, inncol
-                qliqtend_det(i,1:nlev) = 0.0_r8
-                if ( trigdp(i)<1 ) cycle
-                do k = kuptop(i)-1, kupbase(i)-1, 1
-!MZ 2018-07-14  in the future ice can be separately treated
-!--------------------------
-                  !dlf(i,k) = normassflx_up_tmp(i,k)*(qliq_up(i,k)+qice_up(i,k))/dz(i,k)/rho(i,k)
-                  !qliqtend_det(i,k) = dlf(i,k)
-
-                  qliqtend_det(i,k) = condrate(i,k) - precrate(i,k)
-                  dlf(i,k)          = qliqtend_det(i,k)
-!--------------------------
-                enddo
-            end do
-
-        endif ! qliqtend 
 
         ql = qliq_up + qice_up
 
@@ -2481,11 +2462,39 @@ endif
 !                massflxbase_p(i,j) = min( 0.1, max( 0., (dilucape(i,j) - capelmt)/cape_timescale ) )
 
 
+
+! ----------------------------------   
+!MZ 2018-08-02 put limit to each plume for CFL condition
+
+                massflxbase(:) = massflxbase_p(:,j)
+
+   mumax(:) = 0._r8
+   mb(:)    = 0._r8
+
+   do k=msg + 1,nlev
+      do i=1,inncol
+        mumax(i) = max(mumax(i), normassflx_up_tmp(i,k)/(rho(i,k)*dz(i,k)) )
+        mumax(i) = max(mumax(i), -normassflx_dn_tmp(i,k)/(rho(i,k)*dz(i,k)))
+      end do
+   end do
+
+   mumax(:) = mumax(:)*massflxbase(:)
+
+   do i=1,inncol
+      if (mumax(i) > 1.e-20_r8) then
+        mb(i) = min(1._r8, dtime*mumax(i)  )    ! 1.0 can be changed!
+        massflxbase(i) = massflxbase(i)*mb(i)/(dtime*mumax(i)) 
+      else
+        massflxbase(i) = 0._r8
+      endif
+   end do
+
+
             if (fixbasemf > 0) then
                 massflxbase = fixbasemf
-            else
-                massflxbase(:) = massflxbase_p(:,j)
             end if
+!MZ - done ----------------------
+
             
 #ifdef SCMDIAG 
             write(*,'(a25,f10.5,a25,i10)') "massflxbase = ", massflxbase(1), "trigdp = ", trigdp(1)
@@ -3021,6 +3030,7 @@ end do
     outstendevap = stendevap
     outqtendevap = qtendevap
 
+!MZ Postprocessing below ==============    
 
 !CAM MZ type output 1003
 ! convert detrainment from units of "1/m" to "1/mb".
@@ -3066,7 +3076,7 @@ end do
       endif
    end do
 !!!!MZ
-   !mb = 0.1*mb
+!!!   mb = 1.0
 
    do i=1,lengath
      massflxsum(i,:) =massflxsum(i,:) * mb(i)
@@ -4682,7 +4692,7 @@ subroutine cal_mse_dn( &
             else
                 fac = 1.0_r8
             end if
-!MZ
+
             if(plume_model == 'zyx')then
               fac = 1.0_r8
               if(zint(i,k+1) < 500._r8)then
@@ -5516,20 +5526,24 @@ subroutine convtran(lchnk, inncol, nlev,nlevp, &
    end do
 
 if(i<0)then
-   write(*,*)'in convtran 1 lq ',doconvtran
-   write(*,*)'q(:,:,2)',q(:,:,2)
-   write(*,*)'q(:,:,3)',q(:,:,3)
-   write(*,*)'mu',mu
-   write(*,*)'md',md
-   write(*,*)'du',du
-   write(*,*)'eu',eu
-   write(*,*)'ed',ed
-   write(*,*)'dp',dp
-   write(*,*)'dsubcld',dsubcld
-   write(*,*)'fracis(2)',fracis(:,:,2)
-   write(*,*)'fracis(3)',fracis(:,:,3)
+ k=25
+   write(*,*)'------ lchnk in convtran 1 ',lchnk
+   write(*,*)'in convtran 1 lq m=',m,doconvtran
+   write(*,*)'q(:,k,1)',q(:,k,1)
+   write(*,*)'q(:,k,2)',q(:,k,2)
+   write(*,*)'q(:,k,4)',q(:,k,4)
+   write(*,*)'q(:,k,5)',q(:,k,5)
+   write(*,*)'mu',mu(:,k)
+   write(*,*)'md',md(:,k)
+   write(*,*)'du',du(:,k)
+   write(*,*)'eu',eu(:,k)
+   write(*,*)'ed',ed(:,k)
+   write(*,*)'dp',dp(:,k)
+   write(*,*)'dsubcld',dsubcld(:)
+   write(*,*)'fracis(2)',fracis(:,k,4)
+   write(*,*)'fracis(3)',fracis(:,k,5)
    write(*,*)'jt,mx,ideep,il1g,il2g,nstep',jt,mx,ideep,il1g,il2g,nstep
-   write(*,*)'dpdry',dpdry
+   write(*,*)'dpdry',dpdry(:,k)
 endif
 
 ! Loop ever each constituent
@@ -5566,9 +5580,6 @@ endif
          end do
 
 ! From now on work only with gathered data
-
-!!   write(*,*)'in convtran 2'
-
 ! Interpolate environment tracer values to interfaces
          do k = 1,nlev
             km1 = max(1,k-1)
@@ -5602,7 +5613,6 @@ endif
             end do
          end do
 
-!!   write(*,*)'in convtran 3'
 ! Do levels adjacent to top and bottom
          k = 2
          km1 = 1
@@ -5639,8 +5649,6 @@ endif
                endif
             end do
          end do
-
-!!   write(*,*)'in convtran 4'
 
          do k = ktm,nlev
             km1 = max(1,k-1)
@@ -5723,7 +5731,15 @@ endif
       end if      ! for doconvtran
 
    end do
-!!   write(*,*)'in convtran done'
+
+if(i<0)then
+   write(*,*)'in convtran done',lchnk
+ k=25
+   write(*,*)'3-- in convtran',doconvtran,ncnst,fracis(:,25,k)
+   write(*,*)'q(:,k,1)',q(:,k,1)
+   write(*,*)'q(:,k,4)',q(:,k,4)
+   write(*,*)'q(:,k,5)',q(:,k,5)
+endif
 
    return
 end subroutine convtran

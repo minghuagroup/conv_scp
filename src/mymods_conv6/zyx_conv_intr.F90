@@ -518,12 +518,12 @@ subroutine zyx_conv_intr_tend( &
 !MZ
  if(plume_model == 'scp')then
 !   cld = 0._r8
-   ql  = 0._r8
-   rprd = 0._r8
-   fracis = 0._r8
-   evapcdp = 0._r8
-   prec = 0._r8
-   snow = 0._r8
+!!   ql  = 0._r8
+!!   rprd = 0._r8
+!!   fracis = 0._r8
+!!   evapcdp = 0._r8
+!!   prec = 0._r8
+!!   snow = 0._r8
   endif
   
    call pbuf_get_field(pbuf, pblh_idx,  pblh)
@@ -866,14 +866,15 @@ endif
                write(iulog,*) tmp<qmin(1), tmp-qmin(1)
                write(iulog,*) 'problem in neg Q', i, k
                write(iulog,*) 'base', jcbot(i), 'top', jctop(i)
-               do j = 1, pver
+               j=k
+!MZ               !do j = 1, pver
                    write(iulog,'(i3,f10.5,3f30.25,l3)') j, &
-                       state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, &
+                       state_loc%pmid(i,j)/100., state_loc%q(i,j,1), ptend_loc%q(i,j,1)*ztodt, tmp,&
                        state_loc%q(i,j,1)>qmin(1)
                    write(iulog,'(i3,f10.5,3f30.25,l3)') j, state_loc%pmid(i,j)/100., &
                        state_loc%q(i,j,1), qtend(i,j)*ztodt, outqtend(i,j)*ztodt, &
                        state_loc%q(i,j,1) > qmin(1)
-               end do
+!MZ               !end do
                exit
            end if
        end do
@@ -1201,6 +1202,7 @@ endif
    call cnst_get_ind('CLDICE', ixcldice)
 
    lq(:)  = .FALSE.
+
    lq(2:) = cnst_is_convtran1(2:)
    call physics_ptend_init(ptend_loc, state_loc%psetcols, 'convtran1', lq=lq)
 
@@ -1211,7 +1213,7 @@ endif
 
    call t_startf ('convtran1')
 
-!MZ
+
 if(i<0)then
 write(*,*)'.........before convtran'
 write(*,*)'lchnk, ncol, pver, pverp',lchnk, ncol, pver, pverp
@@ -1238,20 +1240,21 @@ endif
                   !du(:,:,lchnk), eu(:,:,lchnk), ed(:,:,lchnk), dp(:,:,lchnk), dsubcld(:,lchnk),  &
                   !jt(:,lchnk),maxg(:,lchnk), ideep(:,lchnk), 1, lengath(lchnk),  &
                   !nstep,   fracis,  ptend_loc%q, fake_dpdry)
-   !call convtran (lchnk, ncol, pver, pverp,                                        &
-   !               ptend_loc%lq,state_loc%q, pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
-   !               du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), dp(:ncol,:,lchnk), &
-   !               dsubcld(:ncol,lchnk),  &
-   !               jt(:ncol,lchnk),maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-   !               nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:) )
-! yhy test:
-    call convtran (lchnk, ncol, pver, pverp,                                        &
-                  ptend_loc%lq(1:3),state_loc%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+   call convtran (lchnk, ncol, pver, pverp,                                        &
+                  ptend_loc%lq,state_loc%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
                   du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), dp(:ncol,:,lchnk), &
                   dsubcld(:ncol,lchnk),  &
                   jt(:ncol,lchnk),maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-                  nstep,   fracis(:ncol,:,1:3),  ptend_loc%q(:ncol,:,1:3), fake_dpdry(:ncol,:) )
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:) )
+! yhy test:
+    !call convtran (lchnk, ncol, pver, pverp,                                        &
+                  !ptend_loc%lq(1:3),state_loc%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+                  !du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), dp(:ncol,:,lchnk), &
+                  !dsubcld(:ncol,lchnk),  &
+                  !jt(:ncol,lchnk),maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                  !nstep,   fracis(:ncol,:,1:3),  ptend_loc%q(:ncol,:,1:3), fake_dpdry(:ncol,:) )
    call t_stopf ('convtran1')
+
 if(i<0)then
 write(*,*)'---zyx after convtran'
 write(*,*)'ptend_loc%q',ptend_loc%q
@@ -1263,23 +1266,59 @@ endif
    ! add tendency from this process to tend from other processes here
    call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
+!MZ - added the following on 2018-08-03
+!======================================
+
+     lq(:) = .FALSE.
+     lq(:) = .not. cnst_is_convtran1(:)
+     
+  if (any(lq(:))) then
+     call physics_ptend_init(ptend_loc, state_loc%psetcols, 'convtran2', lq=lq )
+
+     do i = 1,lengath(lchnk)
+         fake_dpdry(i,:) = state%pdeldry(ideep(i,lchnk),:)/100._r8
+     end do
+
+   call t_startf ('convtran2') 
+   call convtran (lchnk, ncol, pver, pverp,                                        &
+                  ptend_loc%lq,state_loc%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+                  !lq,state_loc%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+                  du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), dp(:ncol,:,lchnk), &
+                  dsubcld(:ncol,lchnk),  &
+                  jt(:ncol,lchnk),maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:) )
+
+   call t_stopf ('convtran2')
+
+   ! add tendency from this process to tend from other processes here
+   call physics_ptend_sum(ptend_loc,ptend_all, ncol)
+  endif
+
 1002 continue
 
 !write(*,*) 'in zyx_conv'
 !MZ dummy output =====================1003
-if(i<0)then
-outstendcond  = ptend_loc%q(:,:,1)   
-outqtendcond  = ptend_loc%q(:,:,2)   
-outstendtranup = rprd(:,:)
-outqtendtranup = dlf
-outstendtrandn = ntprprd
-outqtendtrandn = precrate
-   call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
-   call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
-   call outfld('STENDCONVDPTRANUP', outstendtranup, pcols, lchnk)
-   call outfld('QTENDCONVDPTRANUP', outqtendtranup, pcols, lchnk)
-   call outfld('STENDCONVDPTRANDN', outstendtrandn, pcols, lchnk)
-   call outfld('QTENDCONVDPTRANDN', outqtendtrandn, pcols, lchnk)
+if(i>0)then
+!outstendcond  = ptend_loc%q(:,:,1)   
+!outqtendcond  = ptend_loc%q(:,:,2)   
+!outstendtranup = rprd(:,:)
+!outqtendtranup = dlf
+!outstendtrandn = ntprprd
+!outqtendtrandn = precrate
+   !!call outfld('STENDCONVDPCOND', outstendcond, pcols, lchnk)
+   !!call outfld('QTENDCONVDPCOND', outqtendcond, pcols, lchnk)
+   !!call outfld('STENDCONVDPTRANUP', outstendtranup, pcols, lchnk)
+   !!call outfld('QTENDCONVDPTRANUP', outqtendtranup, pcols, lchnk)
+   !!call outfld('STENDCONVDPTRANDN', outstendtrandn, pcols, lchnk)
+   !!call outfld('QTENDCONVDPTRANDN', outqtendtrandn, pcols, lchnk)
+   call outfld('STENDCONVDPCOND',ptend_loc%q(:,:,1) , pcols, lchnk)
+   call outfld('QTENDCONVDPCOND',ptend_loc%q(:,:,2) , pcols, lchnk)
+   call outfld('STENDCONVDPEVAP',ptend_loc%q(:,:,3) , pcols, lchnk)
+   call outfld('QTENDCONVDPEVAP',ptend_loc%q(:,:,4) , pcols, lchnk)
+   call outfld('STENDCONVDPTRANUP',rprd(:,:) , pcols, lchnk)
+   call outfld('QTENDCONVDPTRANUP',dlf , pcols, lchnk)
+   call outfld('STENDCONVDPTRANDN',ntprprd , pcols, lchnk)
+   call outfld('QTENDCONVDPTRANDN',precrate , pcols, lchnk)
 endif
 
    call physics_state_dealloc(state_loc)
@@ -1322,7 +1361,14 @@ subroutine zyx_conv_tend_2( state,  ptend,  ztodt, pbuf)
 !
   lq(:) = .FALSE.
   lq(:) = .not. cnst_is_convtran1(:)
+
+
+!MZ
+        return
+!==================
+
   call physics_ptend_init(ptend, state%psetcols, 'convtran2', lq=lq )
+
 
 !
 ! Associate pointers with physics buffer fields
@@ -1342,13 +1388,12 @@ subroutine zyx_conv_tend_2( state,  ptend,  ztodt, pbuf)
       ! initialize dpdry for call to convtran
       ! it is used for tracers of dry mixing ratio type
       dpdry = 0._r8
-!      do i = 1,lengath(lchnk)
-         !dpdry(i,:) = state%pdeldry(ideep(i,lchnk),:)/100._r8
-      do i = 1,pcols
-         dpdry(i,:) = state%pdeldry(i,:)/100._r8
+      do i = 1,lengath(lchnk)
+         dpdry(i,:) = state%pdeldry(ideep(i,lchnk),:)/100._r8
+      !do i = 1,pcols
+         !dpdry(i,:) = state%pdeldry(i,:)/100._r8
       end do
 
-!!      write(*,*) 'in zyx_conv_tend_2 1'
       call t_startf ('convtran2')
 
 
@@ -1368,19 +1413,48 @@ write(*,*)'maxg(:,lchnk)',maxg(:,lchnk)
 !write(*,*)'dpdry',dpdry
 endif
 
-!MZ
-      !call convtran (lchnk, &
-                     !ptend%lq,state%q, pcnst,  mu(:,:,lchnk), md(:,:,lchnk),   &
-                     !du(:,:,lchnk), eu(:,:,lchnk), ed(:,:,lchnk), dp(:,:,lchnk), dsubcld(:,lchnk),  &
-                     !jt(:,lchnk),maxg(:,lchnk),ideep(:,lchnk), 1, lengath(lchnk),  &
-                     !nstep,   fracis,  ptend%q, dpdry)
-      !call convtran (lchnk, pcols, pver, pverp,                                        &
-      !               ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
-      !               du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
-      !               dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
-      !               jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-      !               nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
-      
+if(i<0)then
+                 write(*,*)'-- in1 contran- lchk',lchnk
+                 write(*,*)'-- q1'
+                 write(*,*)state%q(:ncol,25,1)
+                 write(*,*)'-- q2'
+                 write(*,*)state%q(:ncol,25,2)
+                 write(*,*)'-- q4'
+                 write(*,*)state%q(:ncol,25,4)
+                 write(*,*)'-- q5'
+                 write(*,*)ptend%q(:ncol,25,5)
+                 write(*,*)'-- tendq1'
+                 write(*,*)ptend%q(:ncol,25,1)
+                 write(*,*)'-- tendq3'
+                 write(*,*)ptend%q(:ncol,25,3)
+                 write(*,*)'-- tendq5'
+                 write(*,*)ptend%q(:ncol,25,5)
+                 write(*,*)'--mu' 
+                 write(*,*)mu(:ncol,25,lchnk)
+                 write(*,*)'--eu'
+                 write(*,*)eu(:ncol,25,lchnk)
+                 write(*,*)'--dp' 
+                 write(*,*)dp(:ncol,25,lchnk)
+                 write(*,*)'--dpdry' 
+                 write(*,*)dpdry(:ncol,25)
+
+endif
+
+      !call convtran (lchnk, ncol, pver, pverp,                                        &
+                     !ptend%lq(:pcnst),state%q(:ncol,:pver,:pcnst), pcnst,  &
+                     !mu(:ncol,:pver,lchnk), md(:ncol,:pver,lchnk),   &
+                     !du(:ncol,:pver,lchnk), eu(:ncol,:pver,lchnk), ed(:ncol,:pver,lchnk), &
+                     !dp(:ncol,:pver,lchnk), dsubcld(:,lchnk),  &
+                     !jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                     !nstep,   fracis(:ncol,:pver,:pcnst),  ptend%q(:ncol,:pver,:pcnst), dpdry(:ncol,:pver))
+if(i>0)then
+      call convtran (lchnk, ncol, pver, pverp,                                        &
+                     ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+                     du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
+                     dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
+                     jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                     nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
+else      
 ! yhy test:
       call convtran (lchnk, pcols, pver, pverp,                                        &
                      ptend%lq(1:3), state%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
@@ -1388,7 +1462,33 @@ endif
                      dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
                      jt(:ncol,lchnk), maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
                      nstep, fracis(:ncol,:,1:3),  ptend%q(:ncol,:,1:3), dpdry(:ncol,:) )
-    
+endif
+if(i<0)then
+                 write(*,*)'-- in2 contran- lchk',lchnk,pcnst
+                 write(*,*)'2-- q1'
+                 write(*,*)state%q(:ncol,25,1)
+                 write(*,*)'2-- q2'
+                 write(*,*)state%q(:ncol,25,2)
+                 write(*,*)'2-- q4'
+                 write(*,*)state%q(:ncol,25,4)
+                 write(*,*)'2-- q5'
+                 write(*,*)ptend%q(:ncol,25,5)
+                 write(*,*)'2-- tendq1'
+                 write(*,*)ptend%q(:ncol,25,1)
+                 write(*,*)'2-- tendq3'
+                 write(*,*)ptend%q(:ncol,25,3)
+                 write(*,*)'2-- tendq5'
+                 write(*,*)ptend%q(:ncol,25,5)
+                 write(*,*)'2--mu' 
+                 write(*,*)mu(:ncol,25,lchnk)
+                 write(*,*)'2--eu'
+                 write(*,*)eu(:ncol,25,lchnk)
+                 write(*,*)'2--dp' 
+                 write(*,*)dp(:ncol,25,lchnk)
+                 write(*,*)'2--dpdry' 
+                 write(*,*)dpdry(:ncol,25)
+endif    
+
         call t_stopf ('convtran2')
   end if
 

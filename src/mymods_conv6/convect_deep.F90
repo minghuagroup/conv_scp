@@ -442,13 +442,14 @@ subroutine convect_deep_tend( &
       call pbuf_get_field(pbuf, prec_dp_idx,     prec )
       call pbuf_get_field(pbuf, snow_dp_idx,     snow )
 
-      cld = 0._r8
-      ql  = 0._r8
-      rprd = 0._r8
-      fracis = 0._r8
-      evapcdp = 0._r8
-      prec = 0._r8
-      snow = 0._r8
+!MZ commented out on 2018-08-02
+      !cld = 0._r8
+      !ql  = 0._r8
+      !rprd = 0._r8
+      !fracis = 0._r8
+      !evapcdp = 0._r8
+      !prec = 0._r8
+      !snow = 0._r8
 
 !MZ<
 i=1
@@ -473,6 +474,24 @@ endif
 
   select case ( deep_scheme )
   case('off') !    0 ==> no deep convection
+!MZ
+      zero = 0     
+      mcon = 0
+      cme  = 0
+      dlf  = 0
+      pflx = 0
+      zdu  = 0
+      rliq = 0
+
+      prec=0
+      snow=0
+      jctop = pver
+      jcbot = 1._r8
+      cld = 0
+      ql = 0
+      rprd = 0
+      fracis = 0
+      evapcdp = 0
 
   case('ZM') !    1 ==> Zhang-McFarlane (default)
 
@@ -500,15 +519,15 @@ endif
 !MZ
   case('ZYX') !    3 ==> ZYX
 
-   if(plume_model == 'scp')then
-      zero = 0     
-      mcon = 0
-      cme  = 0
-      dlf  = 0
-      pflx = 0
-      zdu  = 0
-      rliq = 0
-   endif
+   !if(plume_model == 'scp')then
+   !   zero = 0     
+   !   mcon = 0
+   !   cme  = 0
+   !   dlf  = 0
+   !   pflx = 0
+   !   zdu  = 0
+   !   rliq = 0
+   !endif
 
   !write(*,*) 'before call conv_intr_tend'
 
