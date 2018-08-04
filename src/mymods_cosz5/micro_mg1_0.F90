@@ -1362,7 +1362,10 @@ end do
 
 ! assign number of sub-steps to iter
 ! use 2 sub-steps, following tests described in MG2008
+
 iter = 2
+!MZ 20180803
+!iter = 4
 
 ! get sub-step time step
 deltat=deltat/real(iter)

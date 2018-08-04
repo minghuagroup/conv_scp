@@ -652,7 +652,7 @@ endif
 !!     write(*,*)lengath(lchnk),lengath,lchnk,begchunk,endchunk
 
 ! yhy test:
-    call foutput_1d('zyx intro: zyx_conv_tend: after: ulat: ', state%ulat(:ncol), ncol)
+!!    call foutput_1d('zyx intro: zyx_conv_tend: after: ulat: ', state%ulat(:ncol), ncol)
 !!    call foutput_1d('zyx intro: zyx_conv_tend: after: landfrac: ', landfrac(:ncol), ncol)
 !!    call foutput_1d('zyx intro: zyx_conv_tend: after: lhflx: ', lhflx(:ncol), ncol)
 !!    call foutput_1d('zyx intro: zyx_conv_tend: after: ps: ', state%ps(:ncol), ncol)
@@ -948,7 +948,6 @@ endif
    
    call t_stopf ('zyx_conv_tend')
 
-   !!goto 1002
 
 !!   write(*,*)'my sum1.2.2'
    !do i = 1,pcols
@@ -976,8 +975,10 @@ endif
 
 !MZ ------------ mimic conv_intr_jp in SCP  
 !!   if(plume_model == 'cam')then
-   if(plume_model == 'scp')then
-     !goto 1002
+   !!if(plume_model == 'scp')then
+
+   !!  goto 1002
+
      !  mcon = 0.1_r8*mcon  !1 for ZYXscpevp GCM stability test
      !  mu = 0.1_r8*mu
      !  md = 0.1_r8*md
@@ -988,7 +989,7 @@ endif
      !  rprd = 0.1*rprd     !2 for rain evaporation CLOUD test
 
      !================================
-   endif 
+   !!endif 
 
 
 !MZ---------------------
@@ -1107,6 +1108,7 @@ endif
   ! update physics state type state_loc with ptend_loc 
   call physics_update(state_loc, ptend_loc, ztodt)
 
+   goto 1002
 
   ! Momentum Transport (non-cam3 physics)
 
@@ -1166,7 +1168,6 @@ endif
      ptend_loc%v(:ncol,:pver) = wind_tends(:ncol,:pver,2)
      ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)  
 
-!!   goto 1002
 
      call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
@@ -1174,7 +1175,6 @@ endif
      ! update physics state type state_loc with ptend_loc 
      call physics_update(state_loc, ptend_loc, ztodt)
 
-!!   goto 1002
 
      ftem(:ncol,:pver) = seten(:ncol,:pver)/cpair
      call outfld('ZMMTT', ftem             , pcols, lchnk)
@@ -1195,7 +1195,7 @@ endif
 
    end if
 
-   !!goto 1002
+   !goto 1002
 
    ! Transport cloud water and ice only
    call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1266,13 +1266,17 @@ endif
    ! add tendency from this process to tend from other processes here
    call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
+   goto 1002
+
 !MZ - added the following on 2018-08-03
 !======================================
 
-     lq(:) = .FALSE.
-     lq(:) = .not. cnst_is_convtran1(:)
+     !lq(:) = .FALSE.
+     !lq(:) = .not. cnst_is_convtran1(:)
      
-  if (any(lq(:))) then
+  !if (any(lq(:))) then
+  i=1
+  if (i<0) then
      call physics_ptend_init(ptend_loc, state_loc%psetcols, 'convtran2', lq=lq )
 
      do i = 1,lengath(lchnk)
@@ -1298,7 +1302,7 @@ endif
 
 !write(*,*) 'in zyx_conv'
 !MZ dummy output =====================1003
-if(i>0)then
+if(i<0)then
 !outstendcond  = ptend_loc%q(:,:,1)   
 !outqtendcond  = ptend_loc%q(:,:,2)   
 !outstendtranup = rprd(:,:)
@@ -1364,7 +1368,7 @@ subroutine zyx_conv_tend_2( state,  ptend,  ztodt, pbuf)
 
 
 !MZ
-        return
+!        return
 !==================
 
   call physics_ptend_init(ptend, state%psetcols, 'convtran2', lq=lq )
@@ -1447,14 +1451,12 @@ endif
                      !dp(:ncol,:pver,lchnk), dsubcld(:,lchnk),  &
                      !jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
                      !nstep,   fracis(:ncol,:pver,:pcnst),  ptend%q(:ncol,:pver,:pcnst), dpdry(:ncol,:pver))
-if(i>0)then
-      call convtran (lchnk, ncol, pver, pverp,                                        &
-                     ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
-                     du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
-                     dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
-                     jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-                     nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
-else      
+      !call convtran (lchnk, ncol, pver, pverp,                                        &
+                     !ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+                     !du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
+                     !dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
+                     !jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                     !nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
 ! yhy test:
       call convtran (lchnk, pcols, pver, pverp,                                        &
                      ptend%lq(1:3), state%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
@@ -1462,7 +1464,6 @@ else
                      dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
                      jt(:ncol,lchnk), maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
                      nstep, fracis(:ncol,:,1:3),  ptend%q(:ncol,:,1:3), dpdry(:ncol,:) )
-endif
 if(i<0)then
                  write(*,*)'-- in2 contran- lchk',lchnk,pcnst
                  write(*,*)'2-- q1'
@@ -1492,7 +1493,7 @@ endif
         call t_stopf ('convtran2')
   end if
 
-  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q1: ', state%q(:ncol,:,1), ncol, pver)
+!!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q1: ', state%q(:ncol,:,1), ncol, pver)
 !!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q2: ', state%q(:ncol,:,2), ncol, pver)
 !!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q3: ', state%q(:ncol,:,3), ncol, pver)
 !!  call foutput_2d('zyx intro: zyx_conv_tend_2: after: q4: ', state%q(:ncol,:,4), ncol, pver)

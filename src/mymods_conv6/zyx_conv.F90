@@ -1571,7 +1571,9 @@ endif
 
     nplume_tot = nplume_sh + nplume_dp
 
+
     ! --- the big loop for dp and sh convection
+
     do iconv = 1, 2
         if ( iconv == 1 ) then
             ! shallow plumes
@@ -1712,8 +1714,13 @@ endif
 #endif
                     2, zsrf, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                     mse, mseint, msesat, msesatint, landfrac, lhflx, tpert_plume, qpert_plume, &
-                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
+!MZ 2018-08-03
+                    !kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
+                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp, &
+                    bfls_t,  bfls_q,   pblh)
+
                 kupbase = kuplaunch
+
 
             else if ( iconv == 2 ) then    ! deep plumes
                 call cal_launchtocldbase( &
@@ -1722,7 +1729,10 @@ endif
 #endif
                     1, zsrf, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                     mse, mseint, msesat, msesatint, landfrac, lhflx, tpert_plume, qpert_plume, &
-                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
+!MZ 2018-08-03
+                    !kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
+                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp, &
+                    bfls_t,  bfls_q,   pblh)
                 kupbase = kuplcl
 
             end if
@@ -2483,6 +2493,7 @@ endif
    do i=1,inncol
       if (mumax(i) > 1.e-20_r8) then
         mb(i) = min(1._r8, dtime*mumax(i)  )    ! 1.0 can be changed!
+        !mb(i) = min(0.5_r8, dtime*mumax(i)  )    ! 1.0 can be changed!
         massflxbase(i) = massflxbase(i)*mb(i)/(dtime*mumax(i)) 
       else
         massflxbase(i) = 0._r8
@@ -3069,7 +3080,8 @@ end do
       !if (mumax(i) > 0._r8) then
         !mb(i) = min(mb(i),0.5_r8/(delt*mumax(i)))
       if (mumax(i) > 1.e-20_r8) then
-        mb(i) = min(1._r8, dtime*mumax(i)  )
+        mb(i) = min(1._r8, dtime*mumax(i)  )   !! 0.5 limit for half level
+        !mb(i) = min(0.5_r8, dtime*mumax(i)  )
         mb(i) = mb(i)/(dtime*mumax(i)) 
       else
         mb(i) = 0._r8
@@ -3280,7 +3292,9 @@ subroutine cal_launchtocldbase( &
 !output
         kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up,  &
 !in
-        trig)
+!MZ 2018-08-03
+        !trig)
+        trig, bfls_t,  bfls_q,   pblh)
 !------------------------------------------------------
 !launch to LCL, no entrainment up, in-cloud properties
 !------------------------------------------------------
@@ -3308,6 +3322,11 @@ subroutine cal_launchtocldbase( &
     real(r8), dimension(ncol), intent(in) :: lhflx       ! 
     real(r8), dimension(ncol), intent(in) :: tpert_plume    !
     real(r8), dimension(ncol), intent(in) :: qpert_plume    !
+!MZ
+     real(r8), dimension(ncol, nlev), intent(in) :: bfls_t
+     real(r8), dimension(ncol, nlev), intent(in) :: bfls_q
+     real(r8), dimension(ncol), intent(in) :: pblh
+
 !output
     integer, dimension(ncol), intent(out) :: kuplaunch ! [1]
     integer, dimension(ncol), intent(out) :: kuplcl    ! [1]
@@ -3332,6 +3351,20 @@ subroutine cal_launchtocldbase( &
     kuplaunch = 1
     kuplcl = 1
     kcbase = nlevp
+
+    i=1
+    if(i<0)then
+        write(*,*)''
+        write(*,*)'-- in cal_launch '
+        write(*,*)'t',t
+        write(*,*)'q',q
+        write(*,*)'dbfls_t',t-bfls_t
+        write(*,*)'dbfls_q',q-bfls_q
+        write(*,*)'pblh',pblh
+        write(*,*)'lhflx',lhflx
+        write(*,*)'tpert',tpert_plume
+        write(*,*)'qpert',qpert_plume
+    endif
 
     do i=1, ncol
         kuplaunchmin(i) = nlevp

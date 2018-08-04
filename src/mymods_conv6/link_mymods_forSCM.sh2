@@ -1,0 +1,19 @@
+#!/bin/csh
+set ecp_src = /T1/xxie/minghua/conv_scp/src
+
+set new_mods = mymods_conv6
+echo $new_mods
+
+ln -sf {$ecp_src}/{$new_mods}/phys_control.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/physpkg.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/convect_deep.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/zyx_conv_intr.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/zyx_conv.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/runtime_opts.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/zm_conv_intr.F90  ./mymods/
+
+ls -l ./mymods/*
+cd mymods
+ls
+cd ..
+echo .. linked to $new_mods
