@@ -1796,11 +1796,13 @@ subroutine tphysac (ztodt,   cam_in,  &
     if ( dycore_is('LR') .or. dycore_is('SE')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
 !xiex bflschoice #1 before dyn include dyn
-    call pbuf_get_field(pbuf, bfls_t_idx, bfls_t)
-    call pbuf_get_field(pbuf, bfls_q_idx, bfls_q)
-    bfls_t(:,:) = state%t(:,:)
-    bfls_q(:,:) = state%q(:,:,1)
+    !call pbuf_get_field(pbuf, bfls_t_idx, bfls_t)
+    !call pbuf_get_field(pbuf, bfls_q_idx, bfls_q)
+    !bfls_t(:,:) = state%t(:,:)
+    !bfls_q(:,:) = state%q(:,:,1)
 
+    ! yhy
+    !write(*,*) "before convect_deep: q = ", state%q(:,:,1)
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
@@ -2198,6 +2200,25 @@ subroutine tphysbc (ztodt,               &
     call subcol_netcdf_putclm( "tbef", pver, state%t, 1 )
     call subcol_netcdf_putclm( "qbef", pver, state%q(1,:,1), 1 )
 #endif
+
+!MZ
+    call pbuf_get_field(pbuf, bfls_t_idx, bfls_t)
+    call pbuf_get_field(pbuf, bfls_q_idx, bfls_q)
+  if(nstep == 0)then
+    bfls_t(:,:) = state%t(:,:)
+    bfls_q(:,:) = state%q(:,:,1)
+  endif
+
+  i=1
+  if(i<0)then 
+    k=25
+    write(*,*) ' --- in physpkg tphysbc bfls_t -- nstep= ',nstep,lchnk
+    write(*,*) 'state%t(:,k)',state%t(:,k)
+    write(*,*) 'state%q(:,k,1)',state%q(:,k,1)
+    write(*,*) 'bfls_t(:,k)',bfls_t(:,k)
+    write(*,*) 'bfls_q(:,k)',bfls_q(:,k)
+    write(*,*) 'difft', state%t(:,k)-bfls_t(:,k)
+  endif
 
     ! yhy
     !write(*,*) "before convect_deep: q = ", state%q(:,:,1)

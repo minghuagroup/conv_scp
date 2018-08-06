@@ -1,0 +1,154 @@
+&aerodep_flx_nl
+ aerodep_flx_cycle_yr		= 2000
+ aerodep_flx_datapath		= '/glade/p/cesmdata/inputdata//atm/cam/chem/trop_mozart_aero/aero'
+ aerodep_flx_file		= 'aerosoldep_monthly_1849-2006_1.9x2.5_c090803.nc'
+ aerodep_flx_specifier		= 'BCDEPWET', 'BCPHODRY', 'BCPHIDRY', 'OCDEPWET', 'OCPHODRY', 'OCPHIDRY', 'DSTX01DD', 'DSTX02DD', 'DSTX03DD',
+         'DSTX04DD', 'DSTX01WD', 'DSTX02WD', 'DSTX03WD', 'DSTX04WD'
+ aerodep_flx_type		= 'CYCLICAL'
+/
+&cam_inparm
+ bnd_topo		= '/glade/p/cesmdata/inputdata//atm/cam/topo/USGS-gtopo30_64x128_c050520.nc'
+ dtime		= 1200
+ iopfile		= '/glade/p/cesmdata/inputdata//atm/cam/scam/iop/ARM95_4scam.nc'
+ ncdata		= '/glade/p/cesmdata/inputdata//atm/cam/inic/gaus/cami_0000-01-01_64x128_L30_c090102.nc'
+/
+&carma_nl
+ carma_model		= 'none'
+/
+&chem_inparm
+ sol_facti_cloud_borne		= 1.0D0
+/
+&chem_surfvals_nl
+ ch4vmr		= 1760.0e-9
+ co2vmr		= 367.0e-6
+ f11vmr		= 653.45e-12
+ f12vmr		= 535.0e-12
+ n2ovmr		= 316.0e-9
+/
+&cldfrc_nl
+ cldfrc_dp1		=  0.10D0 
+ cldfrc_dp2		=  500.0D0 
+ cldfrc_freeze_dry		= .true.
+ cldfrc_ice		= .true.
+ cldfrc_icecrit		=  0.93D0 
+ cldfrc_iceopt		=  5 
+ cldfrc_premib		=  700.0D2 
+ cldfrc_premit		=  40000.0D0 
+ cldfrc_rhminh		=  0.800D0 
+ cldfrc_rhminl		=  0.8975D0 
+ cldfrc_rhminl_adj_land		=  0.100D0 
+ cldfrc_sh1		=  0.07D0 
+ cldfrc_sh2		=  500.0D0 
+/
+&cldsed_nl
+ cldsed_ice_stokes_fac		=  1.0D0 
+/
+&cldwat_nl
+ cldwat_conke		=   10.0e-6 
+ cldwat_icritc		=   5.0e-6  
+ cldwat_icritw		=   4.0e-4  
+ cldwat_r3lcrit		=   10.0e-6  
+/
+&clubb_his_nl
+ clubb_history		=  .false. 
+ clubb_rad_history		=  .false. 
+/
+&dyn_spectral_inparm
+ eul_nsplit		=  1 
+/
+&gw_drag_nl
+ fcrit2		= 1.0
+/
+&hkconv_nl
+ hkconv_c0		=   2.0e-4 
+ hkconv_cmftau		=  1800.0D0 
+/
+&micro_mg_nl
+ micro_mg_sub_version		= 0
+ micro_mg_version		= 1
+/
+&phys_ctl_nl
+ cam_chempkg		= 'none'
+ cam_physpkg		= 'cam5'
+ conv_water_in_rad		=  1 
+ deep_scheme		= 'ZM'
+ do_clubb_sgs		=  .false. 
+ do_tms		=  .true.  
+ eddy_scheme		= 'diag_TKE'
+ history_aero_optics		= .false. 
+ history_aerosol		=     .false.  
+ history_amwg		=        .true.   
+ history_budget		=      .false.  
+ history_eddy		=        .false.  
+ macrop_scheme		= 'park'
+ microp_scheme		= 'MG'
+ radiation_scheme		= 'rrtmg'
+ shallow_scheme		= 'UW'
+ srf_flux_avg		= 0
+ use_subcol_microp		= .false.
+ waccmx_opt		= 'off'
+/
+&physconst_nl
+ tms_orocnst		=  1.0D0   
+ tms_z0fac		=  0.075D0 
+/
+&prescribed_aero_nl
+ prescribed_aero_cycle_yr		= 2000
+ prescribed_aero_datapath		= '/glade/p/cesmdata/inputdata//atm/cam/chem/trop_mozart_aero/aero'
+ prescribed_aero_file		= 'aero_1.9x2.5_L26_2000clim_c091112.nc'
+ prescribed_aero_specifier		= 'sulf:SO4', 'bcar1:CB1', 'bcar2:CB2', 'ocar1:OC1', 'ocar2:OC2', 'sslt1:SSLT01', 'sslt2:SSLT02',
+         'sslt3:SSLT03', 'sslt4:SSLT04', 'dust1:DST01', 'dust2:DST02', 'dust3:DST03', 'dust4:DST04'
+ prescribed_aero_type		= 'CYCLICAL'
+/
+&prescribed_ozone_nl
+ prescribed_ozone_cycle_yr		= 2000
+ prescribed_ozone_datapath		= '/glade/p/cesmdata/inputdata//atm/cam/ozone'
+ prescribed_ozone_file		= 'ozone_1.9x2.5_L26_2000clim_c091112.nc'
+ prescribed_ozone_name		= 'O3'
+ prescribed_ozone_type		= 'CYCLICAL'
+/
+&rad_cnst_nl
+ icecldoptics		= 'mitchell'
+ iceopticsfile		= '/glade/p/cesmdata/inputdata//atm/cam/physprops/iceoptics_c080917.nc'
+ liqcldoptics		= 'gammadist'
+ liqopticsfile		= '/glade/p/cesmdata/inputdata//atm/cam/physprops/F_nwvl200_mu20_lam50_res64_t298_c080428.nc'
+ rad_climate		= 'A:Q:H2O', 'N:O2:O2',
+         'N:CO2:CO2', 'N:ozone:O3',
+         'N:N2O:N2O', 'N:CH4:CH4',
+         'N:CFC11:CFC11', 'N:CFC12:CFC12',
+         'N:sulf:/glade/p/cesmdata/inputdata//atm/cam/physprops/sulfate_rrtmg_c080918.nc', 'N:dust1:/glade/p/cesmdata/inputdata//atm/cam/physprops/dust1_rrtmg_c080918.nc',
+         'N:dust2:/glade/p/cesmdata/inputdata//atm/cam/physprops/dust2_rrtmg_c080918.nc', 'N:dust3:/glade/p/cesmdata/inputdata//atm/cam/physprops/dust3_rrtmg_c080918.nc',
+         'N:dust4:/glade/p/cesmdata/inputdata//atm/cam/physprops/dust4_rrtmg_c080918.nc', 'N:bcar1:/glade/p/cesmdata/inputdata//atm/cam/physprops/bcpho_rrtmg_c080918.nc',
+         'N:bcar2:/glade/p/cesmdata/inputdata//atm/cam/physprops/bcphi_rrtmg_c080918.nc', 'N:ocar1:/glade/p/cesmdata/inputdata//atm/cam/physprops/ocpho_rrtmg_c080918.nc',
+         'N:ocar2:/glade/p/cesmdata/inputdata//atm/cam/physprops/ocphi_rrtmg_c080918.nc', 'N:sslt1:/glade/p/cesmdata/inputdata//atm/cam/physprops/seasalt1_rrtmg_c080918.nc',
+         'N:sslt2:/glade/p/cesmdata/inputdata//atm/cam/physprops/seasalt2_rrtmg_c080918.nc', 'N:sslt3:/glade/p/cesmdata/inputdata//atm/cam/physprops/seasalt3_rrtmg_c080918.nc',
+         'N:sslt4:/glade/p/cesmdata/inputdata//atm/cam/physprops/seasalt4_rrtmg_c080918.nc'
+/
+&ref_pres_nl
+ trop_cloud_top_press		=       1.D2 
+/
+&solar_inparm
+ solar_data_file		= '/glade/p/cesmdata/inputdata//atm/cam/solar/solar_ave_sc19-sc23.c090810.nc'
+ solar_htng_spctrl_scl		= .true.
+/
+&tropopause_nl
+ tropopause_climo_file		= '/glade/p/cesmdata/inputdata//atm/cam/chem/trop_mozart/ub/clim_p_trop.nc'
+/
+&uwshcu_nl
+ uwshcu_rpen		=   10.0 
+/
+&vert_diff_nl
+ diff_cnsrv_mass_check		=  .false. 
+ do_iss		=  .true.  
+ eddy_lbulk_max		= 40.D3
+ eddy_leng_max		= 40.D3
+ eddy_max_bot_pressure		= 100.D3
+ kv_freetrop_scale		= 1.D0
+ kv_top_pressure		= 0.D0
+ kv_top_scale		= 1.D0
+/
+&zmconv_nl
+ zmconv_c0_lnd		=  0.0059D0 
+ zmconv_c0_ocn		=  0.0450D0 
+ zmconv_ke		=  3.0E-6 
+/

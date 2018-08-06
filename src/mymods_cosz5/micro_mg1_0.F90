@@ -1364,8 +1364,9 @@ end do
 ! use 2 sub-steps, following tests described in MG2008
 
 iter = 2
-!MZ 20180803
-!iter = 4
+
+!MZ 2018-08-02
+!!iter = 4
 
 ! get sub-step time step
 deltat=deltat/real(iter)

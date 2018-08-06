@@ -205,8 +205,12 @@ module zyx_conv
 
     real(r8), parameter :: max_ent_rate = 4.e-3_r8      ! maximum entrainment rate (1/m)
     real(r8), parameter :: max_det_rate = 4.e-3_r8      ! maximum detrainment rate (1/m)
-    real(r8), parameter :: zuplaunchtop = 6000.0      ! default: 3000; max cloud parcel launch height [m]
-    real(r8), parameter :: zuplaunchlow = 0.0         ! default: 0; min cloud parcel launch height [m]
+
+!MZ 2018-08-04
+    !real(r8), parameter :: zuplaunchtop = 6000.0      ! default: 3000; max cloud parcel launch height [m]
+    !real(r8), parameter :: zuplaunchlow = 0.0         ! default: 0; min cloud parcel launch height [m]
+    real(r8), parameter :: zuplaunchtop = 3000.0      ! default: 3000; max cloud parcel launch height [m]
+    real(r8), parameter :: zuplaunchlow = 100.0         ! default: 0; min cloud parcel launch height [m]
     
     integer :: nplume_sh = unset_int               ! shallow plumes
     integer :: nplume_dp = unset_int                ! deep plumes
@@ -249,8 +253,11 @@ module zyx_conv
 !--------------------------------------------------------------
 ! cloud ice fraction parameters
 !--------------------------------------------------------------
-    real(r8), parameter :: cloud_t1 = 258.15    ! mixed / ice cloud
-    real(r8), parameter :: cloud_t2 = 273.15    ! liq / mixed cloud
+!MZ to be consistent with macrop_driver.F90
+    !real(r8), parameter :: cloud_t1 = 258.15    ! mixed / ice cloud
+    !real(r8), parameter :: cloud_t2 = 273.15    ! liq / mixed cloud
+    real(r8), parameter :: cloud_t1 = 238.15    ! mixed / ice cloud
+    real(r8), parameter :: cloud_t2 = 268.15    ! liq / mixed cloud
     
 !--------------------------------------------------------------
 ! downdraft parameters
@@ -700,7 +707,7 @@ end subroutine zyx_conv_init
 ! master route of convection scheme
 ! ==============================================================================
 !subroutine zyx_conv_tend( &
-subroutine zyx_conv_tend(lchnk, &
+subroutine zyx_conv_tend(lchnk, nstep, &
 !input
         inncol, &
 #ifdef OFFLINECP
@@ -1052,6 +1059,7 @@ subroutine zyx_conv_tend(lchnk, &
 !MZ to include optional CAM plume calculations, from zm_conv_tend
 !==========================
    integer :: lchnk                   ! chunk identifier
+   integer :: nstep                   ! chunk identifier
    integer, intent(out) :: ideep(inncol)
    integer :: lengath
 
@@ -1225,8 +1233,24 @@ subroutine zyx_conv_tend(lchnk, &
    real(r8) qdifr
    real(r8) sdifr
 
-!MZ ======== CAM declaration done
-!MZMZ!!
+!MZ CAM declaration done
+
+!MZ 2018-08-04 to add new variables for trigger and closure design   
+!              bfls_ stands for "because of large-scale forcing"
+!   -------------------------------------------------------------
+
+    real(r8), dimension(inncol, nlev) :: bfls_buoy_mid
+    real(r8), dimension(inncol, nlev) :: bfls_qsat, bfls_mse, bfls_msesat
+    real(r8), dimension(inncol, nlevp) :: bfls_tint,   bfls_qint,   bfls_qsatint
+    real(r8), dimension(inncol, nlevp) :: bfls_mseint, bfls_msesatint 
+    real(r8), dimension(inncol, nlev) ::  cin
+    real(r8), dimension(inncol) ::        bfls_cwf, bfls_cin
+
+    real(r8), dimension(inncol, nlev) :: vort3, tdiff3, qdiff3
+!   -------------------------------------------------------------
+ 
+
+!MZ
       !call phys_getopts(plume_model_out = plume_model)
       call phys_getopts(deep_scheme_out = deep_scheme)
 
@@ -1370,6 +1394,36 @@ subroutine zyx_conv_tend(lchnk, &
     t = t_in
     q = q_in
 
+!MZ 2018-08-04 to get values for bfls_t and bfls_q 
+!   --------------------------------------------
+    lvmid = latvap - (cpliq-cpwv) * (bfls_t-273.15)
+    call cal_qsat2d(t(:,:), p(:,:), bfls_qsat(:,:))
+
+    dse = cpair*bfls_t + gravit*z
+    bfls_mse = dse + lvmid*bfls_q
+    bfls_msesat = dse + lvmid*bfls_qsat
+
+    bfls_tint(:,nlevp) = bfls_t(:,nlev)
+    bfls_tint(:,1) = bfls_t(:,1)
+    do k=2,nlev
+        bfls_tint(:,k) = 0.5*( bfls_t(:,k)+bfls_t(:,k-1) )
+    end do
+
+    bfls_qint(:,nlevp) = bfls_q(:,nlev)
+    bfls_qint(:,1) = bfls_q(:,1)
+    do k=2,nlev
+        bfls_qint(:,k) = 0.5*( bfls_q(:,k)+bfls_q(:,k-1) )
+    end do
+
+    lvint = latvap - (cpliq-cpwv) * (bfls_tint-273.15)
+    call cal_qsat2d(bfls_tint, pint, bfls_qsatint)
+
+    dseint = cpair*bfls_tint + gravit*zint
+    bfls_mseint = dseint + lvint*bfls_qint
+    bfls_msesatint = dseint + lvint*bfls_qsatint
+!   --------------------------------------------
+!MZ done with bfls
+
     lvmid = latvap - (cpliq-cpwv) * (t-273.15)
     call cal_qsat2d(t(:,:), p(:,:), qsat(:,:))
 
@@ -1511,6 +1565,7 @@ subroutine zyx_conv_tend(lchnk, &
       qlsum(i,:) = 0._r8
 
    end do
+
 ! calculate local pressure (mbs) and height (m) for both interface
 ! and mid-layer locations.
 !
@@ -1714,10 +1769,7 @@ endif
 #endif
                     2, zsrf, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                     mse, mseint, msesat, msesatint, landfrac, lhflx, tpert_plume, qpert_plume, &
-!MZ 2018-08-03
-                    !kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
-                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp, &
-                    bfls_t,  bfls_q,   pblh)
+                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
 
                 kupbase = kuplaunch
 
@@ -1729,10 +1781,8 @@ endif
 #endif
                     1, zsrf, z, zint, p, pint, t, tint, q, qint, qsat, qsatint, &
                     mse, mseint, msesat, msesatint, landfrac, lhflx, tpert_plume, qpert_plume, &
-!MZ 2018-08-03
-                    !kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
-                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp, &
-                    bfls_t,  bfls_q,   pblh)
+                    kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up, trigdp)
+
                 kupbase = kuplcl
 
             end if
@@ -1835,7 +1885,34 @@ endif
 
 !updraft properties
             if (ischeme == 2) then
+
+
                 ! new scheme: MZhang
+
+
+!MZ 2018-08-04 call cal_mse_up twice for DCAPE and trigger using by first using bfls_t,bfls_q
+
+!  1st call for bfls
+                call cal_mse_up( &
+#ifdef OFFLINECP
+                    ncol, nlev, nlevp, &
+#endif
+                    iconv, rho, rhoint, z, zint, dz, p, pint, &
+                    bfls_t, bfls_tint, bfls_q, bfls_qint, bfls_qsat, bfls_qsatint, &
+                    bfls_mse, bfls_mseint, bfls_msesat, bfls_msesatint, &
+                    kuplaunch, kupbase, &
+                    ent_rate_dp_up, det_rate_dp_up, ent_rate_sh_up, det_rate_sh_up, &
+                    ent_org, det_org, ent_turb, det_turb, cldrad, &
+                    bs_xc, w_up_init, &
+                    mse_up, t_up, q_up, qliq_up, qice_up, mseqi, condrate, rainrate, snowrate, precrate, &
+                    normassflx_up_tmp, w_up, w_up_mid, buoy, bfls_buoy_mid, kuptop, zuptop, &
+                    trigdp)
+
+                !i=1
+                !k=25
+                !write(*,*)'nstep-k1',trigdp(i), kupbase(i),kuptop(i),bfls_buoy_mid(i,k),bfls_t(i,k)
+!  2st call for current state
+
                 call cal_mse_up( &
 #ifdef OFFLINECP
                     ncol, nlev, nlevp, &
@@ -1849,7 +1926,88 @@ endif
                     mse_up, t_up, q_up, qliq_up, qice_up, mseqi, condrate, rainrate, snowrate, precrate, &
                     normassflx_up_tmp, w_up, w_up_mid, buoy, buoy_mid, kuptop, zuptop, &
                     trigdp)
-            end if
+
+                !i=1
+                !k=25
+                !write(*,*)'nstep-k2',trigdp(i), kupbase(i),kuptop(i),buoy_mid(i,k),t(i,k)
+
+             call cal_cape( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
+                dz, buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
+                dilucape(:,j), cwf(:,j), cin(:,j), &
+                trigdp)
+
+! here bfls_buoy_mid is manipulated to be above PBL
+                         
+          !  i=1
+            lel = 1
+          !        write(*,*)'kubase top',kuptop(i),kupbase(i)
+           do i=1,inncol
+             do k = kupbase(i),kuptop(i),-1
+                  !write(*,*)'nstep,j, i,k,z(i,k),pblh(i)',nstep,j, i,k
+                  !write(*,*)'nstep,j, i,k,z(i,k),pblh(i)',nstep,j, i,k,z(i,k),pblh(i)
+                 if(z(i,k) < pblh(i)) then
+                     bfls_buoy_mid(i,k) = buoy_mid(i,k)
+                 else
+                     lel(i) = k ! PBL index
+                     exit
+                 endif
+              enddo
+           enddo
+
+            call cal_cape( &
+#ifdef OFFLINECP
+                ncol, nlev, nlevp, &
+#endif
+                dz, bfls_buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
+                bfls_dilucape(:), bfls_cwf(:), bfls_cin(:), &
+                trigdp)
+
+
+! Trigger below
+
+            !use vort3, tdiff3 and qdiff3 later
+
+               qdifr = (2-iconv)*capelmt_sh+(iconv-1)*capelmt_dp 
+               do i = 1,inncol 
+                if(dilucape(i,j) < qdifr)then
+                    trigdp(i) = 0
+                 endif
+
+                 if(dilucape(i,j) < bfls_dilucape(i))then
+                    trigdp(i) = 0
+                 endif
+
+                 if(w(i,lel(i)) < 0._r8)then   !downward motion at PBL top  a layer?
+                    trigdp(i) = 0
+                 endif
+
+                 !if(pblh(i) < 200._r8)then   
+                 !   trigdp(i) = 0
+                 !endif
+
+                 !trigdp(i) = 1  !for sensitivity tests
+               enddo
+
+               !i=1
+               !k=25
+               !write(*,*)'nstep,j, i,k,ktop,kbase,kpbl,',nstep,j, i,k,kupbase(i),kuptop(i)
+               !write(*,*)'trigdp(i)',trigdp(i)
+               !write(*,*)'dilucape(i,j),bfls_dilucape(i) ',dilucape(i,j),bfls_dilucape(i) 
+               !write(*,*)'pblh(i),w(i,lel(i))',pblh(i),w(i,lel(i))
+
+
+
+! --end of trig design-----------------------------------------------
+
+
+
+
+            end if   ! for ischeme
+
+
             if (ischeme == 1) then
                 ! old scheme: GRE and NSJ
                 call cal_mse_up_old( &
@@ -1959,7 +2117,7 @@ endif
                 ncol, nlev, nlevp, &
 #endif
                 dz, buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
-                dilucape(:,j), cwf(:,j), &
+                dilucape(:,j), cwf(:,j),cin(:,j), &
                 trigdp)
 
 #ifdef OFFLINECP
@@ -2476,7 +2634,13 @@ endif
 ! ----------------------------------   
 !MZ 2018-08-02 put limit to each plume for CFL condition
 
-                massflxbase(:) = massflxbase_p(:,j)
+ do i=1,inncol
+     if( trigdp(i) < 1 )then
+      massflxbase_p(:,j) = 0._r8
+     endif
+ enddo
+  
+ massflxbase(:) = massflxbase_p(:,j)
 
    mumax(:) = 0._r8
    mb(:)    = 0._r8
@@ -3292,9 +3456,7 @@ subroutine cal_launchtocldbase( &
 !output
         kuplaunch, kuplcl, mse_up, t_up, q_up, normassflx_up,  &
 !in
-!MZ 2018-08-03
-        !trig)
-        trig, bfls_t,  bfls_q,   pblh)
+        trig)
 !------------------------------------------------------
 !launch to LCL, no entrainment up, in-cloud properties
 !------------------------------------------------------
@@ -3322,10 +3484,6 @@ subroutine cal_launchtocldbase( &
     real(r8), dimension(ncol), intent(in) :: lhflx       ! 
     real(r8), dimension(ncol), intent(in) :: tpert_plume    !
     real(r8), dimension(ncol), intent(in) :: qpert_plume    !
-!MZ
-     real(r8), dimension(ncol, nlev), intent(in) :: bfls_t
-     real(r8), dimension(ncol, nlev), intent(in) :: bfls_q
-     real(r8), dimension(ncol), intent(in) :: pblh
 
 !output
     integer, dimension(ncol), intent(out) :: kuplaunch ! [1]
@@ -3352,27 +3510,15 @@ subroutine cal_launchtocldbase( &
     kuplcl = 1
     kcbase = nlevp
 
-    i=1
-    if(i<0)then
-        write(*,*)''
-        write(*,*)'-- in cal_launch '
-        write(*,*)'t',t
-        write(*,*)'q',q
-        write(*,*)'dbfls_t',t-bfls_t
-        write(*,*)'dbfls_q',q-bfls_q
-        write(*,*)'pblh',pblh
-        write(*,*)'lhflx',lhflx
-        write(*,*)'tpert',tpert_plume
-        write(*,*)'qpert',qpert_plume
-    endif
-
     do i=1, ncol
         kuplaunchmin(i) = nlevp
         kuplaunchmax(i) = 1
 
         if ( trig(i) < 1 ) cycle
         do k=nlevp, 1, -1
-            if ( zint(i,k) >= max(zuplaunchlow, zsrf(i)) ) then
+!MZ 2018-08-04
+            !if ( zint(i,k) >= max(zuplaunchlow, zsrf(i)) ) then
+            if ( (zint(i,k)-zsrf(i)) >= zuplaunchlow ) then
                 kuplaunchmin(i) = k
                 exit
             end if
@@ -3380,7 +3526,9 @@ subroutine cal_launchtocldbase( &
         
 
         do k=nlevp, 1, -1
-            if ( zint(i,k) >= max(zuplaunchtop, zsrf(i)) ) then
+!MZ 2018-08-04
+           !if ( zint(i,k) >= max(zuplaunchtop, zsrf(i)) ) then
+            if ( (zint(i,k)-zsrf(i)) >= zuplaunchtop ) then
                 kuplaunchmax(i) = k
                 exit
             end if
@@ -5063,7 +5211,7 @@ subroutine cal_cape( &
 #endif
         dz, buoy_mid, normassflx_up, kupbase, kuptop, &
 !output
-        cape, cwf, &
+        cape, cwf, cin, &
 !in/out
         trig)
 !------------------------------------------------------
@@ -5081,6 +5229,8 @@ subroutine cal_cape( &
 !output
     real(r8), dimension(ncol), intent(out) :: cape  ! [kgm-2-s]
     real(r8), dimension(ncol), intent(out) :: cwf   ! [kgm-2-s]
+!MZ added cin
+    real(r8), dimension(ncol), intent(out) :: cin   ! [kgm-2-s]
 !input/output
     integer, dimension(ncol), intent(inout) :: trig     ! [1]
 !local
@@ -5089,11 +5239,13 @@ subroutine cal_cape( &
 !intialize output
     cape = 0._r8
     cwf  = 0._r8
+    cin  = 0._r8
 
     do i=1, ncol
         if ( trig(i) < 1 ) cycle
         do k=kupbase(i)-1, kuptop(i), -1
             cape(i) = cape(i) + dz(i,k)*max(buoy_mid(i,k), 0._r8)
+            cin(i)  = cin(i)  - dz(i,k)*min(buoy_mid(i,k), 0._r8)
             cwf(i) = cwf(i) + dz(i,k)*max(buoy_mid(i,k), 0._r8)&
                 *0.5*(normassflx_up(i,k)+normassflx_up(i,k+1) )
             if ( isnan(cwf(i)) ) then

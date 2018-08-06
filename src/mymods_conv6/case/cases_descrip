@@ -1,0 +1,51 @@
+put on cloud www/diag/model.html
+
+Cheyenne
+ 1< cesm20ctl cesm20p2k out of the box CESM2.0
+
+ 2< beta05ctl beta05p2k CESM2.0beta05 sa above
+
+ 3< cesm20mpctl cesm20mpp2k CESM2.0 
+    with mg2 paranthesis bug 
+    bug leads to grid qr treated as incloud qr, removal of Nr is too small, making 
+    Nr remained too large and thus Nc too small, mostens q
+
+ 4< cesm20kectl cesm20kep2k
+    with zmconv_ke back to smaller value to 1.0e-6 and 3.e-6 as before, dry
+
+storm
+ 5< F2000Climo 
+  CESM1.5_SBU control with SCP
+ 
+ 6< F2000MP1 
+MG1
+CESM1.5_SBU control with SCP and MP1 change to rho in KK2000 autoconversion, accretion
+
+MG1mu same as above added Xin's mu
+
+MG2 same as above, added dispersion options to affect effective radius in rad
+ with idl code for offline test of disp episilon
+ Liu2 is an option
+
+MG3 same as above, added dispersion impact on collision with the enhanced factor
+ with idl code for offline test for beta
+
+MG4 same as above, cleaned the code! for dispersion 4 places instead of 1
+
+COSZ5 same as above, solar zenith angle updated
+
+--->
+MP6 ice sedimentation IDL check first
+
+MG7 rain spectrum
+
+!!! MP4 same as above, but use CISRO prediction dtk define a physics tend type variable
+
+
+
+
+
+ 7< AMIP_CTL 
+   CASESM1.0 out of the box reference case
+ 
+

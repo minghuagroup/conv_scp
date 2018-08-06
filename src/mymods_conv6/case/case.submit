@@ -1,0 +1,13 @@
+#!/bin/bash -f
+cd run
+#nohup mpirun -nolocal -np 128 -host n14,n15,n16,n17 ./cesm > runlog_F2000MG2 2>&1 &
+
+#nohup mpirun -nolocal -np 128 -host n7,n8,n9,n10 ./cesm > runlog_F2000MG4 2>&1 &
+
+nohup mpirun -nolocal -np 128 -host n1,n2,n3,n4 ./cesm > runlog_evp_tran12 2>&1 &
+
+#nohup mpirun -nolocal -np 128 -host n9,n10,n11,n12 ./cesm > runlog_convtr1 2>&1 &
+
+#nohup mpirun -nolocal -np 128 -host n13,n14,n15,n16 ./cesm > runlog_notran2 2>&1 &
+
+

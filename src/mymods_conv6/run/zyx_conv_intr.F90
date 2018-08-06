@@ -611,7 +611,7 @@ endif
 !end if
 
    !MZ call zyx_conv_tend( &
-   call zyx_conv_tend(lchnk, nstep, &
+   call zyx_conv_tend(lchnk, &
 !input
        ncol, &
        2, ztodt, qmin(1), &

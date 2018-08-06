@@ -1,0 +1,37 @@
+#!/bin/csh
+set new_mods = mymods_cosz5
+         #mymods_mg4
+echo $new_mods
+ln -sf /T1/xxie/minghua/{$new_mods}/micro_mg1_0.F90  ./mymods/
+ln -sf /T1/xxie/minghua/{$new_mods}/micro_mg_cam.F90  ./mymods/
+ln -sf /T1/xxie/minghua/{$new_mods}/new_cosz.F90  ./mymods/
+ln -sf /T1/xxie/minghua/{$new_mods}/shr_orb_mod.F90  ./mymods/
+ln -sf /T1/xxie/minghua/{$new_mods}/subcolphy.f90  ./mymods/
+ln -sf /T1/xxie/minghua/{$new_mods}/gamma_mod.f90 ./mymods/
+
+set ecp_src = /T1/xxie/minghua/conv_scp/src
+
+set new_mods = mymods_conv6
+echo $new_mods
+ln -sf {$ecp_src}/{$new_mods}/phys_control.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/physpkg.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/convect_deep.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/zyx_conv_intr.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/zyx_conv.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/runtime_opts.F90  ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/zm_conv_intr.F90  ./mymods/
+
+
+ln -sf {$ecp_src}/{$new_mods}/d2a3dikj.F90 ./mymods/
+ln -sf {$ecp_src}/{$new_mods}/dp_coupling.F90 ./mymods/
+
+set new_mods = mymods_eddy7
+echo $new_mods
+ln -sf {$ecp_src}/{$new_mods}/eddy_diff.F90  ./mymods/
+
+
+ls -l ./mymods/*
+cd mymods
+ls
+cd ..
+echo .. linked to $new_mods

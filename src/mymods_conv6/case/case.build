@@ -1,0 +1,4 @@
+#!/bin/bash
+cd bld
+echo 'make -j 14 in bld'
+make -j 14
