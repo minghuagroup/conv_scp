@@ -16,7 +16,7 @@ module convect_deep
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
    use cam_logfile,  only: iulog
 !MZ
-   use phys_control, only: phys_getopts, plume_model
+   use phys_control, only: phys_getopts, plume_model, closure_scheme
 
    implicit none
 
@@ -284,7 +284,7 @@ subroutine convect_deep_tend( &
      rliq    , &
      ztodt   , &
 !xiex
-     state   ,ptend   ,landfrac , lhflx, pbuf)
+     state   ,ptend   ,landfrac , lhflx, shflx,pbuf)
 !xiex.
 !clean
 !     state   ,ptend   ,landfrac ,pbuf)
@@ -316,6 +316,7 @@ subroutine convect_deep_tend( &
    real(r8), intent(in) :: landfrac(pcols)     ! Land fraction
 !xiex
    real(r8), intent(in) :: lhflx(pcols)        ! latent heat flux
+   real(r8), intent(in) :: shflx(pcols)        ! latent heat flux
 !xiex.
       
 
@@ -532,7 +533,7 @@ endif
   !write(*,*) 'before call conv_intr_tend'
 
       call zyx_conv_intr_tend( &
-          ztodt, landfrac, lhflx, state &
+          ztodt, landfrac, lhflx, shflx,state &
          ,ptend, pbuf, dlf, mcon, precrate)
 
 

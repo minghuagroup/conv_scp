@@ -2230,7 +2230,8 @@ subroutine tphysbc (ztodt,               &
          rliq,    &
          ztodt,   &
 !xiex
-         state,   ptend, cam_in%landfrac, cam_in%lhf, pbuf) 
+!         state,   ptend, cam_in%landfrac, cam_in%lhf, pbuf) 
+         state,   ptend, cam_in%landfrac, cam_in%lhf, cam_in%shf,pbuf) 
 !xiex.
 !clean
 !         state,   ptend, cam_in%landfrac, pbuf) 

@@ -28,7 +28,8 @@ public :: &
    cam_chempkg_is,    &! query for the name of the chemistry package
    do_waccm_phys,     &! WACCM physics is on
    waccmx_is,         &! query for the WACCM-X option
-   plume_model
+   plume_model,       &
+   closure_scheme
 
 ! Private module data
 
@@ -47,6 +48,7 @@ character(len=16) :: waccmx_opt           = unset_str  ! WACCMX run option [iono
 character(len=16) :: deep_scheme          = unset_str  ! deep convection package
 !MZ
 character(len=16) :: plume_model   = unset_str  ! 
+character(len=16) :: closure_scheme= unset_str  ! 
 character(len=16) :: shallow_scheme       = unset_str  ! shallow convection package
 character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion package
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
@@ -97,7 +99,7 @@ subroutine phys_ctl_readnl(nlfile)
       history_eddy, history_budget,  history_budget_histfile_num, & 
       conv_water_in_rad, do_clubb_sgs, do_tms, state_debug_checks, &
 !MZ      
-      plume_model
+      plume_model,closure_scheme
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -115,12 +117,14 @@ subroutine phys_ctl_readnl(nlfile)
    end if
 
    plume_model = trim(plume_model)
+   closure_scheme = trim(closure_scheme)
 
 #ifdef SPMD
    ! Broadcast namelist variables
    call mpibcast(deep_scheme,      len(deep_scheme)      , mpichar, 0, mpicom)
 !MZ
    call mpibcast(plume_model,      len(plume_model)      , mpichar, 0, mpicom)
+   call mpibcast(closure_scheme,      len(closure_scheme)      , mpichar, 0, mpicom)
 
    call mpibcast(cam_physpkg,      len(cam_physpkg)      , mpichar, 0, mpicom)
    call mpibcast(cam_chempkg,      len(cam_chempkg)      , mpichar, 0, mpicom)

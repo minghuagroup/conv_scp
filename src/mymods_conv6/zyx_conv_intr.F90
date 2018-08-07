@@ -26,6 +26,7 @@ use cam_logfile,  only: iulog
 !MZ
 use zyx_conv,     only: zyx_conv_init, zyx_conv_tend, zyx_conv_evap, convtran, momtran !, zyx_convi
 use mod_foutput,     only: foutput_1d, foutput_2d
+use comsrf,          only: sgh30
 
 implicit none
 private
@@ -67,6 +68,8 @@ public :: zyx_conv_intr_init, zyx_conv_intr_register, zyx_conv_intr_tend, zyx_co
    integer  ::    rprddp_idx       = 0    
    integer  ::    fracis_idx       = 0   
    integer  ::    nevapr_dpcu_idx  = 0    
+!
+   integer  ::    tke_idx          = 0    
 
 
 !  indices for fields in the physics buffer
@@ -302,6 +305,8 @@ subroutine zyx_conv_intr_init(pref_edge)
    bfls_t_idx = pbuf_get_index('BFLS_T')
    bfls_q_idx = pbuf_get_index('BFLS_Q')
 
+   tke_idx         = pbuf_get_index('tke')
+
 !MZ call zyx_conv_init( pver )
   call zyx_conv_init( pver, limcnv)
   call phys_getopts(deep_scheme_out = deep_scheme)
@@ -315,7 +320,7 @@ end subroutine zyx_conv_intr_init
 
 !------------------------------------------------------
 subroutine zyx_conv_intr_tend( &
-        ztodt, landfrac, lhflx, state &
+        ztodt, landfrac, lhflx, shflx,state &
        ,ptend_all, pbuf, dlf, mcon, precrate_out)
 
 
@@ -332,6 +337,7 @@ subroutine zyx_conv_intr_tend( &
    type(physics_state), intent(in )   :: state          ! Physics state variables
    real(r8), intent(in) :: landfrac(pcols)
    real(r8), intent(in) :: lhflx(pcols)
+   real(r8), intent(in) :: shflx(pcols)
    type(physics_ptend), intent(out)   :: ptend_all      ! individual parameterization tendencies
    type(physics_buffer_desc), pointer :: pbuf(:)
    real(r8), intent(out) :: dlf(pcols,pver)
@@ -356,6 +362,9 @@ subroutine zyx_conv_intr_tend( &
    real(r8), pointer, dimension(:,:) :: evapcdp      ! Evaporation of deep convective precipitation
    real(r8), pointer, dimension(:)   :: prec         ! total precipitation
    real(r8), pointer, dimension(:)   :: snow         ! snow from ZM convection
+
+!MZ
+   real(r8), pointer, dimension(:,:)   :: tke         ! snow from ZM convection
 
    real(r8), pointer :: pblh(:)      ! Planetary boundary layer height
    real(r8), pointer :: tpert(:)     ! Thermal temperature excess
@@ -493,6 +502,13 @@ subroutine zyx_conv_intr_tend( &
    md_out(:,:) = 0._r8
    wind_tends(:ncol,:pver,:) = 0.0_r8
 
+!MZ
+#if (defined BFB_CAM_SCAM_IOP )
+   state%var1 = 0._r8
+   state%var2 = 0._r8
+   state%newvar1 = 0._r8
+#endif
+
    call physics_state_copy(state,state_loc)             ! copy state to local state_loc.
 
    lq(:) = .false.
@@ -514,6 +530,8 @@ subroutine zyx_conv_intr_tend( &
 
    call pbuf_get_field(pbuf, cldtop_idx, jctop )
    call pbuf_get_field(pbuf, cldbot_idx, jcbot )
+
+   call pbuf_get_field(pbuf, tke_idx,     tke )
 
 !MZ
  if(plume_model == 'scp')then
@@ -615,7 +633,7 @@ endif
 !input
        ncol, &
        2, ztodt, qmin(1), &
-       state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), &
+       state%ulat(:ncol), landfrac(:ncol), lhflx(:ncol), shflx(:ncol),&
        state%ps(:ncol), state%pmid(:ncol,:), state%pdel(:ncol,:), &
        zsrf(:ncol), z(:ncol,:), dz(:ncol,:), &
        state%t(:ncol,:), state%q(:ncol,:,1), &
@@ -646,7 +664,10 @@ endif
          dlf(:ncol,:)     ,pflx(:ncol,:)    ,zdu(:ncol,:)     ,rprd(:ncol,:)    , &
          mu(:ncol,:,lchnk),md(:ncol,:,lchnk),du(:ncol,:,lchnk),eu(:ncol,:,lchnk),ed(:ncol,:,lchnk) , &
          dsubcld(:ncol,lchnk),  jt(:ncol,lchnk),maxg(:ncol,lchnk),&
-         lengath(lchnk))
+         lengath(lchnk), &
+!MZ for trigger
+         state%var1(:ncol,:), state%var2(:ncol,:),state%newvar1(:ncol,:), &
+         sgh30(:ncol,lchnk), tke(:ncol,:) )
 
 !!     write(*,*)'lengath(lchnk),lengath,lchnk,begchunk,endchunk'
 !!     write(*,*)lengath(lchnk),lengath,lchnk,begchunk,endchunk
@@ -1108,7 +1129,7 @@ endif
   ! update physics state type state_loc with ptend_loc 
   call physics_update(state_loc, ptend_loc, ztodt)
 
-   goto 1001
+   !goto 1001
 
   ! Momentum Transport (non-cam3 physics)
 
@@ -1266,10 +1287,10 @@ endif
    ! add tendency from this process to tend from other processes here
    call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
-   !goto 1002
 
-!MZ - added the following on 2018-08-03
+!MZ - added the following on 2018-08-03 to test doing _tend_2 within this subroutine
 !======================================
+   goto 1002
 
      !lq(:) = .FALSE.
      !lq(:) = .not. cnst_is_convtran1(:)
@@ -1367,8 +1388,8 @@ subroutine zyx_conv_tend_2( state,  ptend,  ztodt, pbuf)
   lq(:) = .not. cnst_is_convtran1(:)
 
 
-!MZ
-        return
+!MZ 2018-08-03 should be changed togther with goto 1002
+!        return
 !==================
 
   call physics_ptend_init(ptend, state%psetcols, 'convtran2', lq=lq )
@@ -1451,19 +1472,20 @@ endif
                      !dp(:ncol,:pver,lchnk), dsubcld(:,lchnk),  &
                      !jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
                      !nstep,   fracis(:ncol,:pver,:pcnst),  ptend%q(:ncol,:pver,:pcnst), dpdry(:ncol,:pver))
-      !call convtran (lchnk, ncol, pver, pverp,                                        &
-                     !ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
-                     !du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
-                     !dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
-                     !jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-                     !nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
-! yhy test:
-      call convtran (lchnk, pcols, pver, pverp,                                        &
-                     ptend%lq(1:3), state%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+! minghua relaxed yhy codes, used ncol
+      call convtran (lchnk, ncol, pver, pverp,                                        &
+                     ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
                      du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
                      dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
-                     jt(:ncol,lchnk), maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
-                     nstep, fracis(:ncol,:,1:3),  ptend%q(:ncol,:,1:3), dpdry(:ncol,:) )
+                     jt(:ncol,lchnk),maxg(:ncol,lchnk),ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                     nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:))
+! yhy test:
+      !call convtran (lchnk, pcols, pver, pverp,                                        &
+                     !ptend%lq(1:3), state%q(:ncol,:,1:3), 3,  mu(:ncol,:,lchnk), md(:ncol,:,lchnk),   &
+                     !du(:ncol,:,lchnk), eu(:ncol,:,lchnk), ed(:ncol,:,lchnk), &
+                     !dp(:ncol,:,lchnk), dsubcld(:,lchnk),  &
+                     !jt(:ncol,lchnk), maxg(:ncol,lchnk), ideep(:ncol,lchnk), 1, lengath(lchnk),  &
+                     !nstep, fracis(:ncol,:,1:3),  ptend%q(:ncol,:,1:3), dpdry(:ncol,:) )
 if(i<0)then
                  write(*,*)'-- in2 contran- lchk',lchnk,pcnst
                  write(*,*)'2-- q1'

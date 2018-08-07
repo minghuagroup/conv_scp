@@ -57,7 +57,8 @@ module zyx_conv
   use cam_logfile,     only: iulog
   use perf_mod
   use shr_kind_mod,    only: r8 => shr_kind_r8
-  use phys_control, only: phys_getopts, phys_deepconv_pbl, plume_model
+  use phys_control, only: phys_getopts, phys_deepconv_pbl, &
+                          plume_model, closure_scheme
   use units,           only: getunit, freeunit
 !MZ ===== done 
 
@@ -446,6 +447,7 @@ subroutine ecp_readnl(nlfile)
       write(*,*) '==============================='
       write(*,*) ' deep_scheme is ', deep_scheme 
       write(*,*) ' plume_model is ', plume_model
+      write(*,*) ' closure_scheme is ', closure_scheme
       write(*,*) '==============================='
 
 !      call find_group_name(unitn, 'zyxconv_nl', status=ierr)
@@ -714,7 +716,7 @@ subroutine zyx_conv_tend(lchnk, nstep, &
 !!MZ        nlev, nlevp, &
 #endif
         in_ent_opt, dtime, qmin, &
-        lat, landfrac, lhflx, &
+        lat, landfrac, lhflx,shflx, &
         psrf, p, dp, zsrf, z, dz, &
         t_in, q_in, bfls_t, bfls_q, &
         omega, pblh, tpert, nn_prec, nn_stend, nn_qtend, &
@@ -751,7 +753,9 @@ subroutine zyx_conv_tend(lchnk, nstep, &
          ,geos, cme,cape,ideep,&
          dlf     ,pflx    ,zdu     ,rprd    , &
          mu      ,md      ,du      ,eu      ,ed      , &
-         dsubcld ,jt,maxg, lengath)
+         dsubcld ,jt,maxg, lengath, &
+!MZ 2018-08-06 additionl input for trigger and closure)
+         tdiff3,qdiff3,vort3,sgh30,tke)
 
 !------------------------------------------------------
 !Calculate convective tendency
@@ -768,12 +772,12 @@ subroutine zyx_conv_tend(lchnk, nstep, &
     integer , intent(in) :: in_ent_opt ! 0=ec, 1=greg
     real(r8), intent(in) :: dtime  ! [s] time step
     real(r8), intent(in) :: qmin   ! [kg/kg] minimum Q
-    real(r8), dimension(inncol), intent(in) :: lat, landfrac, lhflx
+    real(r8), dimension(inncol), intent(in) :: lat, landfrac, lhflx, shflx
     real(r8), dimension(inncol), intent(in) :: psrf, zsrf
     real(r8), dimension(inncol, nlev), intent(in) :: p, dp, z, dz ! [Pa] ; [m]
     real(r8), dimension(inncol, nlev), intent(in) :: t_in, q_in ! [K] ; [kg/kg]
        ! T and Q state after the large-scale forcing is applied, current state
-    real(r8), dimension(inncol, nlev), intent(in) :: bfls_t, bfls_q ! [K] ; [kg/kg]
+    real(r8), dimension(inncol, nlev), intent(inout) :: bfls_t, bfls_q ! [K] ; [kg/kg]
        ! T and Q state before the large-scale forcing is applied
     real(r8), dimension(inncol, nlev), intent(in) :: omega ! [Pa/s]
     real(r8), dimension(inncol), intent(in) :: pblh  ! [m/s]
@@ -781,6 +785,13 @@ subroutine zyx_conv_tend(lchnk, nstep, &
     real(r8), dimension(inncol), intent(in) :: nn_prec  ! [m/s] NNprec
     real(r8), dimension(inncol, nlev), intent(in) :: nn_stend  ! [J/kg/s] NN
     real(r8), dimension(inncol, nlev), intent(in) :: nn_qtend  ! [kg/kg/s] NN
+
+!MZ minghua added additional input for trigger and closure
+    real(r8), dimension(inncol, nlev), intent(in) :: tdiff3,qdiff3,vort3
+    real(r8), dimension(inncol, nlev), intent(in) ::  tke
+    real(r8), dimension(inncol), intent(in) :: sgh30
+
+
 !in/output
     real(r8), dimension(inncol, nlev), intent(inout) :: massflxbase_p !output convective precip[m/s]
 !output
@@ -1243,10 +1254,9 @@ subroutine zyx_conv_tend(lchnk, nstep, &
     real(r8), dimension(inncol, nlev) :: bfls_qsat, bfls_mse, bfls_msesat
     real(r8), dimension(inncol, nlevp) :: bfls_tint,   bfls_qint,   bfls_qsatint
     real(r8), dimension(inncol, nlevp) :: bfls_mseint, bfls_msesatint 
-    real(r8), dimension(inncol, nlev) ::  cin
+    real(r8), dimension(inncol) ::        cin
     real(r8), dimension(inncol) ::        bfls_cwf, bfls_cin
 
-    real(r8), dimension(inncol, nlev) :: vort3, tdiff3, qdiff3
 !   -------------------------------------------------------------
  
 
@@ -1813,14 +1823,46 @@ endif
 
    else ! 'cam'
 
+
+!MZ cam Trig
+ !first call to dilute
+! -------------------------------------
+  !limit DCAPE to be from above PBL
+  kupbase = 1
+  do i=1,inncol
+    do k= nlev,msg,-1
+      bfls_t(i,k) = t(i,k)
+      bfls_q(i,k) = wq(i,k)
+      if((z(i,k)-zsrf(i)) > min(pblh(i), 3000._r8) ) then
+        kupbase(i) = k 
+        exit
+       endif
+    enddo
+   enddo
+
       !MZ call buoyan_dilute(lchnk, inncol    , &
+      call buoyan_dilute(lchnk, inncol    , nlev, nlevp, &
+                  !q       ,t       ,p       ,w       ,pf       , &
+                  bfls_q       ,bfls_t       ,wp       ,wz       ,pf       , &
+                  tp      ,qstp    ,tl      ,rl      ,bfls_dilucape, &
+                  pblt    ,lcl     ,lel     ,lon     ,maxi     , &
+                  rgas    ,grav    ,cpres   ,msg     , &
+                  tpert,   &
+!MZ
+                  bfls_buoy_mid,cin)
+
+    !write(*,*)'cape and cin 1-->', bfls_dilucape,cin
+
       call buoyan_dilute(lchnk, inncol    , nlev, nlevp, &
                   !q       ,t       ,p       ,w       ,pf       , &
                   wq       ,t       ,wp       ,wz       ,pf       , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  tpert   )
+                  tpert   , &
+                  buoy_mid,cin )
+
+    !write(*,*)'cape and cin 2-->', cape,cin
 
 if(i<0)then
 write(*,*)'!MZ in zyx_conv     call buoyan_dilute(lchnk, inncol    , &'
@@ -1936,7 +1978,7 @@ endif
                 ncol, nlev, nlevp, &
 #endif
                 dz, buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
-                dilucape(:,j), cwf(:,j), cin(:,j), &
+                dilucape(:,j), cwf(:,j), cin(:), &
                 trigdp)
 
 ! here bfls_buoy_mid is manipulated to be above PBL
@@ -2117,7 +2159,7 @@ endif
                 ncol, nlev, nlevp, &
 #endif
                 dz, buoy_mid, normassflx_up_tmp, kupbase, kuptop, &
-                dilucape(:,j), cwf(:,j),cin(:,j), &
+                dilucape(:,j), cwf(:,j),cin(:), &
                 trigdp)
 
 #ifdef OFFLINECP
@@ -2155,13 +2197,64 @@ endif
 ! (ideep=1) or not (ideep=0), based on values of cape,lcl,lel
 ! (require cape.gt. 0 and lel<lcl as minimum conditions).
 !
+
+!MZ cam Trig
+! -------------------------------------
    lengath = 0
+
+ select case (closure_scheme)
+
+  case('cape') !ZM
    do i=1,inncol
-      if (cape(i) > capelmt) then
+      if ( cape(i) > capelmt) then 
          lengath = lengath + 1
          index(lengath) = i
-      end if
-   end do
+       endif
+    enddo
+
+  case('restricted') !additional limit
+
+    do i=1,inncol
+      flag =  (cape(i) > capelmt)                      &
+          .and.  (cape(i) > bfls_dilucape(i)) &
+          .and.  (w(i,kupbase(i)) > 0._r8)           &
+          .and.  (pblh(i) > 200._r8)                &
+          .and.  (rh(i,kupbase(i)-2) > 0.7_r8)        
+
+       if(flag) then
+         lengath = lengath + 1
+         index(lengath) = i
+        end if
+    end do
+
+  case('prognostic')
+    do i=1,inncol
+      flag =  (cape(i) > capelmt)                      &
+          .and.  (cape(i) > bfls_dilucape(i)) &
+          .and.  (w(i,kupbase(i)) > 0._r8)           &
+          .and.  (pblh(i) > 200._r8)                &
+          .and.  (rh(i,kupbase(i)-2) > 0.7_r8)        
+
+       if(.not.flag) then
+           cape(i) = 0._r8
+        endif
+
+         lengath = lengath + 1
+         index(lengath) = i
+    end do
+
+   case default
+      write(*,*)'--------- NO CLOSURE SCHEME IS SELECTED, STOPPED in ZYXCONV'
+      stop
+   end select
+
+
+       !write(*,*)
+       !write(*,*)' Trig in cam ---------i=',i
+       !write(*,*)'cape(i),capelmt,bfls_dilucape(i)',cape(i),capelmt,bfls_dilucape(i)
+       !write(*,*)'w(i,kupbase(i)),pblh(i) ,rh(i,kupbase(i)-2)',w(i,kupbase(i)),pblh(i) ,rh(i,kupbase(i)-2)
+       !write(*,*)'lengath',lengath
+       
 
 i=1
 if(i<0)then
@@ -2514,7 +2607,7 @@ endif
 
 ! Return ZM fields to zyx_conv interface output
 
-  massflxbase_p = mcon
+  massflxbase_p(:,nlev) = mb(:) ! for prognostic purpose 
   stend    = heat
   qtend    = qtnd
   qliqtend = dlf  
@@ -6395,6 +6488,7 @@ subroutine buoyan(lchnk   ,inncol    , nlev, nlevp, &
    real(r8), intent(out) :: qstp(inncol,nlev)     ! saturation mixing ratio of parcel
    real(r8), intent(out) :: tl(inncol)            ! parcel temperature at lcl
    real(r8), intent(out) :: cape(inncol)          ! convective aval. pot. energy.
+   
    integer lcl(inncol)        !
    integer lel(inncol)        !
    integer lon(inncol)        ! level of onset of deep convection
@@ -6403,6 +6497,8 @@ subroutine buoyan(lchnk   ,inncol    , nlev, nlevp, &
 !--------------------------Local Variables------------------------------
 !
    real(r8) capeten(inncol,5)     ! provisional value of cape
+!MZ
+   real(r8) cinten(inncol,5)     ! provisional value of cape
    real(r8) tv(inncol,nlev)       !
    real(r8) tpv(inncol,nlev)      !
    real(r8) buoy(inncol,nlev)
@@ -6473,6 +6569,7 @@ subroutine buoyan(lchnk   ,inncol    , nlev, nlevp, &
 !
 ! Reset max moist static energy level when relative difference exceeds 1.e-4
 !
+
          rhd = (hmn(i) - hmax(i))/(hmn(i) + hmax(i))
          if (k >= nint(pblt(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
             hmax(i) = hmn(i)
@@ -6644,7 +6741,7 @@ subroutine buoyan(lchnk   ,inncol    , nlev, nlevp, &
          end if
       end do
    end do
-!
+
 ! put lower bound on cape for diagnostic purposes.
 !
    do i = 1,inncol
@@ -7831,7 +7928,7 @@ subroutine buoyan_dilute(lchnk   ,inncol    , nlev, nlevp, &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
-                  tpert   )
+                  tpert, buoy, cin   )  !MZ
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -7879,8 +7976,13 @@ subroutine buoyan_dilute(lchnk   ,inncol    , nlev, nlevp, &
 !
    real(r8), intent(out) :: tp(inncol,nlev)       ! parcel temperature
    real(r8), intent(out) :: qstp(inncol,nlev)     ! saturation mixing ratio of parcel (only above lcl, just q below).
+!MZ
+   real(r8),intent(out) ::  buoy(inncol,nlev)
+
    real(r8), intent(out) :: tl(inncol)            ! parcel temperature at lcl
    real(r8), intent(out) :: cape(inncol)          ! convective aval. pot. energy.
+!MZ
+   real(r8), intent(out) :: cin(inncol) 
    integer lcl(inncol)        !
    integer lel(inncol)        !
    integer lon(inncol)        ! level of onset of deep convection
@@ -7891,7 +7993,7 @@ subroutine buoyan_dilute(lchnk   ,inncol    , nlev, nlevp, &
    real(r8) capeten(inncol,5)     ! provisional value of cape
    real(r8) tv(inncol,nlev)       !
    real(r8) tpv(inncol,nlev)      !
-   real(r8) buoy(inncol,nlev)
+   !MZ real(r8) buoy(inncol,nlev)
 
    real(r8) a1(inncol)
    real(r8) a2(inncol)
@@ -7936,6 +8038,7 @@ subroutine buoyan_dilute(lchnk   ,inncol    , nlev, nlevp, &
       lel(i) = nlev
       mx(i) = lon(i)
       cape(i) = 0._r8
+      cin(i) = 0._r8
       hmax(i) = 0._r8
    end do
 
@@ -8030,8 +8133,6 @@ subroutine buoyan_dilute(lchnk   ,inncol    , nlev, nlevp, &
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-
 !
    do k = msg + 2,nlev
       do i = 1,inncol
@@ -8068,6 +8169,13 @@ subroutine buoyan_dilute(lchnk   ,inncol    , nlev, nlevp, &
          end if
       end do
    end do
+!
+!MZ
+   do i = 1,inncol
+    do k= lel(i),mx(i)-1
+           cin(i) = cin(i) - rd*min(buoy(i,k),0._r8)*log(pf(i,k+1)/pf(i,k))
+     enddo
+   enddo
 !
 ! put lower bound on cape for diagnostic purposes.
 !
@@ -8172,7 +8280,12 @@ integer i,k,ii   ! Loop counters.
 !
 
 nit_lheat = 2 ! iterations for ds,dq changes from condensation freezing.
-dmpdz=-1.e-3_r8        ! Entrainment rate. (-ve for /m)
+
+!MZ 
+!2018-08-06 this parameter determines the height of plume
+! default dmpdz=-1.e-3_r8        ! Entrainment rate. (-ve for /m)
+dmpdz=-0.5e-3_r8
+
 !dmpdpc = 3.e-2_r8   ! In cloud entrainment rate (/mb).
 lwmax = 1.e-3_r8    ! Need to put formula in for this.
 tscool = 0.0_r8   ! Temp at which water loading freezes in the cloud.
