@@ -16,7 +16,7 @@ module convect_deep
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
    use cam_logfile,  only: iulog
 !MZ
-   use phys_control, only: phys_getopts, plume_model, closure_scheme
+   use phys_control, only: phys_getopts, plume_model, trigger_scheme
 
    implicit none
 

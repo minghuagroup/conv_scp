@@ -7,6 +7,7 @@
   use abortutils,     only: endrun
   use spmd_utils,     only: masterproc
   use wv_saturation,  only: qsat
+  use phys_control,   only: closure_sh_scheme
 
 
   implicit none

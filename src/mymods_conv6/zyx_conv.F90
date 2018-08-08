@@ -58,7 +58,7 @@ module zyx_conv
   use perf_mod
   use shr_kind_mod,    only: r8 => shr_kind_r8
   use phys_control, only: phys_getopts, phys_deepconv_pbl, &
-                          plume_model, closure_scheme
+                          plume_model, trigger_scheme
   use units,           only: getunit, freeunit
 !MZ ===== done 
 
@@ -447,7 +447,7 @@ subroutine ecp_readnl(nlfile)
       write(*,*) '==============================='
       write(*,*) ' deep_scheme is ', deep_scheme 
       write(*,*) ' plume_model is ', plume_model
-      write(*,*) ' closure_scheme is ', closure_scheme
+      write(*,*) ' trigger_scheme is ', trigger_scheme
       write(*,*) '==============================='
 
 !      call find_group_name(unitn, 'zyxconv_nl', status=ierr)
@@ -2202,9 +2202,9 @@ endif
 ! -------------------------------------
    lengath = 0
 
- select case (closure_scheme)
+ select case (trigger_scheme)
 
-  case('cape') !ZM
+  case('cam') !ZM
    do i=1,inncol
       if ( cape(i) > capelmt) then 
          lengath = lengath + 1
