@@ -2089,6 +2089,9 @@ end subroutine uwshcu_readnl
        else
            wcrit = sqrt( 2._r8 * cinlcl * rbuoy )   
        endif
+
+!MZ w' pdf  shape
+
        sigmaw = sqrt( rkfre * tkeavg + epsvarw )
        mu = wcrit/sigmaw/1.4142_r8                  
        if( mu .ge. 3._r8 ) then
@@ -2554,8 +2557,12 @@ end subroutine uwshcu_readnl
 !          rei(k) = ( 1.2_r8 * rkm / z0(k) / g /rho0j ) ! Alternative.
 
           if( xc .gt. 0.5_r8 ) rei(k) = min(rei(k),0.9_r8*log(dp0(k)/g/dt/umf(km1) + 1._r8)/dpe/(2._r8*xc-1._r8))
+
+!MZ
           fer(k) = rei(k) * ee2
           fdr(k) = rei(k) * ud2
+
+          write(*,*)'in shcu iter,k,fer(k),fdr(k)-->',iter,k,fer(k),fdr(k)
 
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
