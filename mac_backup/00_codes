@@ -1,0 +1,107 @@
+
+20181101 models/
+
+cas_share/shr/new_cosz and shr_orb_
+new_cosz.F90  
+shr_orb_mod.F90
+
+atm/iap/src/dynamics linked to iap, new codes as follows
+
+atm_in deep scheme
+-rwxrwxr-x 1 xxie xxie  41K Nov  1 04:13 tend_lin2.F90
+-rwxrwxr-x 1 xxie xxie  12K Nov  1 04:13 flexib.F90
+-rwxrwxr-x 1 xxie xxie  23K Nov  1 04:13 forecast.F90
+-rwxrwxr-x 1 xxie xxie  32K Nov  1 04:13 iop.F90
+-rwxrwxr-x 1 xxie xxie 8.3K Nov  1 04:13 nlitti.F90
+-rwxr-xr-x 1 xxie xxie  42K Nov  1 04:13 spmd_dyn.F90
+-rwxr-xr-x 1 xxie xxie  27K Nov  1 04:13 stdatm.F90
+-rwxrwxr-x 1 xxie xxie  21K Nov  1 04:13 tend_adv2.F90
+-rwxrwxr-x 1 xxie xxie  28K Nov  1 04:13 dp_coupling.F90
+-rwxrwxr-x 1 xxie xxie  84K Nov  1 04:13 dynamics_vars.F90
+-rwxrwxr-x 1 xxie xxie  63K Nov  1 04:13 dyn_comp.F90
+lrwxrwxrwx 1 xxie xxie   59 Oct 24 02:08 iap -> /T1/xxie/minghua2/cas-esm2//models/atm/cam/src/d
+ynamics/iap
+
+atm/iap/src/physics  new codes
+-rwxrwxr-x 1 xxie xxie  17K Nov  1 04:13 buoysort.F90
+-rwxrwxr-x 1 xxie xxie  75K Nov  1 04:13 cam_diagnostics.F90
+-rwxrwxr-x 1 xxie xxie 145K Nov  1 04:13 cldwat2m_macro_pbl.F90
+-rwxrwxr-x 1 xxie xxie 142K Nov  1 04:13 cldwat2m_micro.F90
+-rwxrwxr-x 1 xxie xxie  49K Nov  1 04:13 cloud_fraction.F90
+-rwxrwxr-x 1 xxie xxie  13K Nov  1 04:13 convect_deep.F90
+-rwxrwxr-x 1 xxie xxie  52K Nov  1 04:13 convect_shallow.F90
+-rwxrwxr-x 1 xxie xxie 227K Nov  1 04:13 eddy_diff.F90
+-rw-rw-r-- 1 xxie xxie  16K Nov  1 04:13 gamma_mod.F90
+-rwxrwxr-x 1 xxie xxie  13K Nov  1 04:13 gravity_waves_sources.F90
+-rwxrwxr-x 1 xxie xxie 1.3K Nov  1 04:13 iop_surf.F90
+-rwxrwxr-x 1 xxie xxie  43K Nov  1 04:13 macrop_driver.F90
+-rwxrwxr-x 1 xxie xxie  77K Nov  1 04:13 microp_driver.F90
+-rwxrwxr-x 1 xxie xxie 1.6K Nov  1 04:13 mod_foutput.F90
+-rwxrwxr-x 1 xxie xxie 5.2K Nov  1 04:13 mzfunctions_mod.F90
+-rwxrwxr-x 1 xxie xxie  31K Nov  1 04:13 nnparameter.F90
+-rwxrwxr-x 1 xxie xxie  21K Nov  1 04:13 phys_control.F90
+-rwxrwxr-x 1 xxie xxie  38K Nov  1 04:13 physics_types.F90
+-rwxrwxr-x 1 xxie xxie  50K Nov  1 04:13 runtime_opts.F90
+-rw-r--r-- 1 xxie xxie  46K Nov  1 04:13 subcolphy.F90
+-rwxrwxr-x 1 xxie xxie  15K Nov  1 04:13 tphysac.F90
+-rwxrwxr-x 1 xxie xxie  21K Nov  1 04:13 tphysbc.F90
+-rwxrwxr-x 1 xxie xxie 296K Nov  1 04:13 uwshcu.F90
+-rwxrwxr-x 1 xxie xxie  68K Nov  1 04:13 vertical_diffusion.F90
+-rwxrwxr-x 1 xxie xxie 132K Nov  1 04:13 zm_conv.F90
+-rwxrwxr-x 1 xxie xxie  30K Nov  1 04:13 zm_conv_intr.F90
+-rwxrwxr-x 1 xxie xxie 215K Nov  1 04:13 zyx1_conv.F90
+-rwxrwxr-x 1 xxie xxie  39K Nov  1 04:13 zyx1_conv_intr.F90
+-rwxrwxr-x 1 xxie xxie 317K Nov  1 04:13 zyx2_conv.F90
+-rwxrwxr-x 1 xxie xxie  67K Nov  1 04:13 zyx2_conv_intr.F90
+
+atm/iap/src/chemistry  new codes
+-rwxrwxrwx 1 xxie xxie 41K Nov  1 05:09 DUSTMod.F90
+-rwxrwxrwx 1 xxie xxie 18K Nov  1 05:09 modal_aero_data.F90
+-rwxrwxrwx 1 xxie xxie 42K Nov  1 05:09 modal_aero_initialize_data.F90
+-rwxrwxrwx 1 xxie xxie 59K Nov  1 05:09 progseasalts_intr.F90
+
+
+11/2
+switches
+
+atm_in
+[xxie@storm mymods]$ vi flexib.F90 
+[xxie@storm mymods]$ vi cldwat2m_micro.F90 
+[xxie@storm mymods]$ vi eddy_diff.F90 
+[xxie@storm mymods]$ vi uwshcu.F90 
+[xxie@storm mymods]$ vi zyx1_conv.F90 
+[xxie@storm mymods]$ vi zyx1_conv_intr.F90 
+[xxie@storm mymods]$ vi convect_shallow.F90 
+[xxie@storm mymods]$ vi macrop_driver.F90 
+
+
+2018-11-08
+under cas-esm
+added q05 routines into atm/iap/physics atm/iap/dynamics
+shr_orb not changed because of new_cosz in cam_share/shr
+
+2018-11-19
+for restart, changed
+
+tphysbc.F90
+convect_deep       to pass tpert, qpert
+convect_shallow    to pass above
+zyx1_conv_intr     to remove pbuf
+vertical_diffusion to remove pbuf
+
+
+new_cosz_mod.F90
+
+pull -f git-server-iap:cas-esm.git development
+git reset --dard HEAD^^
+
+:w
+
+to do on trunk 11-21-2018
+wxc codes
+zyx_conv.F90 new
+new_cosz_mod
+shr_orb_mod
+remove atm/iap/src/chemistry
+
+

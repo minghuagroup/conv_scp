@@ -1,0 +1,151 @@
+1. Set the environmental variables
+   -------------------------------
+
+   export INC_NETCDF=/usr/local/include
+   export LIB_NETECF=/usr/local/lib
+   export INC_MPI=/usr/include
+   export LIB_MPI=/usr/lib64/MPICH/p4/pgi
+   export MPI_LIB_NAME=mpi
+   export CSMDATA=/home/wlin/CCSM/inputdata    #root of CSM inputdata
+
+2. Configur full model CAM 
+   -----------------------
+
+   .cd models/atm/cam/bld
+
+   ./configure -cam_bld /home/mzhang/CCSM/cam3_5_35/Build \
+   -cam_exedir /home/mzhang/CCSM/cam3_5_35/Build -cam_exe cam \
+   -spmd -nosmp -hgrid 64x128 -dyn eul -nadv 5
+
+   # Configured to use distributed memory parallel computing
+   # No shared memory mode. eul dynamic core, T42 (or 64x128)
+   # Other combinnations of dyn and horizontal resolution can be found
+   # in config_horiz_grid.xml. For example, "-hgrid 0.47x0.63 -dyn fv"
+   # Another useful option is target_os to specify which system the
+   # model is build for (accordingly, the appropriate compilers,
+   # compilation flags, libraries will be set to create Makefile)
+   # for example, to configure for Bluegene, add "-target_os bgl".
+   
+   # configuration output, header files, Makefile file will be created
+   # under [cam_bld]. make should also be run on [cam_bld], and executable
+   # named as [cam_exe] is generated there, so are all the compiled .o, .mod files.
+
+   # To allow choice of MG microphysics, need to add option
+     "-nadv 5" to have addtional advected tracer variables. Default is 3.
+     If the cam build with -nadv set to 5, must use MG microphysics scheme,
+     because internally the model checks the number of advective tracers must
+     match what is set during configuration. To reset nadv, may also directly
+     modify Makefile by changing -DPCNST=
+ 
+     
+
+3. Build full CAM and namelist (drv_in, atm_in, lnd_in, ocn_in, ice_in)
+   --------------------------------------------------------------------
+
+
+   cd [cam_bld]    (= /home/mzhang/CCSM/cam3_5_35/Build in this test)
+   ../models/atm/cam/bld/build-namelist   
+
+   (brief description for namelist vars in atm/cam/src/control/runtime_opts.F90
+    e.g., microp_scheme =  'RK' or 'MG'. all cam specifics go to atm_in)
+                                          
+   nohup make > make.log 2>&1 &   
+
+   Once done, check the file make.log if build is successful.
+
+   [As all .o, .mod files are also on this folder, more convenient to move executable
+    and namelist files to a separate folder to run model]
+   #
+
+4. Run full CAM
+
+
+   .move the namelist to a subdir 'run' to run it
+
+    mkdir run ; cd run; mv ../*_in .
+
+   .After updating the namelist files, run using one of following
+
+    mpirun -np 8 ../cam
+    nohup bpsh 0 mpirun -np 8 -map 0:2:2:3:3:4:4:5 ../cam < /dev/null > run.log &
+    (use 'beostatus -c -u 1' to view which nodes are available.
+     The 1st node in node-map must match the one after 'bpsh'. The number of nodes
+     must match the number following -np)
+   
+
+   
+5. Build SCAM
+   ----------
+
+   ./configure -cam_bld /home/mzhang/CCSM/cam3_5_35/SCAM \
+   -cam_exedir /home/mzhang/CCSM/cam3_5_35/SCAM -cam_exe scam \
+   -scam -dyn eul
+
+   cd [cam_bld]   (= /home/mzhang/CCSM/cam3_5_35/SCAM)
+   ../models/atm/cam/bld/build-namelist
+   make > make.log 2>&1
+
+  #Special notes for SCAM
+
+   No GUI. Seems SCAM mode not well tested. Seem not implmented to specify 
+   traditional scam runtime controls. Only Available runtime options for SCAM: 
+         iopfile,scm_iop_srf_prop,scm_relaxation,scm_diurnal_avg,scm_crm_mode
+
+   Need to have a pair of scmlat and scmlon hardcoded in src/control/scamMod.F90 to get going
+   (eventual scmlat and scmlon will be taken from prescribed iopfile)
+   
+   No pressure file to be input. Need to do differently if changing num of vertical levels.
+   (essentially to provide an initial condition in 'ncdata' as for full cam)
+
+   Namelist files need to be edited: 
+      drv_in    caseid, start_ymd, start_tod, stop_n (in days) or stop_ymd and stop_tod
+      atm_in    nftfrq=1 each step, mfilt=large number to have all output in 1 file.
+      fexcl1         = 'QRL','QRS','QC'   #exclude fields from tape 1
+      fincl2         = 'PRECT:I','PRECC','PRECL'   ;include fields in tape 2
+                       ;I: instantaneous, A: Average. Default is A
+     
+      If having multiple history tape, also change nhtfrq and mfilt.
+ 
+
+  # run scam
+    mkdir run ; cd run; mv ../*_in .
+    ../scam
+
+# CAM Diagnostic Packages
+  -----------------------
+
+  . Generate model climatology dataset 
+    (e.g., using ncea as in mean.ctrl. sample source data in /u2/wlin/cam3_5_35/nt42)
+
+  . modify diag040819.csh for the case of interested. (particularly follow lines)
+
+     setenv WKDIR target-working-dir (e.g., /home/mzhang/CCSM/DIAG/nt42/)
+     (create WKDIR, and move or link model clim dataset under WKDIR)
+     
+     #set following two if model climatology dataset not yet generated
+     set test_begin =
+     set test_nyrs = 
+
+     set test_prefix = caseid_of_model_run  (e.g., nt42)
+
+     set CNTL = OBS or USER  (the reference climatology to compare with. If set to USER,
+                              comparison is between two model climatologies. Additional
+                              parameters need to be set following this line)
+
+     set test_name = case_name_to_appear_on_plots. can be different from test_prefix
+
+     (if CNTl = USER, also set cntl_name)
+
+     set DIAG_HOME = dir_containing obs data and additional diag codes
+
+  . run diag040819.csh like follow
+     nohup ./diag040819.csh > run.log 2>&1 &
+
+     Other parameters for plot controls and web display -- html and images.
+     (if set for web display, upon completion, a tar ball will be generated. e.g.
+      nt42-obs.tar under WKDIR. It contains all the files for displaying on web.
+      Untar it under CAMEXP, it will then be browsable as http://climate.msrc.sunysb.edu/CAMEXP.
+      The name 'CAMEXP' just for convenience and it has been set in the web server to
+      match between the folder and the web address)
+
+    

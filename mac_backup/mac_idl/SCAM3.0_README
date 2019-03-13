@@ -1,0 +1,119 @@
+from distribution:
+To test SCAM run the script "testscript" interactively on the CGD machine bangkok.
+
+
+2007-5-31  locally
+SCAM  building ... 2007-5-31
+
+original versions, if modified, are achived as *.0 version
+
+1. Configuring...
+     ./configure
+     ui/configure
+ 
+
+  ./configure  add OSF alpha block from Wuyin
+                change [ ! $batchmode ] to [ ! "$batchmode" ]
+                change CONFIGUREDIR sentence, not found 
+     "goes to.."
+   if to reconfigure gui, ui/config.out should be removed as said in ./configure 
+   ./ui/configure  
+                 change "if[ -a " to "if[-r " in the qtlib block 
+                          -x is the exe access mode from the unix book
+                 change CONFIGUREDIR sentence, not found 
+                 change LINK_LIBS to -lfor from -ldl for later loading sccmgui 
+
+      "back to ./configure"
+    ./configure
+		put " " in the [ -n "$NETCDF_ROOT" ] 
+		modify check_datadir() by adding CSMDATA=".."  NO SPACE !!"="!!  
+                change Filepath if needed, such as adding mymods_0
+
+ end result =>  ui/config.out 
+                obj/config.out 
+                obj/Filepath 
+                obj/*.h files for environments
+                directory prepara & check
+ 
+
+2. gmaking....
+      ./GNUmakefile
+      ui/GNUmakefile  used config.out by including it
+      obj/Makefile
+
+A.     run gmake in ./ui/
+
+** in fifomodel.cpp     copied from earlier version         
+    ////in.sa_handler = handle_intrpt;
+    in.sa_handler = (void (*)())handle_intrpt;
+** in timeconvert.cpp  add
+           double rint(double x) {
+  		return ( (x<0.)? -floor(-x+.5):floor(x+.5) );
+** in config.out change LINK_LIBS to -lfor from -ldl  
+       ./ui/configure change LINK_LIBS to -lfor from -ldl  
+** in /ui/GNUmakefile change gcc to g++
+
+ ==> sccmgui successful!
+
+
+B. run gmake in ./
+     obj/config.out obj/Filepath obj/*.h  are from configuring process
+     obj/Srcfiles  to start with 
+
+      open a directory as mymods_0
+
+    **  history.F90  changed to contain read(nrg,)tape%columns2
+                      add a type variable of column2 rather than a pointer
+    ** grmult.F90    removed multiple definition of variables through "use"??
+                     by removing the "only" flag for pmgrid
+
+  ==> sccm successful!
+
+
+  summary changed routines:  
+              fifomodel.cpp (handler pointer)   timeconvert.cpp (missed declar)
+              history.F90 (pointer err)		grmult.F90 (use only err)
+
+3. run the model
+      
+  ==> successful 
+
+
+
+4. Modifications:
+
+  GUI:  	scam -ng [start-up file]
+  in startup files, set up the four header lines "basedate" etc for no-GUI option
+  
+  with GUI	scam [startup file]
+
+  For Startup file: 
+	change input and output directories, input and output files
+	change defaults switches
+	change output fields with highlights on the interface and onto the history tape
+
+ 
+ 5. added directories:
+	mymods_0 for compiler fixes
+
+	user_forcing 	to specify SCM forcing fields
+	user_in		to specify the scam input file  .scam_defaults
+	user_out	to specify the scam output file used to be userdate 
+	these directories can be specified in the startup file
+
+ 6. To be tested 2007-06-01
+
+  add levels:  .scam_defaults (or startup file) & reconfigure
+  add fields:   bldfld.F90 outfld.F90 & diag header definition
+  set pressure: .scam_defaults and configure levels 
+  SCM forcing method: forecast.F90
+ 
+				cam
+				stepon
+		do- physpkg			dynpkg -steps
+			tphysbc			forecast
+			tphysac			
+
+	
+tphysbc <--  dryadj	madadj zm_conv  clds	radctl
+tphysac <--	pbl

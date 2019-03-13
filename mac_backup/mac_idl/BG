@@ -1,0 +1,21 @@
+connect to gateway by using Softtoken:
+ssh.bluegene.bnl.gov
+
+
+on gateway do
+ssh fen.bluegene.bnl.gov
+
+enter the passphrase
+
+
+On BG:  readyblocks.pl; llqm  etc.
+
+
+-------
+1. ssh.bluegene.bnl.gov
+2. Launch softkey on desktop, type password 28318 to get the passphrase
+3. Type passphrase
+4. ssh fen.bluegene.bnl.gov
+5. BG#52007June
+
+cmd like readyblocks.pl; llqm  etc.
