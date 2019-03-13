@@ -1,0 +1,16 @@
+ &clmexp
+ fsrf           = 'CoLM-surf-128x256'
+ flai           = 'MONTHLY_LAI_IAP'
+ frivinp_rtm    = 'rdirc.05'
+ lnd_cflux_year = 9999
+ co2_type       = 'constant'
+ co2_ppmv       = 284.7
+ lhist_yearly   = .true.
+ lhist_monthly  = .true.
+ lhist_daily    = .false.
+ lhist_3hourly  = .false.
+ lon_points     = 256 
+ lat_points     = 128
+ dtime          = 1200
+ /
+

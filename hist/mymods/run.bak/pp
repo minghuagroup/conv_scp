@@ -1,0 +1,129 @@
+f01='/T1/xxie/test2/run/test2/test2.cam2.h0.1979-01.nc'
+f07='/T1/xxie/test2/run/test2/test2.cam2.h0.1979-07.nc'
+
+f11='/T1/xxie/test2/run/casadv2e/casadv2e.cam2.h0.1979-01.nc'
+f17='/T1/xxie/test2/run/casadv2e/casadv2e.cam2.h0.1979-07.nc'
+
+
+fZM1='ptest2ZM/ptest2ZM.cam2.h0.1979-01.nc'
+fZM7='ptest2ZM/ptest2ZM.cam2.h0.1979-07.nc'
+
+f31='ptest3.cam2.h0.1979-01.nc'
+f37='ptest3.cam2.h0.1979-07.nc'
+
+f41='ptest4.cam2.h0.1979-01.nc'
+f51='ptest5.cam2.h0.1979-01.nc'
+f61='ptest6.cam2.h0.1979-01.nc'
+
+ff1='ptest1.cam2.h0.1979-01-01-00000.nc' ;base
+ff3='ptest1.cam2.h0.1979-01-03-00000.nc' ;base
+ftest1 ='cas2test.cam2.h0.1979-01-01-00000.nc'
+ftest3 ='cas2test.cam2.h0.1979-01-03-00000.nc'
+f3test1 ='cas3test.cam2.h0.1979-01-01-00000.nc'
+f3test3 ='cas3test.cam2.h0.1979-01-03-00000.nc'
+; -------------
+
+f1='ptest1.cam2.h0.1979-01-03-00000.nc' ;base
+f8='ptest8.cam2.h0.1979-01-03-00000.nc' ;qpert
+f9='ptest9.cam2.h0.1979-01-03-00000.nc' ; mb substepping
+f10='ptest10.cam2.h0.1979-01.nc'
+
+f20='ptest20.cam2.h0.1979-01.nc'
+f207='ptest20.cam2.h0.1979-07.nc'
+f21='ptest21.cam2.h0.1979-01.nc'
+f217='ptest21.cam2.h0.1979-07.nc'
+f22='ptest22.cam2.h0.1979-01.nc'
+f227='ptest22.cam2.h0.1979-07.nc'
+
+f23='ptest23.cam2.h0.1979-01.nc'
+f237='ptest23.cam2.h0.1979-07.nc'
+f24='ptest24.cam2.h0.1979-01.nc'
+f247='ptest24.cam2.h0.1979-07.nc'
+f25='ptest25.cam2.h0.1979-01.nc'
+f257='ptest25.cam2.h0.1979-07.nc'
+
+f26='ptest26.cam2.h0.1979-01.nc'
+f27='ptest27.cam2.h0.1979-01.nc'
+f28='ptest28.cam2.h0.1979-01.nc'
+f29='ptest29.cam2.h0.1979-01.nc'
+f287='ptest28.cam2.h0.1979-07.nc'
+f297='ptest29.cam2.h0.1979-07.nc'
+
+f30='ptest30.cam2.h0.1979-01.nc'
+f307='ptest30.cam2.h0.1979-07.nc'
+f31='ptest31.cam2.h0.1979-01.nc'
+f317='ptest31.cam2.h0.1979-07.nc'
+f32='ptest32.cam2.h0.1979-01.nc'
+f327='ptest32.cam2.h0.1979-07.nc'
+f33='ptest33.cam2.h0.1979-01.nc'
+f337='ptest33.cam2.h0.1979-07.nc'
+f34='ptest34.cam2.h0.1979-01.nc'
+f347='ptest34.cam2.h0.1979-07.nc'
+f35='ptest35.cam2.h0.1979-01.nc'
+f357='ptest35.cam2.h0.1979-07.nc'
+f36='ptest36.cam2.h0.1979-01.nc'
+f367='ptest36.cam2.h0.1979-07.nc'
+f37='ptest37.cam2.h0.1979-01.nc'
+f377='ptest37.cam2.h0.1979-07.nc'
+f38='ptest38.cam2.h0.1979-01.nc'
+f387='ptest38.cam2.h0.1979-07.nc'
+f39='ptest39.cam2.h0.1979-01.nc'
+f397='ptest39.cam2.h0.1979-07.nc'
+
+f40='ptest40.cam2.h0.1979-01.nc'
+f407='ptest40.cam2.h0.1979-07.nc'
+f41='ptest41.cam2.h0.1979-01.nc'
+f417='ptest41.cam2.h0.1979-07.nc'
+f42='ptest42.cam2.h0.1979-01.nc'
+f427='ptest42.cam2.h0.1979-07.nc'
+f43='ptest43.cam2.h0.1979-01.nc'
+f437='ptest43.cam2.h0.1979-07.nc'
+f44='ptest44.cam2.h0.1979-01.nc'
+f447='ptest44.cam2.h0.1979-07.nc'
+f45='ptest45.cam2.h0.1979-01.nc'
+f457='ptest45.cam2.h0.1979-07.nc'
+f46='ptest46.cam2.h0.1979-01.nc'
+f467='ptest46.cam2.h0.1979-07.nc'
+f47='ptest47.cam2.h0.1979-01.nc'
+f477='ptest47.cam2.h0.1979-07.nc'
+f48='ptest48.cam2.h0.1979-01.nc'
+f487='ptest48.cam2.h0.1979-07.nc'
+f49='ptest49.cam2.h0.1979-01.nc'
+f497='ptest49.cam2.h0.1979-07.nc'
+
+f50='ptest50.cam2.h0.1979-01.nc'
+f507='ptest50.cam2.h0.1979-07.nc'
+f51='ptest51.cam2.h0.1979-01.nc'
+f517='ptest51.cam2.h0.1979-07.nc'
+f52='ptest52.cam2.h0.1979-01.nc'
+f527='ptest52.cam2.h0.1979-07.nc'
+f53='ptest53.cam2.h0.1979-01.nc'
+f537='ptest53.cam2.h0.1979-07.nc'
+f54='ptest54.cam2.h0.1979-01.nc'
+f547='ptest54.cam2.h0.1979-07.nc'
+f55='ptest55.cam2.h0.1979-01.nc'
+f557='ptest55.cam2.h0.1979-07.nc'
+f56='ptest56.cam2.h0.1979-01.nc'
+f567='ptest56.cam2.h0.1979-07.nc'
+f57='ptest57.cam2.h0.1979-01.nc'
+f577='ptest57.cam2.h0.1979-07.nc'
+f58='ptest58.cam2.h0.1979-01.nc'
+f587='ptest58.cam2.h0.1979-07.nc'
+f59='ptest59.cam2.h0.1979-01.nc'
+f597='ptest59.cam2.h0.1979-07.nc'
+
+f11='/T1/xxie/test2/run/casadv2e/casadv2e.cam2.h0.1979-01.nc'
+filein = ftest3
+var = 'PRECT'
+stop
+dd1 = get_fld(f1,var)
+iave = 3
+lev1 = cal_lev([0.,2],20)
+scale = 1.e7
+igif=0
+gifname = 'gifs/'+var
+aa = dd1
+
+
+ncdf_view,filein=f1,aa=aa,var=var,iave=iave,lev1=lev1,scale=scale,igif=igif,gifname=gifname
+end

@@ -1,0 +1,27 @@
+1.inputdata:
+cam_history.F90
+cam_initfiles.F90
+cam_initfiles.F90
+
+2.add input name:
+comsrf.F90
+
+3.add namelist for input topo (bnd_topo2):
+runtime_opts.F90
+filenames.F90
+namelist_definition.xml
+
+4.physics interface:
+physpkg.F90
+gw_drag.F90              
+
+5.Fetch bulk Richardson no. surface level:
+hb_diff.F90
+
+6.calculation for 4 schemes:
+gw_drag_update.F90
+
+7.input topodata:
+8min_topo_my.nc : Resolution 0.9*1.25,derived from original USGS 8min (approx 16km) height data with area weight average (Original weighted avg from USGS 30s data).
+10min_topo_my.nc : Resolution 0.9*1.25, derived from original USGS 10min (approx 20km) height data with area weight average.
+30s_topo_my.nc : Resolution 0.9*1.25, derived from original USGS 30s (approx 1km) height data with area weight average (Original weighted avg from USGS 30s data).

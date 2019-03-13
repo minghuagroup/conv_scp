@@ -1,0 +1,52 @@
+
+no chemistry, CoLM, all have scm
+test2  used CAM and new codes
+test4  used CAS-ESM and new codes
+
+;------ for code development work
+esm0, esm, esm2 on 12/1/2018 
+test35 from master CLM same as above 35 levels
+test35b development CoLM, no-chem, dtime=1200, DTXY=200 failed after 7 months
+test35b2 as above, failed above, changed to DT=120 
+
+test35b1 as above, wbd_nlitti1=true   as above DT=200
+
+test35b4 no-chem, DT=120 to replace test35b  failed after 6 months
+test35b5 as above, but wbd to form comparison with test35b4, similar to test35b1 but DT
+    failed after 6 months
+
+test36 as test35b1 but with chemistry  failed at the beginning colm output
+ configure mach_pes, Tools/Template dgvm, env_conf cam5, 
+ lnd_in file name
+
+
+test36  FAMIPC 120 DT  chem` 
+test36b1 wbd  chem 
+test36b2 wbd no chemis DT200 running
+
+test37c chem L35, FAMIP5CX DT200 wbd
+
+
+with chemistry, CoLM, master and development 2018-12-3
+with SCM
+test5 and test5b standard AMIP5CX from master and development trunk, blow up again
+
+with chemistry, no CoLM 2018-12-3
+test7 and test7b AMIP5C to test
+
+2018-12-18 
+ALL defaults
+famip5cx_master  built from esm0 folder running  1.5hr per month
+famip5cx_dev20181218 ; 2 hrs/month
+famip5c_master  built from esm0 folder running
+famip5c_dev20181219 
+
+
+b1850c5x_181218  failed with no messages
+
+
+2018-12-19 use test5b for conv development further
+
+
+
+

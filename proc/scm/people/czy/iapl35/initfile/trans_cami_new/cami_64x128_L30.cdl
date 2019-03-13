@@ -1,0 +1,273 @@
+netcdf cami_0000-01-01_64x128_L30_c090102 {
+dimensions:
+	lat = 64 ;
+	lon = 128 ;
+	lev = 30 ;
+	ilev = 31 ;
+	isccp_prs = 7 ;
+	isccp_tau = 7 ;
+	isccp_prstau = 49 ;
+	time = UNLIMITED ; // (1 currently)
+	tbnd = 2 ;
+	chars = 8 ;
+variables:
+	double P0 ;
+		P0:long_name = "reference pressure" ;
+		P0:units = "Pa" ;
+	double lat(lat) ;
+		lat:long_name = "latitude" ;
+		lat:units = "degrees_north" ;
+	double lon(lon) ;
+		lon:long_name = "longitude" ;
+		lon:units = "degrees_east" ;
+	double lev(lev) ;
+		lev:long_name = "hybrid level at midpoints (1000*(A+B))" ;
+		lev:units = "level" ;
+		lev:positive = "down" ;
+		lev:standard_name = "atmosphere_hybrid_sigma_pressure_coordinate" ;
+		lev:formula_terms = "a: hyam b: hybm p0: P0 ps: PS" ;
+	double ilev(ilev) ;
+		ilev:long_name = "hybrid level at interfaces (1000*(A+B))" ;
+		ilev:units = "level" ;
+		ilev:positive = "down" ;
+		ilev:standard_name = "atmosphere_hybrid_sigma_pressure_coordinate" ;
+		ilev:formula_terms = "a: hyai b: hybi p0: P0 ps: PS" ;
+	double isccp_prs(isccp_prs) ;
+		isccp_prs:long_name = "Mean ISCCP pressure" ;
+		isccp_prs:units = "mb" ;
+		isccp_prs:isccp_prs_bnds = 0., 180., 310., 440., 560., 680., 800., 1000. ;
+	double isccp_tau(isccp_tau) ;
+		isccp_tau:long_name = "Mean ISCCP optical depth" ;
+		isccp_tau:units = "unitless" ;
+		isccp_tau:isccp_tau_bnds = 0., 0.3, 1.3, 3.6, 9.4, 23., 60., 379. ;
+	double isccp_prstau(isccp_prstau) ;
+		isccp_prstau:long_name = "Mean pressure (mb).mean optical depth (unitless)/1000" ;
+		isccp_prstau:units = "mixed" ;
+	double time(time) ;
+		time:long_name = "time" ;
+		time:units = "days since 0000-09-01 00:00:00" ;
+		time:calendar = "noleap" ;
+		time:bounds = "time_bnds" ;
+	double time_bnds(time, tbnd) ;
+		time_bnds:long_name = "time interval endpoints" ;
+	char date_written(time, chars) ;
+	char time_written(time, chars) ;
+	int ntrm ;
+		ntrm:long_name = "spectral truncation parameter M" ;
+	int ntrn ;
+		ntrn:long_name = "spectral truncation parameter N" ;
+	int ntrk ;
+		ntrk:long_name = "spectral truncation parameter K" ;
+	int ndbase ;
+		ndbase:long_name = "base day" ;
+	int nsbase ;
+		nsbase:long_name = "seconds of base day" ;
+	int nbdate ;
+		nbdate:long_name = "base date (YYYYMMDD)" ;
+	int nbsec ;
+		nbsec:long_name = "seconds of base date" ;
+	int mdt ;
+		mdt:long_name = "timestep" ;
+		mdt:units = "s" ;
+	double hyai(ilev) ;
+		hyai:long_name = "hybrid A coefficient at layer interfaces" ;
+	double hybi(ilev) ;
+		hybi:long_name = "hybrid B coefficient at layer interfaces" ;
+	double hyam(lev) ;
+		hyam:long_name = "hybrid A coefficient at layer midpoints" ;
+	double hybm(lev) ;
+		hybm:long_name = "hybrid B coefficient at layer midpoints" ;
+	double gw(lat) ;
+		gw:long_name = "gauss weights" ;
+	int ndcur(time) ;
+		ndcur:long_name = "current day (from base day)" ;
+	int nscur(time) ;
+		nscur:long_name = "current seconds of current day" ;
+	int date(time) ;
+		date:long_name = "current date (YYYYMMDD)" ;
+	double co2vmr(time) ;
+		co2vmr:long_name = "co2 volume mixing ratio" ;
+	int datesec(time) ;
+		datesec:long_name = "current seconds of current date" ;
+	int nsteph(time) ;
+		nsteph:long_name = "current timestep" ;
+	double CLDICE(time, lev, lat, lon) ;
+		CLDICE:units = "kg/kg" ;
+		CLDICE:long_name = "Grid box averaged cloud ice amount" ;
+	double CLDLIQ(time, lev, lat, lon) ;
+		CLDLIQ:units = "kg/kg" ;
+		CLDLIQ:long_name = "Grid box averaged cloud liquid amount" ;
+	double CLOUD(time, lev, lat, lon) ;
+		CLOUD:units = "fraction" ;
+		CLOUD:long_name = "Cloud fraction" ;
+	double CONCLD(time, lev, lat, lon) ;
+		CONCLD:units = "fraction" ;
+		CONCLD:long_name = "Convective cloud fraction" ;
+	double CUSH(time, lat, lon) ;
+		CUSH:units = "m" ;
+		CUSH:long_name = "Convective Scale Height" ;
+	double ICEFRAC(time, lat, lon) ;
+		ICEFRAC:units = "fraction" ;
+		ICEFRAC:long_name = "Fraction of sfc area covered by sea-ice" ;
+	double KVH(time, ilev, lat, lon) ;
+		KVH:units = "m2/s" ;
+		KVH:long_name = "Vertical diffusion diffusivities (heat/moisture)" ;
+	double KVM(time, ilev, lat, lon) ;
+		KVM:units = "m2/s" ;
+		KVM:long_name = "Vertical diffusion diffusivities (momentum)" ;
+	double LCWAT(time, lev, lat, lon) ;
+		LCWAT:units = "kg/kg" ;
+		LCWAT:long_name = "Cloud water (ice + liq" ;
+	double NUMICE(time, lev, lat, lon) ;
+		NUMICE:units = "kg/kg" ;
+		NUMICE:long_name = "Grid box averaged cloud ice number" ;
+	double NUMLIQ(time, lev, lat, lon) ;
+		NUMLIQ:units = "kg/kg" ;
+		NUMLIQ:long_name = "Grid box averaged cloud liquid number" ;
+	double PBLH(time, lat, lon) ;
+		PBLH:units = "m" ;
+		PBLH:long_name = "PBL height" ;
+	double PS(time, lat, lon) ;
+		PS:units = "Pa" ;
+		PS:long_name = "Surface pressure" ;
+	double Q(time, lev, lat, lon) ;
+		Q:units = "kg/kg" ;
+		Q:long_name = "Specific humidity" ;
+	double QCWAT(time, lev, lat, lon) ;
+		QCWAT:units = "kg/kg" ;
+		QCWAT:long_name = "q associated with cloud water" ;
+	double QPERT(time, lat, lon) ;
+		QPERT:units = "kg/kg" ;
+		QPERT:long_name = "Perturbation specific humidity (eddies in PBL)" ;
+	double SICTHK(time, lat, lon) ;
+		SICTHK:units = "m" ;
+		SICTHK:long_name = "Sea ice thickness" ;
+	double SNOWHICE(time, lat, lon) ;
+		SNOWHICE:units = "m" ;
+		SNOWHICE:long_name = "Water equivalent snow depth" ;
+	double T(time, lev, lat, lon) ;
+		T:units = "K" ;
+		T:long_name = "Temperature" ;
+	double TBOT(time, lat, lon) ;
+		TBOT:units = "K" ;
+		TBOT:long_name = "Lowest model level temperature" ;
+	double TCWAT(time, lev, lat, lon) ;
+		TCWAT:units = "kg/kg" ;
+		TCWAT:long_name = "T associated with cloud water" ;
+	double TKE(time, ilev, lat, lon) ;
+		TKE:units = "m2/s2" ;
+		TKE:long_name = "Turbulent Kinetic Energy" ;
+	double TPERT(time, lat, lon) ;
+		TPERT:units = "K" ;
+		TPERT:long_name = "Perturbation temperature (eddies in PBL)" ;
+	double TS1(time, lat, lon) ;
+		TS1:units = "K" ;
+		TS1:long_name = "TS1      subsoil temperature" ;
+	double TS2(time, lat, lon) ;
+		TS2:units = "K" ;
+		TS2:long_name = "TS2      subsoil temperature" ;
+	double TS3(time, lat, lon) ;
+		TS3:units = "K" ;
+		TS3:long_name = "TS3      subsoil temperature" ;
+	double TS4(time, lat, lon) ;
+		TS4:units = "K" ;
+		TS4:long_name = "TS4      subsoil temperature" ;
+	double TSICE(time, lat, lon) ;
+		TSICE:units = "K" ;
+		TSICE:long_name = "Ice temperature" ;
+	double TSICERAD(time, lat, lon) ;
+		TSICERAD:units = "K" ;
+		TSICERAD:long_name = "Radiatively equivalent ice temperature" ;
+	double TSOCN(time, lat, lon) ;
+		TSOCN:units = "m" ;
+		TSOCN:long_name = "Ocean tempertare" ;
+	double U(time, lev, lat, lon) ;
+		U:units = "m/s" ;
+		U:long_name = "Zonal wind" ;
+	double V(time, lev, lat, lon) ;
+		V:units = "m/s" ;
+		V:long_name = "Meridional wind" ;
+
+// global attributes:
+		:Conventions = "CF-1.0" ;
+		:source = "CAM" ;
+		:case = "e64P32T4_prod" ;
+		:title =  ;
+		:logname = "eaton" ;
+		:host = "be1105en.ucar.ed" ;
+		:Version = "$Name$" ;
+		:revision_Id = "$Id$" ;
+		:initial_file = "/fis/cgd/cseg/csm/inputdata/atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc" ;
+		:topography_file = "/fis/cgd/cseg/csm/inputdata/atm/cam/topo/USGS-gtopo30_64x128_c050520.nc" ;
+data:
+
+ lat = -87.8637988392326, -85.0965269883174, -82.3129129478863, 
+    -79.5256065726595, -76.7368996803683, -73.9475151539897, 
+    -71.1577520115873, -68.3677561083132, -65.5776070108278, 
+    -62.7873517989631, -59.9970201084913, -57.2066315276432, 
+    -54.4161995260862, -51.6257336749383, -48.8352409662506, 
+    -46.0447266311017, -43.2541946653509, -40.463648178115, 
+    -37.6730896290453, -34.8825209937735, -32.091943881744, 
+    -29.3013596217627, -26.510769325211, -23.7201739335347, 
+    -20.9295742544895, -18.1389709902394, -15.3483647594915, 
+    -12.5577561152307, -9.76714555919557, -6.97653355394864, 
+    -4.18592053318915, -1.3953069108195, 1.3953069108195, 4.18592053318915, 
+    6.97653355394864, 9.76714555919557, 12.5577561152307, 15.3483647594915, 
+    18.1389709902394, 20.9295742544895, 23.7201739335347, 26.510769325211, 
+    29.3013596217627, 32.091943881744, 34.8825209937735, 37.6730896290453, 
+    40.463648178115, 43.2541946653509, 46.0447266311017, 48.8352409662506, 
+    51.6257336749383, 54.4161995260862, 57.2066315276432, 59.9970201084913, 
+    62.7873517989631, 65.5776070108278, 68.3677561083132, 71.1577520115873, 
+    73.9475151539897, 76.7368996803683, 79.5256065726595, 82.3129129478863, 
+    85.0965269883174, 87.8637988392326 ;
+
+ lon = 0, 2.8125, 5.625, 8.4375, 11.25, 14.0625, 16.875, 19.6875, 22.5, 
+    25.3125, 28.125, 30.9375, 33.75, 36.5625, 39.375, 42.1875, 45, 47.8125, 
+    50.625, 53.4375, 56.25, 59.0625, 61.875, 64.6875, 67.5, 70.3125, 73.125, 
+    75.9375, 78.75, 81.5625, 84.375, 87.1875, 90, 92.8125, 95.625, 98.4375, 
+    101.25, 104.0625, 106.875, 109.6875, 112.5, 115.3125, 118.125, 120.9375, 
+    123.75, 126.5625, 129.375, 132.1875, 135, 137.8125, 140.625, 143.4375, 
+    146.25, 149.0625, 151.875, 154.6875, 157.5, 160.3125, 163.125, 165.9375, 
+    168.75, 171.5625, 174.375, 177.1875, 180, 182.8125, 185.625, 188.4375, 
+    191.25, 194.0625, 196.875, 199.6875, 202.5, 205.3125, 208.125, 210.9375, 
+    213.75, 216.5625, 219.375, 222.1875, 225, 227.8125, 230.625, 233.4375, 
+    236.25, 239.0625, 241.875, 244.6875, 247.5, 250.3125, 253.125, 255.9375, 
+    258.75, 261.5625, 264.375, 267.1875, 270, 272.8125, 275.625, 278.4375, 
+    281.25, 284.0625, 286.875, 289.6875, 292.5, 295.3125, 298.125, 300.9375, 
+    303.75, 306.5625, 309.375, 312.1875, 315, 317.8125, 320.625, 323.4375, 
+    326.25, 329.0625, 331.875, 334.6875, 337.5, 340.3125, 343.125, 345.9375, 
+    348.75, 351.5625, 354.375, 357.1875 ;
+
+ lev = 3.64346569404006, 7.59481964632869, 14.3566322512925, 
+    24.6122200042009, 38.2682997733355, 54.5954797416925, 72.0124505460262, 
+    87.8212302923203, 103.317126631737, 121.547240763903, 142.994038760662, 
+    168.225079774857, 197.908086702228, 232.828618958592, 273.910816758871, 
+    322.241902351379, 379.100903868675, 445.992574095726, 524.687174707651, 
+    609.778694808483, 691.389430314302, 763.404481112957, 820.858368650079, 
+    859.53476652503, 887.020248919725, 912.644546944648, 936.198398470879, 
+    957.485479535535, 976.325407391414, 992.556095123291 ;
+
+ ilev = 2.25523952394724, 5.03169186413288, 10.1579474285245, 
+    18.5553170740604, 30.6691229343414, 45.8674766123295, 63.3234828710556, 
+    80.7014182209969, 94.9410423636436, 111.69321089983, 131.401270627975, 
+    154.586806893349, 181.863352656364, 213.952820748091, 251.704417169094, 
+    296.117216348648, 348.366588354111, 409.83521938324, 482.149928808212, 
+    567.22442060709, 652.332969009876, 730.445891618729, 796.363070607185, 
+    845.353666692972, 873.715866357088, 900.324631482363, 924.964462406933, 
+    947.432334534824, 967.538624536246, 985.112190246582, 1000 ;
+
+ isccp_prs = 90, 245, 375, 500, 620, 740, 900 ;
+
+ isccp_tau = 0.15, 0.8, 2.45, 6.5, 16.2, 41.5, 219.5 ;
+
+ isccp_prstau = 90.00015, 90.0008, 90.00245, 90.0065, 90.0162, 90.0415, 
+    90.2195, 245.00015, 245.0008, 245.00245, 245.0065, 245.0162, 245.0415, 
+    245.2195, 375.00015, 375.0008, 375.00245, 375.0065, 375.0162, 375.0415, 
+    375.2195, 500.00015, 500.0008, 500.00245, 500.0065, 500.0162, 500.0415, 
+    500.2195, 620.00015, 620.0008, 620.00245, 620.0065, 620.0162, 620.0415, 
+    620.2195, 740.00015, 740.0008, 740.00245, 740.0065, 740.0162, 740.0415, 
+    740.2195, 900.00015, 900.0008, 900.00245, 900.0065, 900.0162, 900.0415, 
+    900.2195 ;
+
+ time = 122 ;
+}

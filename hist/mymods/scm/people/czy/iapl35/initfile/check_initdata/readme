@@ -1,0 +1,6 @@
+Matlab scripts
+compare IAPi_0000-01-01_128x256_L30_c120110.nc and IAPi_0000-01-01_128x256_L35_c180626.nc
+including U200, U500, U850, V200, V500, V850, T200, T500, T850 (200mb, 500mb, 850mb);
+
+
+

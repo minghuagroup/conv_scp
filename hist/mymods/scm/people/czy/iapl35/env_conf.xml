@@ -1,0 +1,178 @@
+<?xml version="1.0"?>
+
+<config_definition>
+
+<!-- ========================================================================== -->
+<!--                                                                            -->
+<!--      These variables CANNOT be modified once configure -case has been      -->
+<!--      invoked without first invoking configure -cleannamelist.              -->
+<!--      These variables SHOULD NOT be modified once a run has been submitted. -->
+<!--                                                                            -->
+<!--      See README/readme_env and README/readme_general for details           -->
+<!--                                                                            -->
+<!-- ========================================================================== -->
+
+
+
+<!--"Run initialization type, valid values: startup,hybrid,branch (char) " -->
+<entry id="RUN_TYPE"   value="startup"  />    
+
+<!--"Run start date (yyyy-mm-dd). Only used for startup or hybrid runs (char) " -->
+<entry id="RUN_STARTDATE"   value="1979-01-01"  />    
+
+<!--"Reference case for hybrid or branch runs (char) " -->
+<entry id="RUN_REFCASE"   value="case.std"  />    
+
+<!--"Reference date for hybrid or branch runs (yyyy-mm-dd) (char) " -->
+<entry id="RUN_REFDATE"   value="0001-01-01"  />    
+
+<!--"allow same branch casename as reference casename, valid values: TRUE,FALSE (logical) " -->
+<entry id="BRNCH_RETAIN_CASENAME"   value="FALSE"  />    
+
+<!--"flag for automatically prestaging the refcase restart dataset, valid values: TRUE,FALSE (logical) " -->
+<entry id="GET_REFCASE"   value="FALSE"  />    
+
+<!--"TRUE implies code will be built using mpiserial lib, valid values: TRUE,FALSE (logical) " -->
+<entry id="USE_MPISERIAL"   value="FALSE"  />    
+
+<!--"TRUE implies this machine supports the use of the mpiserial lib, valid values: TRUE,FALSE (logical) " -->
+<entry id="MPISERIAL_SUPPORT"   value="TRUE"  />    
+
+<!--"number of atm coupling intervals per day (char) " -->
+<entry id="ATM_NCPL"   value="72"  />    
+
+<!--"number of land coupling intervals per day (integer) (char) " -->
+<entry id="LND_NCPL"   value="$ATM_NCPL"  />    
+
+<!--"number of ice coupling intervals per day (integer) (char) " -->
+<entry id="ICE_NCPL"   value="$ATM_NCPL"  />    
+
+<!--"number of ocn coupling intervals per day (integer) (char) " -->
+<entry id="OCN_NCPL"   value="$ATM_NCPL"  />    
+
+<!--"number of glc coupling intervals per day (integer) (integer) " -->
+<entry id="GLC_NCPL"   value="1"  />    
+
+<!-- ====================================== -->
+
+<!-- ====================================== -->
+
+<!--"atm to ocn flux mapping file for fluxes (char) " -->
+<entry id="MAP_A2OF_FILE"   value="idmap"  />    
+
+<!--"atm to ocn state mapping file for states (char) " -->
+<entry id="MAP_A2OS_FILE"   value="idmap"  />    
+
+<!--"ocn to atm mapping file for fluxes (char) " -->
+<entry id="MAP_O2AF_FILE"   value="idmap"  />    
+
+<!--"ocn to atm mapping file for states (char) " -->
+<entry id="MAP_O2AS_FILE"   value="idmap"  />    
+
+<!--"atm to land mapping file for fluxes (char) " -->
+<entry id="MAP_A2LF_FILE"   value="idmap"  />    
+
+<!--"atm to land mapping file for states (char) " -->
+<entry id="MAP_A2LS_FILE"   value="idmap"  />    
+
+<!--"land to atm mapping file for fluxes (char) " -->
+<entry id="MAP_L2AF_FILE"   value="idmap"  />    
+
+<!--"land to atm mapping file for states (char) " -->
+<entry id="MAP_L2AS_FILE"   value="idmap"  />    
+
+<!--"runoff (.5 degree) to ocn mapping file (char) " -->
+<entry id="MAP_R2O_FILE_R05"   value="idmap"  />    
+
+<!--"runoff (19 basin) to ocn mapping file (char) " -->
+<entry id="MAP_R2O_FILE_R19"   value="idmap"  />    
+
+<!--"runoff (1 degree) to ocn mapping file (char) " -->
+<entry id="MAP_R2O_FILE_RX1"   value="UNSET"  />    
+
+<!-- ====================================== -->
+
+<!--"Only used for C,G compsets: if ocn, ocn provides EP balance factor for precip, valid values: off,ocn (char) " -->
+<entry id="CPL_EPBAL"   value="off"  />    
+
+<!--"Only used for C,G compsets: if true, compute albedos to work with daily avg SW down, valid values: true,false (logical) " -->
+<entry id="CPL_ALBAV"   value="false"  />    
+
+<!--"BGC flag, valid values: none,CO2A,CO2B,CO2C,CO2_DMSA (char) " -->
+<entry id="CCSM_BGC"   value="CO2A"  />    
+
+<!--"Only used for B,E,F,I compsets: if true will pass VOC fields from lnd to atm, valid values: TRUE,FALSE (char) " -->
+<entry id="CCSM_VOC"   value="FALSE"  />    
+
+<!--"CO2 ppmv (real) " -->
+<entry id="CCSM_CO2_PPMV"   value="379.000"  />    
+
+<!-- ====================================== -->
+
+<!-- ====================================== -->
+
+<!--"CAM configure options, see CAM configure utility for details (char) " -->
+<entry id="CAM_CONFIG_OPTS"   value="-phys cam5 -nlev 35 -v"  />    
+
+<!--"CAM namelist use_case (char) " -->
+<entry id="CAM_NML_USE_CASE"   value="1850-2005_cam5"  />    
+
+<!--"CAM specific namelist settings for -namelist option (char) " -->
+<entry id="CAM_NAMELIST_OPTS"   value=""  />    
+
+<!--"CAM dynamical core, valid values: eul,fv,homme,iap (char) " -->
+<entry id="CAM_DYCORE"   value="iap"  />    
+
+<!-- ====================================== -->
+
+<!--"CLM configure options (char) " -->
+<entry id="CLM_CONFIG_OPTS"   value=""  />    
+
+<!--"CLM build-namelist options (char) " -->
+<entry id="CLM_BLDNML_OPTS"   value=""  />    
+
+<!--"CLM namelist use_case (char) " -->
+<entry id="CLM_NML_USE_CASE"   value="20thC_transient"  />    
+
+<!--"CLM specific namelist settings (char) " -->
+<entry id="CLM_NAMELIST_OPTS"   value=""  />    
+
+<!--"clm co2 type, valid values: constant,diagnostic,prognostic (char) " -->
+<entry id="CLM_CO2_TYPE"   value="diagnostic"  />    
+
+<!--"Force CLM model to do a cold-start, valid values: on,off (char) " -->
+<entry id="CLM_FORCE_COLDSTART"   value="off"  />    
+
+<!--"CLM Single point name (char) " -->
+<entry id="CLM_PT1_NAME"   value="UNSET"  />    
+
+<!--"My Data ID (char) " -->
+<entry id="CLM_USRDAT_NAME"   value="UNSET"  />    
+
+<!-- ====================================== -->
+
+<!--"valid values: prognostic,prescribed,thermo_only, valid values: prognostic,prescribed,thermo_only (char) " -->
+<entry id="CICE_MODE"   value="prescribed"  />    
+
+<!--"CICE configure options, see CICE configure utility for details (char) " -->
+<entry id="CICE_CONFIG_OPTS"   value=" "  />    
+
+<!--"CICE specific namelist settings for -namelist option (char) " -->
+<entry id="CICE_NAMELIST_OPTS"   value="cam5=.true."  />    
+
+<!-- ====================================== -->
+
+<!--"DOCN mode, valid values: prescribed,som (char) " -->
+<entry id="DOCN_MODE"   value="prescribed"  />    
+
+<!--"Sets sst/ice_cov filename for amip runs, only used in F compset (char) " -->
+<entry id="DOCN_SSTDATA_FILENAME"   value="$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_128x256_1850_2009_c111225_IAP.nc"  />    
+
+<!--"Sets year start of sst/ice_cov for amip runs, only used in F compset (integer) " -->
+<entry id="DOCN_SSTDATA_YEAR_START"   value="1850"  />    
+
+<!--"Sets year end of sst/ice_cov for amip runs, only used in F compset (integer) " -->
+<entry id="DOCN_SSTDATA_YEAR_END"   value="2008"  />    
+
+<!-- ====================================== -->
+</config_definition>

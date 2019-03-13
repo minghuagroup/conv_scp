@@ -1,0 +1,165 @@
+ subroutine flux_p2g_dev(nump,numg,pgmap,wt,fp,fgm,fg)
+
+      use precision
+      implicit none
+
+      integer ,intent(in) :: nump
+      integer ,intent(in) :: numg
+      integer ,intent(in) :: pgmap(nump)
+      real(r8),intent(in) :: wt(nump)
+      real(r8),intent(in) :: fp(nump)
+      real(r8),intent(in) :: fgm(numg) !zmh
+      real(r8),intent(out):: fg(numg)
+
+      real(r8) sumwt(numg)
+      integer p, g
+
+      fg   (:) = 0.
+      sumwt(:) = 0.
+
+      do p = 1, nump
+         g = pgmap(p)
+         fg(g) = fg(g) + wt(p)*(fp(p) - fgm(g))*(fp(p) - fgm(g))
+         sumwt(g) = sumwt(g) + wt(p)
+      end do
+
+      do g = 1, numg
+         if(sumwt(g).gt.0) then
+            fg(g) = sqrt(fg(g)/sumwt(g))
+         else
+            fg(g) = -9999.
+         end if
+      end do
+
+ end subroutine flux_p2g_dev
+
+ subroutine flux_p2g_grass_dev(nump,numg,pgmap,ivt,wt,fp,fgm,fg)
+
+      use precision
+      use paramodel, only: grasscateg, oceancateg
+      implicit none
+
+      integer ,intent(in) :: nump
+      integer ,intent(in) :: numg
+      integer ,intent(in) :: pgmap(nump)
+      integer ,intent(in) :: ivt(nump)
+      real(r8),intent(in) :: wt(nump)
+      real(r8),intent(in) :: fp(nump)
+      real(r8),intent(in) :: fgm(numg)  !zmh
+      real(r8),intent(out):: fg(numg)
+
+      real(r8) sumwt(numg)
+      integer p, g
+
+      fg   (:) = 0.
+      sumwt(:) = 0.
+
+      do p = 1, nump
+         g = pgmap(p)
+         fg(g) = fg(g) + wt(p)*(fp(p)-fgm(g))*(fp(p)-fgm(g))
+         sumwt(g) = sumwt(g) + wt(p)
+      end do
+
+      do g = 1, numg
+         if(sumwt(g).gt.0) then
+            fg(g) = sqrt(fg(g)/sumwt(g))
+         else
+            fg(g) = -9999.
+         end if
+      end do
+
+      do p = 1, nump
+         g = pgmap(p)
+         if((ivt(p).eq.grasscateg .or. ivt(p).eq.oceancateg) .and. wt(p).gt.1.0E-2)then
+            fg(g) = fp(p)
+         endif 
+      enddo
+
+ end subroutine flux_p2g_grass_dev
+
+ subroutine flux_c2g_dev(numc,numg,cgmap,wt,fc,fgm,fg)
+
+      use precision
+      implicit none
+
+      integer ,intent(in) :: numc
+      integer ,intent(in) :: numg
+      integer ,intent(in) :: cgmap(numc)
+      real(r8),intent(in) :: wt(numc)
+      real(r8),intent(in) :: fc(numc)
+      real(r8),intent(in) :: fgm(numg)
+      real(r8),intent(out):: fg(numg)
+
+      real(r8) sumwt(numg)
+      integer c, g
+
+      fg   (:) = 0.
+      sumwt(:) = 0.
+
+      do c = 1, numc
+         g = cgmap(c)
+         !fg(g) = fg(g) + wt(c)*fc(c)
+         fg(g) = fg(g) + wt(p)*(fc(c)-fgm(g))*(fc(c)-fgm(g))
+         sumwt(g) = sumwt(g) + wt(c)
+      end do
+
+      do g = 1, numg
+         if(sumwt(g).gt.0) then
+            fg(g) = sqrt(fg(g)/sumwt(g))
+         else
+            fg(g) = -9999.
+         end if
+      end do
+
+ end subroutine flux_c2g_dev
+
+ subroutine flux_c2g_3d_dev(numc,numg,nlev,cgmap,itypwat,wt,fc,fgm,fg)
+
+      use precision
+      implicit none
+
+      integer ,intent(in) :: numc
+      integer ,intent(in) :: numg
+      integer ,intent(in) :: nlev
+      integer ,intent(in) :: cgmap(numc)
+      integer ,intent(in) :: itypwat(numc)
+      real(r8),intent(in) :: wt(numc)
+      real(r8),intent(in) :: fc(nlev,numc)
+!zmh
+      real(r8),intent(in) :: fc(nlev,numc)
+      real(r8),intent(in) :: fgm(nlev,numg)
+      real(r8),intent(out):: fg(nlev,numg)
+
+      logical  iswater(numg) ! full grid is lake or ocean
+      real(r8) sumwt(numg)
+      integer c, g
+
+      fg (:,:) = 0.
+      sumwt(:) = 0.
+
+      iswater(:) = .true.
+
+      do c = 1, numc
+         g = cgmap(c)
+         if(itypwat(c).le.3) iswater(g) = .false.
+      end do
+
+      do c = 1, numc
+         g = cgmap(c)
+         if(itypwat(c).le.3) then
+            !fg(:,g) = fg(:,g) + wt(c)*fc(:,c)
+            fg(:,g) = fg(:,g) + wt(c)*(fc(:,c)-fgm(:,g))*(fc(:,c)-fgm(:,g))
+            sumwt(g) = sumwt(g) + wt(c)
+         end if
+      end do
+
+      do g = 1, numg
+         if(sumwt(g).gt.0) then
+            !fg(:,g) = fg(:,g)/sumwt(g)
+            fg(:,g) = sqrt(fg(:,g)/sumwt(g))
+         else
+            fg(:,g) = -9999.
+         end if
+      end do
+
+ end subroutine flux_c2g_3d_dev

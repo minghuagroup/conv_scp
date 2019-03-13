@@ -1,0 +1,10 @@
+#!/bin/bash
+cd ../bld
+./b1850c5x_181220.storm.build
+
+cd ../run
+#cp ~/output/AMIP_ctl/run/lnd_in .
+#cp ~/output/AMIP_ctl/run/CoLM*Fix* .
+#cp ~/output/AMIP_ctl/run/clmini* .
+#cp ~/output/AMIP_ctl/run/MONTHLY_LAI_IAP_AMIP.dat .
+

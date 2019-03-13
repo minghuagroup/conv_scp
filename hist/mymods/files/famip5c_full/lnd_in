@@ -1,0 +1,28 @@
+&clm_inparm
+ co2_type		= 'diagnostic'
+ create_crop_landunit		= .false.
+ dtime		= 1200
+ fatmgrid		= '/R0/jhe/inputdata/lnd/clm2/griddata/griddata_128x256_111224_IAP.nc'
+ fatmlndfrc		= '/R0/jhe/inputdata/lnd/clm2/griddata/fracdata_128x256_USGS_c130401_IAP.nc'
+ finidat		= ' '
+ fpftcon		= '/R0/jhe/inputdata/lnd/clm2/pftdata/pft-physiology.c110425.nc'
+ fpftdyn		= '/R0/jhe/inputdata/lnd/clm2/surfdata/surfdata.pftdyn_128x256_simyr1850-2005_c111224_IAP.nc'
+ frivinp_rtm		= '/R0/jhe/inputdata/lnd/clm2/rtmdata/rdirc_0.5x0.5_simyr2000_c101124.nc'
+ fsnowaging		= '/R0/jhe/inputdata/lnd/clm2/snicardata/snicar_drdt_bst_fit_60_c070416.nc'
+ fsnowoptics		= '/R0/jhe/inputdata/lnd/clm2/snicardata/snicar_optics_5bnd_c090915.nc'
+ fsurdat		= '/R0/jhe/inputdata/lnd/clm2/surfdata/surfdata_128x256_c111224_IAP.nc'
+ ice_runoff		= .true.
+ outnc_large_files		= .true.
+ rtm_nsteps		= 9
+ urban_hac		= 'ON_WASTEHEAT'
+ urban_traffic		= .false.
+/
+&ndepdyn_nml
+/
+#!--------------------------------------------------------------------------------------------------------------------------
+#! lnd_in:: Comment:
+#! This namelist was created using the following command-line:
+#!     /T1/xxie/minghua2/cas-esm/models/lnd/clm/bld/build-namelist -config /T1/xxie/case/famip5c_dev20181219/Buildconf/clmconf/config_cache.xml -res 128x256 -ignore_ic_year -use_case 20thC_transient -infile cesm_namelist -clm_start_type default -rtm_res R05 -rtm_tstep 10800 -co2_ppmv 379.000 -datm_presaero prognostic -namelist &clm_inparm  / -csmdata /R0/jhe/inputdata -inputdata /T1/xxie/case/famip5c_dev20181219/Buildconf/clm.input_data_list
+#! For help on options use: /T1/xxie/minghua2/cas-esm/models/lnd/clm/bld/build-namelist -help
+#!--------------------------------------------------------------------------------------------------------------------------
+

@@ -1,0 +1,13 @@
+
+
+scale = 8.64e7  ;mm/day
+window,/free
+plot,get_fld(f1,'PRECT')*scale ;,thick=2,linest=2
+oplot,get_fld(f2,'PRECT')*scale,color=colors.red ;,thick=2
+oplot,get_fld(f1,'PRECL')*scale,color=colors.green
+oplot,get_fld(f2,'PRECL')*scale,color=colors.pink,linest=1
+
+print,'do ./r pp1 or pp2'
+
+end
+

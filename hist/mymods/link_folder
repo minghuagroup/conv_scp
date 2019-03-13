@@ -1,0 +1,17 @@
+#!/bin/csh
+
+set CASENAME = famipc5x
+set ROOTDIR  = /T1/xxie/minghua2/cas-esm/
+
+mkdir ~/output/{$CASENAME}/src
+ln -s ~/case/{$CASENAME} ~/output/{$CASENAME}/bld
+#ln -s ~/output/{$CASENAME}/run ~/case/{$CASENAME}/run
+#ln -s ~/output/{$CASENAME} ~/case/{$CASENAME}/out
+
+ln -s ${ROOTDIR}/models/atm/iap/src/physics ~/output/{$CASENAME}/src/iap_physics
+ln -s ${ROOTDIR}/models/atm/cam/src/physics/cam ~/output/{$CASENAME}/src/physics
+ln -s ${ROOTDIR}/models/atm/cam/src/dynamics/iap ~/output/{$CASENAME}/src/iap
+
+ln -s ~/case/${CASENAME}/SourceMods/src.cam ~/output/{$CASENAME}/mymods
+#ln -s ~/case/${CASENAME}/SourceMods/src.cam ~/case/{$CASENAME}/mymods
+

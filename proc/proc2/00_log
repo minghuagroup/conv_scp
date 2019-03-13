@@ -1,0 +1,87 @@
+
+CASE SETUP
+ 18-12-25
+ >fc5x full
+ >fc35 no-chem wbd
+ >bc5x runs
+ >bc35 failed land water column, restore chem
+ >bc35x seems to be working
+
+ ----------v1.2.7-----
+ famipc5x_master inconsistency between land fraction
+ b1850c5x   failed  ice block max
+ famipc5x   -chem_none+wbd+L30
+ famipc35x  -chem_none+wbd+L35
+ ---2018-12-21 switched to mzhang
+
+ famip5cx_dev20181220 default development versuon  other cases can be cloned
+ famip5c_dev20181220 default development versuon
+ ---2018-12-20 switched to mzhang
+ ===================================================
+12-25 v1.2.7
+ *~ fc5x_181225    represt AMIPC5X default   terminated on 1982.8.26 J=2
+ *~ fc35_181225    L35 no chem, AMIPC5X wbd, 1982.3.31 running
+ *~ bc5x_181225    failed at 0002-07-01 resubmitted, 0003-04-01 running
+
+ RESTORED STDATM
+ ----------------
+
+12-23
+ =~famipc5x  with chem wbd  DT=150, Ndt=4 success
+ =~famipc35x -chem_none wbd  DT=150, Ndt=4
+ r~famipc5x_master  -chem_none wbd  DT=150, Ndt=4
+
+12-20
+ x~famip5cx_dev20181220 running at DT=200, Dtq=3 terminated in 1980.07
+ =~famip5cx_master running at DT=200, Dtq=3 success 2yrs
+ x~famip5c_dev20181220 running at DT=200, Dtq=3 terminated in 1980.07
+
+steps on storm:
+=========================
+RUN STEPS of DEVELOPMENT VERSION
+ ................................
+2018-12-20--
+ in esm/scripts create_newcase or create_clone -case ~/case/A -clone ~/case/B
+ in ~/case/A 
+  edit env_mach_pes, env_case, env_conf (B1850 case, ice and ocn pes set to 120)
+          set env_case to esm0 to change to master
+  cp ~/minghua2/mymods_hist/cp_files  
+  cp ~/minghua2/mymods_hist/link* .   
+  configure and build
+    edit and ./link_folder
+    edit and ./cp_infiles
+    cd run to edit and ./jj1
+
+   cp ../famip5cx_dev20181218/run/links run/.
+   ->for b1850 case, ocn and ice env_mach_pes 128 to 120
+   ->lnd_in, date, and surf file
+
+ B1850 case edit
+                env_mach_pes before configure
+                after configure
+                BuildConf/colm.buildexe.csh to #undef VEGDATA
+                BuildConf/colm.buildnml.csh to comment out !flai ,fsrf IAP-CMIP 
+                in run folder mkdir timing
+
+RUN STEPS of MASTER VERSION USE JIAWEN'S instruction and change env_conf.xml to esm0
+ ................................
+ scripts using minghua2/CAS-ESM/src/scripts  do create_newcase or clone!
+ edit env_case to esm0
+
+-------
+temporary
+pid   case
+2309 fc5x_181225 
+24079 7092 fc35_181225
+29265 11659 5047 bc5x_181225 
+595 fc35x shr_orb_mod.F90 
+
+
+- www
+fc35-fc35x y80
+fc35x-fc5x yr80
+fc35 - fc35 85-88 minum 80-83
+fc35 - fc5x 80-83 mean
+fc5x - amip_ctl   control 1983
+
+

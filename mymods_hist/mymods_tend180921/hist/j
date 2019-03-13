@@ -1,0 +1,65 @@
+
+   NX2 = IE-IB+1
+   NZ2 = endlev - beglev+1
+   NY2 = endlatdyn - beglatdyn+1
+
+   nstep = get_nstep()
+!----------- 2018-09-16------------------------------------------------------------------------
+
+! ZMH SUBSETEPPING 
+!----------------------------------------------------------------------------------------------
+
+   !IF(zmh_tend1)then                    ! substepping in X
+   IF(NDT==1)then                    ! substepping in X
+       NZMH2 = 2                        ! this can be set to make DTDY in atm_in large
+       DTlin2 = DTlin/DBLE(NZMH2)
+   ELSE
+       NZMH2 = 1            ! original model
+       DTlin2 = DTlin 
+   ENDIF
+
+! ------------------------------------------------------------
+! ZMH COMBINATION OF FORWARD/BACKWARD INTEGRATION STEPS
+!----------------------------------------------------------------------------------------------
+
+   IF(zmh_nlitti)then  ! forward and backward combined
+       NZMH = 2
+   ELSE
+       NZMH = 1            ! original model
+   ENDIF
+
+!  ====================================================
+ DO IZMH2 = 1, NZMH2  ! substepping for x direction
+!  ====================================================
+
+   DU(IB:IE,beglev:endlev,beglatdyn:endlatdyn) = ZERO
+   DV(IB:IE,beglev:endlev,beglatdyn:endlatdyn) = ZERO
+   DT(IB:IE,beglev:endlev,beglatdyn:endlatdyn) = ZERO
+   DPsa(IB:IE,beglatdyn:endlatdyn)             = ZERO
+
+
+   sub_first = (IZMH2==1)
+
+
+if(zmh_nlitti)then 
+      DO J = beglatdyn, endlatdyn
+         DO I = 1, NX
+            PsaL(I,J)    = Psa(I,J)
+            PstL(I,J)    = Pstar1(I,J)
+         END DO
+      END DO
+      DO J = beglatdyn, endlatdyn
+         DO K = beglev,endlev 
+            DO I = 1, NX
+               UL(I,K,J) = UT(I,K,J)
+               VL(I,K,J) = VT(I,K,J)
+               TL(I,K,J) = TT(I,K,J)
+            END DO
+         END DO
+      END DO
+endif
+
+!  ====================================================
+ DO IZMH = 1, NZMH   ! forward and backward integration
+!  ====================================================
+

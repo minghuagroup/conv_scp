@@ -1,0 +1,463 @@
+Contents
+1. Postprocessing
+2. Haiyang instruction
+3. Jiawen Instruction
+4. Xin Instruction
+5. Self notes
+6. CAS
+
+backup on cloud by cpcloud * to /ds/mzhang/diag2
+
+Storm---- model run and post processing
+GCM
+/T1/xxie/minghua/gcm/
+test1/ is the working direc for CESM1.5SBU
+test2/ is the working direc for CAS-ESM   
+       mymods_casesm/ as mymods minghua2/CAS-ESM/case/XX/SourceMod; 
+       bld/ as above to use .configure as make in test1/bld
+           test2/ is the output folder, bld is the cases/ folder, scripts/ is the script folder
+test3/ is data processing from from NCAR
+
+./case.build.sh    to make code changes and recompile
+./case.build_clean.sh
+./case.submit.sh  change drv_in etc before submit
+
+cloned cases can start with the same case folder, but edit the drv_in name
+
+
+
+ post processing in run folder
+ 00_, 01_ ..
+ cpcloud testx/run/casename_diag/*.tar file only .bashrc works
+
+Cloud --- html display
+login cloud mzhang/www/diag 
+      cp temp/*.tar .
+      untar to get fig folder, 
+     edit model.html for view in
+http://cloud.somas.stonybrook.edu/mzhang/model.html 
+
+
+
+                                                            
+
+GCM post-process scripts in proc/
+ 01 etc averaging
+ make soft links, 
+ AMWG package
+ cp to cloud for additional backup copy_cloud
+
+additinal IDL post process in ~xxie/workgcm/ with aaa.pro for instruction to Mac
+ view , make softlink data file
+ myncview,filein='j.nc'
+
+in scm/run/p.pro to check scm plots
+python py... for haiyang's plots
+
+FROM Haiyang 
+
+# Fetch the codes from Github
+ˇ ˇ >ˇcd minghua
+ˇ ˇ If the repository is downloaded at its first time, try:
+ˇ ˇ > git clone https://github.com/minghuagroup/conv_scp.git
+ˇ ˇ Then, a folderˇconv_scpˇshould be generated in current directory.
+ˇ ˇ If the repository has been downloaded long time ago, and you want get the updated version from
+Github, try:
+ˇ ˇ >ˇcd conv_scp
+ˇ ˇˇ>ˇgit pull origin master
+
+# Run SCM with our new scheme
+ˇ ˇ 1. Configure
+ˇ ˇ >ˇcd scm
+ˇ ˇ >ˇ./setup_scm5.mpi.shˇ ˇ ˇ ˇ# set up the environmental variables
+ˇ ˇˇ>ˇ./setup_scm5.mpi.shˇnlˇ ˇ# configure the namelist
+ˇ ˇˇ>ˇ./link_mymods.shˇ ˇ ˇ ˇ ˇ ˇˇ# link the new codes in mymods
+
+
+ˇ ˇˇ2. Build the model
+ˇ ˇˇ>ˇcd bld
+       edit Makefile 
+       LAPACK_LIBDIR:= /T1/xxie/minghua/software/lapack-3.8.0
+       USER_FFLAGS  :=  -DSCMDIAG for SCM diag only
+
+ˇ ˇˇ>ˇmake -j 14
+ˇ ˇ Then, an executable fileˇscamˇshould be generated in theˇrunˇdirectory.
+
+ˇ ˇ 3. Run the model
+ˇ ˇ >ˇcd ../run/
+ˇ ˇ >ˇcp ../bak_files/atm_in_TOGA_ECPˇ ./atm_in
+ˇ ˇ >ˇcp ../bak_files/drv_in_TOGA_ECPˇ ./drv_in
+ˇ ˇ >ˇ./scam >& run.logˇ ˇ ˇ ˇ ˇ # log file isˇrun.log
+
+
+# Run GCM with our new scheme
+ˇ ˇ 1. Create a new case and configure
+ˇ ˇ >ˇcd gcm
+ˇ ˇ >ˇmkdirˇ [casename]
+ˇ ˇˇ>ˇcp ../setup_cam5.mpi.shˇ./
+ˇ ˇˇ>ˇ./setup_cam5.mpi.shˇ ˇ ˇ ˇ# set up the environmental variables
+ˇ ˇˇ>ˇ./setup_cam5.mpi.shˇnlˇ ˇ# configure the namelist
+
+ˇ ˇ 2. Link the codes in mymods
+ˇ ˇˇ>ˇcd ..
+ˇ ˇˇ>ˇcp ../link_mymods.sh ./
+ˇ ˇˇ>ˇ./link_mymods.sh
+
+ˇ ˇˇ3. Build the model
+ˇ ˇˇ>ˇcd bld
+ˇ ˇˇ>ˇmake -j 14ˇ ˇ ˇ ˇ ˇ ˇ ˇ ˇ ˇ ˇ ˇ ˇ# mpifort, mpicc
+ˇ ˇ Then, an executable fileˇcesmˇshould be generated in theˇrunˇdirectory.
+
+ˇ ˇ 4. Run the model
+ˇ ˇ >ˇcd ../run/
+ˇ ˇ >ˇcp ../../run_cam5.mpi.shˇ./
+ˇ ˇ >ˇ./run_cam5.mpi.shˇ ˇ ˇ ˇ ˇ # log file isˇrunlog
+ˇ ˇˇTips:ˇBefore running the model, make sure the setting in the namelist files (atm_in, drv_in,
+etc.) are correct, and the nodes inˇrun_cam5.mpi.shˇare idle.ˇ
+ˇ ˇ There is a backup namelist file:ˇminghua/gcm/bak_files/atm_in,ˇwith settings of our new scheme
+and the neural network model at the end of this file (&ecp_nl, %nn_nl). You can copy it to your
+[casename]/runˇdirectory to replace the default namelist fileˇatm_in, and then run the model.
+
+=============
+
+FROM Jiawen
+
+Introdutons about running CAS-ESM on storm machine
+
+1.establish a case
+cd /T1/xxie/minghua2/CAS-ESM/src/scripts
+
+./create_newcase -case ../../case/casename -res fd14_fd14 -compset FAMIPC5X -mach storm
+./create_newcase -case test -compset FAMIPC5 -res fd14_fd14 -mach storm !fkc
+(choose resolution or compset by ./create_newcase -list)
+/add machine in ccsm_utils/
+
+czy: ./create_newcase -case iapl35 -res fd14_fd14 -compset FAMIPC5 -mach storm 
+./create_newcase -case ~/case/b1850 -res fd14_licom -compset B1850C5X -mach storm
+
+1.a change source code dir in
+vi env_case.xml                       for cas-esm2 dir
+vi LockedFiles/env_case.xml.locked
+    <entry id="CCSMROOT"   value="/T1/xxie/minghua2/cas-esm2" 
+vi env_mach_pes.xml to change 16 to 128
+vi env_conf.xml to set CAM_CONFIG_OPTS  to be "-phys cam5 -chem none -nlev 35 -v"
+                 <entry id="CCSM_BGC"   value="none"  />
+                lnd CO2 constant
+
+
+2. configure the case
+cd /T1/xxie/minghua2/CAS-ESM//case/casename
+
+cp /T1/xxie/minghua2/CAS-ESM/src/scripts/ccsm_utils/Machines/*.storm
+ /T1/xxie/minghua2/cas-esm2/scripts/ccsm_utils/Machines
+
+./configure -case
+--------------------
+(use ./configure -cleanall to clean previo to add pathus sets in above three files)
+
+3. build the case
+
+in /T1/xxie/minghua2/CAS-ESM/case/casename
+
+
+vi Buildconf/camconf/Filepath  to add path
+vi ./Buildconf/cam.buildexe.csh to change PCNST from 5 to 6 -DCO2
+vi ./Buildconf/camconf/CCSM_cppdefs same as above  -DCO2
+to remove -DCO2A  GBC none
+
+./casename_test.storm.build
+
+4.submit the run
+cd /T1/xxie/minghua2/CAS-ESM/output/casename
+
+The following are my simple scripts to compile and run within the above folder
+
+cp /T1/xxie/minghua2/CAS-ESM/output/test2/link* .
+./link_folders to make softlinks to folders that I am familiar, including mymods
+cp /T1/xxie/minghua2/CAS-ESM/output/test2/run/jj* run/.
+
+mkdir timeing/
+./jj to compile (./casename_test.storm.build) and copy CoLM input files to get ready for run
+./jj1 to copy *_in_test2 files to *_in files, and submit the job
+
+
+
+
+use jj to compile, link_folder and link_src to put the softlinks 
+(may miss some initial datasets. the inputdata file folder is /R0/jhe/inputdata)
+
+cd /T1/xxie/minghua2/CAS-ESM/output/FAMIPC5_test/run
+nohup mpirun -nolocal -np 128 -host n11,n12,n13,n14 ./ccsm.exe > ccsm.log &
+
+
+===============
+20180622:
+1.
+./create_newcase -case ../../case/MY_AMIP -res fd14_fd14 -compset FAMIPC5X -mach storm
+goto ../../case/MY_AMIP
+vi env_mach_pes.xml to change 16 to 128
+env_conf.xml: RUN_STARTDATE
+     CCSM_CO2_PPMV
+     DOCN_SSTDATA_YEAR_START
+     DOCN_SSTDATA_YEAR_END
+env_run.xml: some STOP options and RESET options
+env_mach_pes.xml: CPU for each part
+
+2.
+./configure -case
+vi ./Buildconf/cam.buildexe.csh to change the PCNST to 26
+vi ./Buildconf/camconf/CCSM_cppdefs to change the PCNST to 26
+
+3.
+./MY_AMIP.storm.build 
+
+4. !!!
+then in the CAS-ESM/output/MY_AMIP/run/
+vi lnd_in to change some variables after comparing with your AMIP_CTL/run/lnd_in. All my changes are
+marked by "!"
+cp ../../AMIP_ctl/run/CoLM*Fix* .
+cp ../../AMIP_ctl/run/clmini* .
+cp ../../AMIP_ctl/run/MONTHLY_LAI_IAP_AMIP.dat .
+nohup mpirun -nolocal -np 128 -host n9,n10,n11,n12 ./ccsm.exe > runlog &
+
+
+
+before submit the run, copy the AMIP+CTL *_in files and make the following modifications
+ casename 
+ CO2 in lnd_in
+ copy CoLM files
+ copy climi
+ copy MONTHLY_LAI_IAP_AMIP.dat
+
+  do diff for all _in files
+
+
+MORE
+after 2.
+Set DPCNST=26 (in /Buildconf/cam.buildexe.csh and
+Buildconf/camconf/CCSM_cppdefs)
+
+
+;=========
+Xin Xie
+
+1.
+sh 
+source env.intel
+cd gcm
+sh setup_cam5.mpi.sh
+
+2. cd mymods
+ln -s ../../conv_scp/src/mymods/* .
+ln -s ../../conv_scp/src/conv_jp.F90 .
+ln -s ../../conv_scp/src/buoysort.f90 .
+
+3 Compile the code.
+cd bld
+make -j 10
+
+4 cesm executable will be created. To run GCM, copy a case folder from lrun
+cp lrun lrun-myrun -r
+cd lrun-myrun
+
+5 about chknode.sh
+
+6 modify the namelist for necessary use and run it
+sh ../run
+sh ../runcase.sh test n0,n1,n2,n3
+
+/scm
+ ./scam >& run.log 
+./bld/Makefile DIAG
+make -j 14
+
+
+
+============ Haiyan README'
+
+
+# How to create and run a new case of CAM (e.g. AMIP run)?
+
++ 1. Create a directory for the new case
+    - mkdir [casename]
+    - cd [casename]
+
++ 2. Check the directories of NETCDF, openmp and CESM, then configure
+    - cp ../setup_cam5.mpi.sh ./
+    - ./setup_cam5.mpi.sh
+
++ 3. Create namelist
+    - ./setup_cam5.mpi.sh nl
+
++ 4. Link the codes in mymods
+    - cp ../link_mymods.sh ./
+    - ./link_mymods.sh
+
++ 5. Build the model
+    - cd ./bld
+    - make -j 14
+
++ 6. Run the model
+    (Before running the model, make sure the namelist settings (e.g. atm_in, drv_in, etc.) 
+    are correct and the nodes in run_cam5.mpi.sh are idle; runlog is the log file)
+    - cd ../run
+    - cp ../../run_cam5.mpi.sh ./
+    - sh run_cam5.mpi.sh
+
+
+# Checklist for real-time AMIP run
+
+1. Create initial data
+    cd prep/nclpros/
+    edit and run the coresponding ncl program
+    ****** make sure the lat & lon & lev are correct ******
+    ****** make sure the units, min, max of u,v,T,q,ps,ts are correct ******
+
+2. Modify docn_ocn_in
+    sstfile [start year] [start year] [end year]
+    e.g. xxx.nc 1850 1850 2012
+
+3. Modify docn.stream.txt
+    edit sst filename
+
+4. Modify ice_in
+    model_year_align = [start year of the sst file]
+    edit "stream_domfilename" and "stream_fldfilename"
+    stream_year_first = [start year of the sst file]
+    stream_year_last = [last year of the sst file]
+
+5. Modify drv_in
+    edit the run time and initial time
+
+;===== Self 
+rebuild all cases on 20180705
+     test1, test1ZM scm scmZM  both on storm and cheyenne
+mkdir test1
+ cp setup.cam5.mpi.sh or scm
+ cp lin_mymods.sh or scm
+./setup.cam5.mpi.sh
+./setup.cam5.mpi.sh nl
+./lin_mymods.sh or scm
+    edit it if necessary  ZM scheme link differently
+cd bld/ to edit Makefile for options: 
+  LAPACK_LIBDIR:= /T1/xxie/minghua/software/lapack-3.8.0
+  LAPACK_LIBDIR:= /glade/u/home/mzhang/minghua/library/lapack-3.8.0  cheyenne
+  USER_FFLAGS  := -DSCMDIAG -O2 -g -traceback or -all 
+cd run/ to copy *_in files from conv_scp/scripts/...
+  or copy from a similar cases, edit it
+qcmd -- make -j 16 in bld/
+qsub run_cam5.mpi.sh or ./run_cam5.mpi.sh or ./scam >
+
+git=====
+go to the conv_scp folder
+git clone ...
+git status
+git pull origina master to pull all version
+
+git log --graph --decorate --oneline
+
+git checkout addb5e0437 .
+git revert "SHA"
+
+git add files
+git commit -a to write notes
+git push origin master !! careful
+git checkout master or mzhang to switch branch
+git diff master...mzhang or .. to check differences
+
+git check master
+git merge branch to get brach into master
+
+
+6. CASESM
+git clone git-server-iap:cas-esm.git ; empty phrase casesm12345
+git pull origin master
+git checkout zhangminghua 
+
+已经创建branch：zhangminghua并添加好权限，
+请配置好~/.ssh/config文件
+
+host git-server-iap
+user git-server
+hostname 159.226.113.50
+port 22
+identityfile ~/.ssh/zhangminghua_id.pub
+
+并chmod 600 config
+
+chmod 755 ~/.ssh/
+chmod 600 ~/.ssh/***_id ~/.ssh/***_id.pub
+chmod 644 ~/.ssh/known_hosts
+
+之后切换到工作目录执行git clone git-server-iap:cas-esm.git
+
+密码casesm12345  成功的话会直接把远程版本库下载到本地
+
+然后git checkout zhangminghua 切换到您的branch
+
+然后添加和修改您的版本的代码文件
+
+结束后git add .
+
+然后git commit -m "对您的版本的代码的说明"
+
+然后git push git-server-iap:cas-esm.git zhangminghua
+就会将您的本地版本库中更新好的代码版本推送到远程仓库。
+
+今天视频会上提到的大家A.更新自己的branch和B.下载别人branch的方法如下
+
+A.更新自己的branch
+
+1.在本地对cas-esm/目录下的模式代码进行修改（修改为自己的版本）
+
+2.切换到cas-esm/目录 git add .
+
+3. git commit -m "对版本的说明"
+
+4. git push git-server-iap:cas-esm.git [分支名]
+
+B.下载别人branch
+
+
+
+1. 在本地创建对应的分支
+   git checkout -b [分支名]
+
+   2. git pull git-server-iap:cas-esm.git [分支名]
+
+
+
+7. CASESM SCM
+
+/T1/xxie/minghua2/CAS-ESM/SCAM
+./case.setup
+./case.setup nl
+change Filepath to include mymods/
+./case.build
+./case.run
+
+8 NOTES
+on storm
+FOR DEVELOPMENT VERSION IN ESM
+-> in/ ~/output/case cp ../famip5cx_dev20181218/link_folder .
+                     cp ../famip5cx_dev20181218/run/links run/.
+->for b1850 case, ocn and ice env_mach_pes 128 to 120
+->lnd_in, date, and surf file
+
+FOR MASTER VERSION IN ESM0 to create case
+in ~/output
+ln -s ~/cas_esm0/run/case case
+
+9 TODO
+run/timing folder
+
+      
+
+
+
+
+
+
+
+
+

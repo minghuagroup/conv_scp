@@ -1,0 +1,49 @@
+==================================================
+PATH
+==================================================
+models/atm/cam/src/dynamics/iap/dp_coupling.F90
+models/atm/cam/src/dynamics/iap/dyn_comp.F90
+models/atm/cam/src/dynamics/iap/dynamics_vars.F90
+models/atm/cam/src/physics/cam/convect_deep.F90
+models/atm/cam/src/physics/cam/initindx.F90
+models/atm/cam/src/physics/cam/gravity_waves_sources.F90
+models/atm/cam/src/physics/cam/gw_drag.F90
+models/atm/cam/src/physics/cam/physics_types.F90
+==================================================
+CHANGE
+==================================================
+- dp_coupling.F90
+  subroutine d_p_coupling:
+  Add frontgf frontogenesis function for gravity wave drag
+  Add frontga frontogenesis angle for gravity wave drag
+  Add ptxy virtual temperature calculated by ptxy=t3*(1.0+zvir*q3(1))
+  Add h2o (=q3(1))
+  Add pexy interface pressure, pmid, and pdel calculated from subroutine plevs0
+  Add calling gws_src_fnct to calculate frontgf and frontga
+  Some modifications to transfer data from dynamics to physics
+   
+- dyn_comp.F90
+  Modify the calling of subroutine dynamics_init
+
+- dynamics_vars.F90
+  Add initialization of  grid%dp, grid%dl, grid%cosp, grid%sinp needed by gw calculation in subroutine dynamics_init
+
+- convect_deep.F90
+  Add zmdt and ftem calculations because gw_drag needs zmdt
+
+- initindx.F90
+  Add the calling of gw_drag_register to add zmdt to physics buffer
+
+- gravity_waves_sources.F90
+  Copied from models/atm/cam/src/physics/waccm/gravity_waves_sources.F90
+  Including 'subroutine gws_src_fnct' to calculate frontgf and frontga
+
+- gw_drag.F90
+  Copied from models/atm/cam/src/physics/waccm/gw_drag.F90
+  Little Modified to avoid division by zero when ubi is close to zero
+  Including gw drag from convection(beres04) and front
+  Add effgw_beres to namelist(default 0.1)
+
+- physics_types.F90
+  Add frontgf and frontga to 'type physics_state' by commenting WACCM Macro Definition
+  

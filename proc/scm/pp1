@@ -1,0 +1,23 @@
+
+var='SHFLX'
+var='TS'
+var='LHFLX'
+var='CLDLOW'
+var ='PRECT'
+
+offset = 0.
+scale  = 1.
+;offset = 273.16
+d1 = get_fld(f1,var)*scale - offset
+d2 = get_fld(f2,var)*scale -offset
+
+print,'var = ',var
+plot,d1,title=var
+oplot,d2,color=colors.red
+print,'do the followings:'
+print,'ncdf_view,var="CLOUD",file=f1'
+print,'ncdf_view,var="TDIFF",file=f1'
+print,'ncdf_view,var="QDIFF",file=f1, scale=1.e3'
+
+end
+

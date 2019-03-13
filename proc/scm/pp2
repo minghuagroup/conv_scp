@@ -1,0 +1,62 @@
+print,'filein: ',filein
+
+;1----
+var ='Q'
+var = 'CLOUD'
+var = 'TDIFF'
+var = 'QDIFF'
+var = 'CMFMC'
+var = 'CMFMCDZM'
+var = 'ent_f'
+var = 'ent_tot'
+var = 'ent_org'
+var = 'ent_turb'
+var = 'buoy_up'
+var = 'w_up'
+var = 'mu'
+var = 'cldrad_up'
+var = 'cldsr'
+
+;2----
+
+scale = 1.e4
+scale = 273.16/9.8
+scale = 1.e2
+scale = 1.e-3
+scale = 1.e0
+
+dd1 = get_fld(filein,var)
+x2 = get_fld(filein,'time')
+y2 = get_fld(filein,'lev')
+y3 = get_fld(filein,'ilev')
+
+dd = dd1*scale
+range = [min(dd),max(dd)]
+z2 = y2
+sz = size(dd)
+if(sz[1] eq 31)then y2=y3
+
+;3----
+lev1 = cal_lev(range,20)
+lev2 = [9999.,99999]
+lev1 = cal_lev([0.,20],20)
+lev1 = cal_lev([0.,1],20)
+lev1 = cal_lev([-5.,5],20)
+lev1 = cal_lev([-10.,10.],20)
+lev1 = cal_lev([0.,3],20)
+
+aa = dd
+bb = dd
+tt = x2
+
+window,/free,title=var+'_'+filein
+
+plot_4dhtml,aa,bb,x2,y2,lev1,lev2,xrange=[min(tt),max(tt)],$
+               yrange=[1000.,0],xtitle='time',tran=1,title=var+ ' '+filein
+
+oldv1 = get_fld(filein,'PRECT')
+oldv2 = get_fld(filein,'PRECC')
+
+
+end
+

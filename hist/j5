@@ -1,0 +1,219 @@
+!====================================================
+subroutine zyx1_dynamics1 (ncol,zf,dz,jb,jt,dzb,dzt,ent,det,idir)
+!====================================================
+
+ integer,  intent(in) :: ncol
+ integer,  intent(in) :: idir  !1: upward plume, -1 downward plume
+ real(r8), intent(in) :: zf(pcols,pver+1)  
+ real(r8), intent(in) :: dz(pcols,pver)  
+ integer,  intent(in) :: jt(pcols)
+ integer,  intent(in) :: jb(pcols)
+ real(r8), intent(in) :: dzt(pcols)
+ real(r8), intent(in) :: dzb(pcols)
+ !
+ real(r8), intent(out) :: ent(pcols,pver)  
+ real(r8), intent(out) :: det(pcols,pver)  
+
+ !local 
+ integer i,k
+ real(r8) zz(pver),zz2(pver)
+ real zt,zb,zt2,zb2 ,dzj,ents,dets,ratio
+
+  ent(:,:) = 0.0_r8
+  det(:,:) = 0.0_r8
+
+  do i = 1, ncol
+
+   zz(1:pver) = zf(i,1:pver)-dz(i,1:pver)/2.0_r8
+
+   zt = zz(jt(i))   
+   zb = zz(jb(i))
+    
+   zt2 = zt - dzt(i)*(zt-zb)
+   zb2 = zb + dzb(i)*(zt-zb)
+
+   dzj = max(abs((zb2 - zb)),10._r8) * dble(idir)
+   zz2 = (zz-zb)/dzj
+   do k = jt(i),jb(i),idir
+    if( (zz2(k) .ge. 0._r8) .and. (zz2(k) .le. 1._r8))then
+      ent(i,k) = 1._r8 - zz2(k)
+    endif
+   enddo 
+
+   dzj = max(abs((zt - zt2)),10._r8) * dble(idir)
+   zz2 = (zt-zz)/dzj
+   do k = jt(i),jb(i),idir
+    if( (zz2(k) .ge. 0._r8) .and. (zz2(k) .le. 1._r8))then
+      det(i,k) = 1._r8 - zz2(k)
+    endif
+   enddo 
+
+   ents = sum(  ent(i,:) * dz(i,:)  )
+   dets = sum(  det(i,:) * dz(i,:)  )
+
+   ratio = ents/max(dets, 1.e-5_r8)
+   det(i,:) = det(i,:)*ratio
+  enddo
+
+return
+end subroutine zyx1_dynamics1
+
+!==============================================================================================
+subroutine zyx1_dynamics2 (ncol,limcnv,z,dz,buoy,w_init,ent,jb,jt,k100, w_up, jt2, eps00, dzt)
+!==============================================================================================
+
+ integer,  intent(in) :: ncol,limcnv
+ !integer,  intent(in) :: idir  !1: upward plume, -1 downward plume
+ real(r8), intent(in) :: z(pcols,pver)  
+ real(r8), intent(in) :: dz(pcols,pver)  
+ real(r8), intent(in) :: buoy(pcols,pver)
+ real(r8), intent(in) :: w_init(pcols)
+ real(r8), intent(in) :: ent(pcols,pver)
+ integer,  intent(inout) :: jt(pcols)
+ integer,  intent(in) :: jb(pcols)
+ integer,  intent(in) :: k100(pcols)
+ !
+ real(r8), intent(out) :: w_up(pcols,pver)  
+ integer,  intent(out) :: jt2(pcols)
+ real(r8), intent(out) :: eps00(pcols)  
+ real(r8), intent(out) :: dzt(pcols)  
+
+ !local 
+ integer i,k,kmaxb
+
+ real(r8) alpha
+ real(r8) dp_radius
+
+ real(r8) work(pver)
+ real bmax,wmax,dumb,eps,w2
+
+  alpha = 0.05_r8
+  dp_radius = 10.0e3_r8
+
+  w_up(:,:)  = 0.0_r8
+  eps00(:)   = 0.0_r8
+  jt2(:)     = jt(:)
+  dzt(:) = 0.2_r8
+  
+  do i = 1, ncol
+
+
+   kmaxb = get_maxk(buoy(i,:),pver,jt(i),k100(i)) 
+   kmaxb = min(kmaxb,jb(i)-1)
+
+   bmax  = buoy(i,kmaxb) 
+
+!write(*,*)'myb',buoy
+!write(*,*)'myb',kmaxb,bmax
+
+   if(bmax < 0._r8) exit
+    
+   w_up(i,jb(i)) = w_init(i)
+
+   jt2(i) = jb(i)-1
+   do k= jb(i)-1, limcnv, -1 
+     dumb = buoy(i,k)
+     if((k>kmaxb) .and. (dumb< 0._r8))then
+        dumb = 0._r8
+     endif
+     eps = min(ent(i,k)*dz(i,k),1.0_r8) 
+
+     w2 =  (1._r8 - eps)*w_up(i,k+1)*w_up(i,k+1) &
+        + alpha*dumb*dz(i,k)
+
+!write(*,*)'w2',k,kmaxb,buoy(i,k),dumb,eps,w2
+
+    jt2(i) = k
+
+    if(w2 <  0._r8)then 
+      exit
+    endif
+     w_up(i,k) = sqrt(w2)
+
+  enddo  !k
+
+     
+
+     wmax  = w_up(i,kmaxb)
+!
+     dumb = z(i,kmaxb) - z(i,jb(i))
+     wmax = sum(w_up(i,kmaxb:jb(i)) * dz(i,kmaxb:jb(i)) )/dumb
+
+     wmax  = max(wmax,  1.0_r8)
+     wmax  = min(wmax,  15._r8)
+
+!write(*,*) k,jt(i),jb(i),kmaxb,dumb
+!    
+     do k=kmaxb,jb(i)
+      work(k) = max(buoy(i,k),0._r8)
+     enddo
+     bmax = sum(work(kmaxb:jb(i))* dz(i,kmaxb:jb(i)) )/dumb
+
+     w2 = min(bmax, 0.4_r8)
+     w2 = max(bmax, 0.01_r8)
+     
+     eps00(i) = sqrt(w2*(z(i,jt2(i))-z(i,jb(i))))/dp_radius/wmax *0.4_r8 !/dzb
+
+
+
+     dzt(i) = (z(i,jt(i))-z(i,kmaxb))/(z(i,jt(i))-z(i,jb(i)))
+
+     dzt(i) = max(dzt(i),0.05_r8)
+
+     eps00(i) = max(eps00(i), 5.0e-5_r8)
+     eps00(i) = min(eps00(i), 5.0e-3_r8)
+
+ enddo   !i
+ jt(:) = jt2(:)
+   
+return
+end subroutine zyx1_dynamics2
+
+
+!====================================================
+real(r8) function get_mink(d,np,k1,k2)
+ ! to get the index of minimun value of d betwwn k1, k2
+!====================================================
+
+ real(8)   d(np)
+ integer   np,k1,k2
+ integer   k3, k
+ real(8)   dmn
+   
+   dmn = 1.0e10_r8
+   k3   = k1
+   do k = k1,k2
+    if(dmn > d(k))then
+      dmn = d(k)
+      k3 = k
+    endif
+   enddo 
+   get_mink = k3
+return
+end function get_mink
+
+!====================================================
+real(r8) function get_maxk(d,np,k1,k2)
+ ! to get the index of maximun value of d between k1 and k2
+!====================================================
+
+ real(8)   d(np)
+ integer   np,k1,k2
+ integer   k3, k
+ real(8)   dmn
+   
+   dmn = -1.0e10_r8
+   k3   = k1
+   do k = k1,k2
+    if(dmn < d(k))then
+      dmn = d(k)
+      k3 = k
+    endif
+   enddo 
+   get_maxk = k3
+return
+
+end function get_maxk
+
+end module zyx1_conv
+

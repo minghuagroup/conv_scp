@@ -1,0 +1,10 @@
+#!/bin/bash
+cd ../bld
+./test4.storm.build
+
+cd ../run
+#cp ../../AMIP_ctl/run/lnd_in .
+#p ../../AMIP_ctl/run/CoLM*Fix* .
+#p ../../AMIP_ctl/run/clmini* .
+#p ../../AMIP_ctl/run/MONTHLY_LAI_IAP_AMIP.dat .
+

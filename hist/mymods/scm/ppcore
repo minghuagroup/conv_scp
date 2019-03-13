@@ -1,0 +1,21 @@
+
+fcore = 'core.cam2.h0.1992-12-19-19800.nc'
+fcorezm = '/T1/xxie/test4/scm_old/run/corezm.cam2.h0.1992-12-19-19800.nc'
+
+ftwp = 'twp.cam2.h0.2006-01-22-19800.nc'
+ftwpzm = '/T1/xxie//test4/scm_old/run/twpnn.cam2.h0.2006-01-22-19800.nc'
+
+
+f1 = fcore
+f1zm = fcorezm
+window,/free
+plot,get_fld(f1zm,'PRECT') ;,thick=2,linest=2
+oplot,get_fld(f1,'PRECT'),color=colors.red ;,thick=2
+oplot,get_fld(f1,'PRECC'),color=colors.blue,linest=1
+oplot,get_fld(f1,'PRECL'),color=colors.green
+oplot,get_fld(f1,'PRECCDZM'),color=colors.cyan
+
+print,'do ./r pp1 or pp2'
+
+end
+

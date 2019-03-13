@@ -1,0 +1,16 @@
+
+;filein = f1
+var = 'CLDLOW'
+print,'var=',var
+print,'filein = ',filein
+print,'--------------------------------
+dd1 = get_fld(filein,var)
+iave = 3
+lev1 = cal_lev([0.,1.],20)
+scale = 1.e0
+igif=0
+gifname = 'gifs/'+var
+aa = dd1
+
+ncdf_view,filein=filein,aa=aa,var=var,iave=iave,lev1=lev1,scale=scale,igif=igif,gifname=gifname
+end

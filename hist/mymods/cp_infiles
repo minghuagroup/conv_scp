@@ -1,0 +1,41 @@
+ #!/bin/csh
+ ## in output/case folder
+ ## run this after builing
+ 
+# case folder name
+set CASENAME=famip5cx
+set CASENAME2=20181222
+
+FAMIPC5X #  
+set ATMIN=~/minghua2/mymods_hist/files/famip5cx_dev201812220/atm_in
+set LNDIN=~/minghua2/mymods_hist/files/famip5cx_dev201812220/lnd_in
+set DRVIN=~/minghua2/mymods_hist/files/famip5cx_dev201812220/drv_in
+
+FAMIPC5 #  
+set ATMIN=~/minghua2/mymods_hist/files/famip5c_dev201812220/atm_in
+set LNDIN=~/minghua2/mymods_hist/files/famip5c_dev201812220/lnd_in
+set DRVIN=~/minghua2/mymods_hist/files/famip5c_dev201812220/drv_in
+
+mv ~/output/${CASENAME}/run/ccsm.exe ~/output/${CASENAME}/run/ccsm_${CASENAME2}.exe
+
+cp ${ATMIN} ~/output/${CASENAME}/run/atm_in_${CASENAME2}
+cp ${LNDIN} ~/output/${CASENAME}/run/lnd_in_${CASENAME2}
+cp ${DRVIN} ~/output/${CASENAME}/run/drv_in_${CASENAME2}
+
+ln -fs ~/output/test5b/run/CoLM-surf-IAP-AMIP-128x256 ~/output/${CASENAME}/run/CoLM-surf-128x256
+
+ln -fs ~/minghua2/mymods_hist/run/jj* ~/output/${CASENAME}/run/.
+ln -fs ~/minghua2/mymods_hist/run/pp* ~/output/${CASENAME}/run/.
+ln -fs ~/minghua2/mymods_hist/run/0* ~/output/${CASENAME}/run/.
+
+
+#ln -sf /gpfs/u/home/mzhang/minghua2/inputdata/rdirc.05 ~/output/${CASENAME}/run/rdirc.05
+#cp /gpfs/u/home/mzhang/minghua2/inputdata/CoLM*IAP* ~/output/${CASENAME}/run/.
+
+ echo =====================================
+ echo Edit following files in the run folder
+ echo atm_in lnd_in drv_in jj1
+ echo then do to do "./jj"
+ echo =====================================
+
+

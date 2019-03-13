@@ -1,0 +1,20 @@
+==================================================
+program: GCMini
+source : Interp_inidata.f90 
+	 calsig.f90  Grid.f90   Inp_gs_ll.f90   Interp_inidata.f90  intp3d.f90  prognostic.f90             read_ini.f90       write_ini.f90
+         check.f90   gs_ll.f90  Inp_sp_sig.f90  intlay.f90          intpav.f90  read_IAPL35coordinate.f90  Var_name_inic.f90
+input:   cami_0000-01-01_64x128_L30_c090102.nc
+output:  IAPi_0000-01-01_128x256_L35_c180626.nc
+
+compile: make clean; make
+run:     ./GCMini
+==================================================
+
+
+1. Modify Grid.f90 and Interp_inidata.f90 for IAPL35
+2. Create read_IAPL35coordinate.f90
+3. Modify makefile
+4. make
+
+
+

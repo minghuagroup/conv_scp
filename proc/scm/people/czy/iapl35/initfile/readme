@@ -1,0 +1,16 @@
+1) generate IAPL35 coordinate ncfile(see coordinate/readme)
+
+cd coordinate
+ifort -I./ -I//public/software/mathlib/netcdf/4.3.2/intel/include -L/public/software/mathlib/netcdf/4.3.2/intel/lib -lnetcdff -o trans_txt2nc_IAPL35 trans_txt2nc_IAPL35.F90
+./trans_txt2nc_IAPL35
+
+2) interpolation(see trans_cami_new/readme)
+
+cd trans_cami_new
+ln -s ../coordinate/IAPL35coordinate.nc ./
+make clean
+make
+./GCMini
+
+3) check the results of interpolation
+see the folder 'check_initdata' including some pdf files and matlab scripts

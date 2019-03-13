@@ -1,0 +1,26 @@
+
+fcore = 'core.cam2.h0.1992-12-19-19800.nc'
+fcorezm = '/T1/xxie/test4/scm_old/run/corezm.cam2.h0.1992-12-19-19800.nc'
+
+ftwpa = '/T1/xxie/test5/scm/run/twpa.cam2.h0.2006-01-22-19800.nc'
+ftwpb = '/T1/xxie/test5b/scm/run/twpb.cam2.h0.2006-01-22-19800.nc'
+ftwpc = '/T1/xxie/test5b/scm/run/twpc.cam2.h0.2006-01-22-19800.nc'
+
+fcorea = 'coreZM.cam2.h0.1992-12-19-19800.nc'
+fcoreb = 'core.cam2.h0.1992-12-19-19800.nc'
+fcorec = 'corec.cam2.h0.1992-12-19-19800.nc'
+fcoree = 'coree.cam2.h0.1992-12-19-19800.nc'
+
+f1 = ftwpa
+f2 = ftwpb
+f2 = ftwpc
+
+
+f1 = fcorea
+f2 = fcorec
+f3 = fcoree
+
+print,'do ./r pp1 or pp2'
+
+end
+

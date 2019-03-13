@@ -1,0 +1,105 @@
+module mzfunctions_mod
+!------------------------------------------------------------------------------------------------
+! Purpose:    Calculate ramp functions
+! Author :    Minghua Zhang
+! Completed : 2018-08-15
+! Update    
+!------------------------------------------------------------------------------------------------
+
+   use shr_kind_mod, only: r8 => shr_kind_r8
+   use units,           only: getunit, freeunit
+   use time_manager,    only: get_nstep
+   
+
+   implicit none
+   save
+   public
+
+CONTAINS
+!================================================================================================
+
+  subroutine mzfunc1(nx,x,y1, xmin, xmax,x0,xscale, iflag)
+
+! =====================================================
+!  x0 is the infection point
+!  xscale is the contraction xscale in x
+!  returned value from -1. to 1.
+! -------------------------------------
+! input
+  integer :: nx
+  integer :: iflag  ! -1 to return (-1. 1.), else return (0.0, 1.)
+  real(8) :: x(nx)
+  real(8) :: xmin, xmax, x0, xscale
+
+! output
+  real(8) :: y1(nx)
+
+! local
+  real(8) :: x1,x1min, x1max
+  integer :: i
+
+   if(xmin .eq. xmax) then 
+    write(*,*)'xmin cannot be the same as xmax, stop in zmh_function'
+    stop
+   end if
+
+   x1min = (xmin - x0)*xscale
+   x1max = (xmax - x0)*xscale
+
+   do i=1,nx
+    x1     = (x(i)    - x0)*xscale 
+    y1(i)  = (atan( -x1) - atan(-x1min) )/(atan(-x1max) - atan(-x1min)) 
+
+    if(iflag .eq.  -1)then
+       y1(i)  = 2.0*y1(i) - 1. 
+    end if
+
+   end do
+
+  return
+
+ end subroutine
+
+!================================================================================================
+
+  subroutine fout3d(d3,nnx,nnz,nny,nx0,nz0,ny0,var)
+
+! work with IDL program iap_proc1.pro to view fields
+
+  real(8)      :: d3(nnx,nnz,nny)
+  integer      :: nnx,nnz,nny,nx0,nz0,ny0
+  integer      :: nstep
+  character(*) :: var
+
+  character(*) :: filename
+  character(*) :: strt,strx,stry,strz
+  logical      :: file_exists
+
+  nstep = get_nstep()
+
+  write(strt,'(I4.4)')nstep
+  write(strx,'(I4.4)')nnx
+  write(strz,'(I4.4)')nnz
+  write(stry,'(I4.4)')nny
+
+  filename = 'fout/'//var//'_'//strt//'_'//strx//'_'//strz//'_'//stry//'.txt'
+  INQUIRE(FILE=filename, EXIST=file_exists)
+
+  if(file_exists)then filename = filename//'1'
+
+  write(*,*)filename
+  unitn = getunit()
+  open( unitn, file=filename,status='unknown')
+   write(unitn,*) nnx,nnz,nny,nstep,nx0,nz0,ny0
+   do J = 0, nny
+    do k = 0, nnz
+     write(unitn,'(1000(5E15.7/))') d2(1:nnx,k,j)
+    enddo
+   enddo
+
+  return
+
+ end subroutine
+
+
+end module

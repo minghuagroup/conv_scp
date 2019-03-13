@@ -1,0 +1,22 @@
+
+;filein = f1
+var = 'PRECT'
+print,'var=',var
+print,'filein = ',filein
+print,'--------------------------------
+dd1 = get_fld(filein,var)
+iave = 3
+lev1 = cal_lev([0.,2],20)
+scale = 1.e7
+igif=0
+gifname = 0; 'gifs/'+var
+aa = dd1
+
+xx = get_fld(filein,'lon')
+yy = get_fld(filein,'lat')
+
+save,file='t.sav',aa,xx,yy,var,iave,lev1,scale,igif,filein
+print,'saved ',var ,' in ',filein, '  into t.sav to run on mac pp2sav'
+stop
+ncdf_view,filein=filein,aa=aa,var=var,iave=iave,lev1=lev1,scale=scale,igif=igif,gifname=gifname
+end

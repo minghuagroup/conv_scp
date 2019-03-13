@@ -1,0 +1,58 @@
+Chai ZhaoYang 20180816
+==================================================
+PATH
+==================================================
+models/atm/cam/bld/namelist_files/namelist_defaults_cam.xml
+models/atm/cam/src/physics/cam/cldwat2m_micro.F90
+models/atm/cam/src/dynamics/iap/flexib.F90
+models/atm/cam/src/dynamics/iap/spmd_dyn.F90
+models/atm/cam/src/dynamics/iap/stdatm.F90
+==================================================
+CHANGE
+==================================================
+- namelist_defaults_cam.xml
+  Add ncdata path for IAPL35 and IAPL51
+
+- cldwat2m_micro.F90
+  Change iter from 2 to 4 to avoid 'Impossible case2 in instratus_condensate' error in cldwat2m_macro.F90 for IAPL35
+
+- flexib.F90
+  Add PHALFC51 and PHALFC35 for IAPL51 and IAPL35 
+  Add Ndt, Ndq, DTDY to namelist for convenient test
+
+- spmd_dyn.F90
+  Add Ndt, Ndq, DTDY to namelist for convenient test
+
+- stdatm.F90
+  Change PBALIB and DPALIB from 0.5 to 0.25, which is used for IAPL51. For IAPL35 0.5 is OK.
+
+==================================================
+How to run IAPL35
+==================================================
+
+1) ./create_newcase -case iapl35 -res fd14_fd14 -compset FAMIPC5 -mach sugon_czy 
+
+2) cd iapl35; vi env_conf.xml; Edit env_conf.xml as follows:
+   <entry id="CAM_CONFIG_OPTS"   value="-phys cam5 -nlev 35 -v"  />
+
+3) ./configure -case
+
+4) ./iapl35.xxx.build
+
+5) Edit atm namelist(atm_in) refering to the example file atm_in
+
+  Need to be set manually:
+
+&spmd_iap_inparm
+ npr_yz         = 32,4,4,32
+ DTDY           = 200.0D0  ! standard timestep for dynamics(for fast process)
+ Ndt            = 3        ! 3x200=600s for slow process
+ Ndq            = 3
+/
+  Automatically set:
+  ncdata         = '/public/home/chzhy1/dat/inputdata/atm/cam/inic/IAP/IAPi_0000-01-01_128x256_L35_c180626.nc'
+
+==================================================
+How to generate initial file
+==================================================
+see the folder 'initfile'

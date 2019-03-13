@@ -1,0 +1,18 @@
+!XXXXXXXX
+    do k= maxi(i)+1,pver
+     if(p(i,k) - p(i,maxi(i)) .ge. 50.)then
+      k1 = k
+      exit
+     endif
+    enddo 
+    if(k1==pver)then
+      do k = maxi(i),limcnv,-1
+        if(p(i,pver) - p(i,k)) .ge. 50.)then
+          k1 = k
+          exit
+         endif
+       enddo
+     endif 
+    maxi1(i) = max(k1,maxi(i)) 
+    maxi2(i) = min(k1,maxi(i)) 
+!XXXXXXXX

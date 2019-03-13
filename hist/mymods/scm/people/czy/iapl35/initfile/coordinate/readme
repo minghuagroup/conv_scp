@@ -1,0 +1,16 @@
+==================================================
+program: trans_txt2nc_IAPL35
+source:  trans_txt2nc_IAPL35.F90
+purpose: transfer txtfile to ncfile including infomations of coordinate for IAPL35
+compile: ifort -I./ -I//public/software/mathlib/netcdf/4.3.2/intel/include -L/public/software/mathlib/netcdf/4.3.2/intel/lib -lnetcdff -o trans_txt2nc_IAPL35 trans_txt2nc_IAPL35.F90
+input:   IAP_L35_Pint.txt
+output:  IAPL35coordinate.nc(to be read by interpolation program)
+check:  vim IAP_L35_Pint.txt; ncdump IAPL35coordinate.nc
+==================================================
+
+1) compile
+   ifort -I./ -I//public/software/mathlib/netcdf/4.3.2/intel/include -L/public/software/mathlib/netcdf/4.3.2/intel/lib -lnetcdff -o trans_txt2nc_IAPL35 trans_txt2nc_IAPL35.F90
+
+2) run
+   ./trans_txt2nc_IAPL35 
+

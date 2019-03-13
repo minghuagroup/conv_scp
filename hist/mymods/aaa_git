@@ -1,0 +1,441 @@
+* commit 43ea68aa7d060cdfc1177a3d461fe577322046a4
+| Author: Xin Xie <yhyoscar@gmail.com>
+| Date:   Mon Nov 26 01:47:02 2018 -0500
+| 
+|     zmh for SCAM and configure CO2 removal 2018-11-26
+|    
+*   commit e61394346dceadbdcec973c0d80427fe1d81f4a6
+|\  Merge: bf3673e b1d1c4e
+| | Author: Duoying Ji <duoyingji@gmail.com>
+| | Date:   Sat Nov 24 15:32:27 2018 +0800
+| | 
+| |     merge development branch
+| |     
+| *   commit b1d1c4e0b08195dd2076c3b24761187ae1508dcd
+| |\  Merge: 5400452 7f41292
+| | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | Date:   Sat Nov 24 01:12:32 2018 -0500
+| | | 
+| | |     Merge branch 'feikece' into development
+| | |    
+| | * commit 7f41292c91f1f535c8daedd93b6ca1dd100d321c
+| | | Author: Kece Fei <fkc@storm.somas.stonybrook.edu>
+| | | Date:   Thu Nov 22 22:19:26 2018 -0500
+| | | 
+| | |         A few fixes are made, and I can compile and run FAMIPC5 compset for 36 time steps until meets an error
+| | |         in tend_lin2. The error log is "THERE IS AN ERROR IN CBB".   Feikece, 11-23-2018
+| | |    
+| | * commit 3df1886b7e85606d87971c19ca2b30369a30ef70
+| | | Author: Kece Fei <fkc@storm.somas.stonybrook.edu>
+| | | Date:   Thu Nov 22 07:17:02 2018 -0500
+| | | 
+| | |        1. Two chemistry schemes "trop_mam4" and "trop_strat_new" added.
+| | |        2. A new coarse mode seasalt and its emission scheme added.
+| | |        3. A new dust emission scheme added.
+| | |        Committer: Kece Fei <fkc@storm.somas.stonybrook.edu>
+| | |     	modified:   models/atm/cam/bld/build-namelist
+| | |     	modified:   models/atm/cam/bld/config_files/definition.xml
+| | |     	modified:   models/atm/cam/bld/configure
+| | |     	modified:   models/atm/cam/bld/namelist_files/namelist_defaults_cam.xml
+| | |     	modified:   models/atm/cam/bld/namelist_files/namelist_definition.xml
+| | |     	modified:   models/atm/cam/bld/perl5lib/Build/ChemNamelist.pm
+| | |     	modified:   models/atm/cam/src/chemistry/bulk_aero/aerosol_intr.F90
+| | |     	modified:   models/atm/cam/src/chemistry/bulk_aero/dust_intr.F90
+| | |     	modified:   models/atm/cam/src/chemistry/bulk_aero/progseasalts_intr.F90
+| | |     	modified:   models/atm/cam/src/chemistry/modal_aero/modal_aero_coag.F90
+| | |     	modified:   models/atm/cam/src/chemistry/modal_aero/modal_aero_data.F90
+| | |     	modified:   models/atm/cam/src/chemistry/modal_aero/modal_aero_deposition.F90
+| | |     	modified:   models/atm/cam/src/chemistry/modal_aero/modal_aero_initialize_data.F90
+| | |     	modified:   models/atm/cam/src/chemistry/mozart/mo_chemini.F90
+| | |     	modified:   models/atm/cam/src/chemistry/mozart/mo_drydep.F90
+| | |         modified:   models/atm/cam/src/chemistry/mozart/mo_extfrc.F90
+| | |     	modified:   models/atm/cam/src/chemistry/mozart/mo_setsox.F90
+| | |     	modified:   models/atm/cam/src/chemistry/mozart/mo_srf_emissions.F90
+| | |     	modified:   models/atm/cam/src/chemistry/mozart/mo_sulf.F90
+| | |     	modified:   models/atm/cam/src/chemistry/mozart/mz_aerosols_intr.F90
+| | |     	modified:   models/atm/cam/src/cpl_esmf/atm_comp_esmf.F90
+| | |     	modified:   models/atm/cam/src/cpl_mct/atm_comp_mct.F90
+| | |     	modified:   models/atm/cam/src/physics/cam/aer_rad_props.F90
+| | |     	modified:   models/atm/cam/src/physics/cam/microp_aero.F90
+| | |     	modified:   models/atm/cam/src/physics/cam/microp_driver.F90
+| | |     	modified:   models/atm/cam/src/physics/cam/physics_types.F90
+| | |     	modified:   models/atm/cam/src/physics/cam/rad_constituents.F90
+| | |     	modified:   models/lnd/clm/src/biogeochem/DUSTMod.F90
+| | |     	modified:   models/lnd/clm/src/main/controlMod.F90
+| | |    
+| * | commit 5400452f47e991df40eefdf6f195f7cd9d85ebe8
+| | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | Date:   Sat Nov 24 00:55:41 2018 -0500
+| | | 
+| | |     zmh turned off WXC in cloud_fraction, jjb changed two files of licom and ice
+| | |     
+| | |     	modified:   models/atm/iap/src/physics/cloud_fraction.F90
+| | |     	modified:   models/ice/cice/src/source/ice_shortwave.F90
+| | |     	modified:   models/ocn/licom/source/licomcpl7.F90
+| | |    
+| * | commit b1dc3da413d03c85ba586cf35ac5242cff720aca
+| |/  Author: Xin Xie <yhyoscar@gmail.com>
+| |   Date:   Sat Nov 24 00:21:52 2018 -0500
+| |   
+| |       removed unnecessary chemistry folder
+| |   
+| * commit 8cdbcd4b47a3d6eba0c69e9831a40581ee633d3e
+| | Author: Huiqun Hao <haohq@sccas.cn>
+| | Date:   Thu Nov 22 18:04:26 2018 +0800
+| | 
+| |     git rm deleted files
+| |   
+| * commit 5ce73d387d377148cdd2b7dbc7bf895a49af5189
+| | Author: Huiqun Hao <haohq@sccas.cn>
+| | Date:   Thu Nov 22 18:03:18 2018 +0800
+| | 
+| |     added ice folder
+| |   
+| * commit 445a14d76a400f2b106379a12191f5c11f02410b
+| | Author: Xin Xie <yhyoscar@gmail.com>
+| | Date:   Thu Nov 22 04:50:42 2018 -0500
+| | 
+| |     zmh updated zyx1_conv.F90
+| |     
+| *   commit eaa12b27f6581268681bdc8421ab3e369dc09658
+| |\  Merge: 45c0902 e0aa64c
+| | | Author: Huiqun Hao <haohq@sccas.cn>
+| | | Date:   Thu Nov 22 17:42:27 2018 +0800
+| | | 
+| | |     merged chaizhaoyang s branch
+| | |    
+| | * commit e0aa64c5bd7063e5de2eab9a54bc0b01a795fd41
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Thu Nov 22 16:40:33 2018 +0800
+| | | 
+| | |     Reset dp_coupling.F90 by czy20181122.
+| | |     	modified:   models/atm/cam/src/dynamics/iap/dp_coupling.F90
+| | |    
+| | * commit d94a751d505c6a825e2a97fba1154f1ad771cec3
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Thu Nov 22 02:04:58 2018 +0800
+| | | 
+| | |     Repair some bugs but not fully test by czy20181122.
+| | |     	modified:   models/atm/cam/src/dynamics/iap/dp_coupling.F90
+| | |     	modified:   models/atm/iap/src/physics/gw_drag.F90
+| | |     	modified:   models/atm/iap/src/physics/physpkg.F90
+| | |     	modified:   models/atm/iap/src/physics/runtime_opts.F90
+| | |     	modified:   models/atm/iap/src/physics/startup_initialconds.F90
+| | |     	modified:   models/atm/iap/src/physics/tphysac.F90
+| | |     	modified:   models/atm/iap/src/physics/vertical_diffusion.F90
+| | |     	new file:   newcodes/chaizhaoyang/dp_coupling.F90
+| | |     	modified:   newcodes/chaizhaoyang/gw_drag.F90
+| | |     	modified:   newcodes/chaizhaoyang/physpkg.F90
+| | |     	modified:   newcodes/chaizhaoyang/runtime_opts.F90
+| | |     	modified:   newcodes/chaizhaoyang/startup_initialconds.F90
+| | |     	modified:   newcodes/chaizhaoyang/tphysac.F90
+| | |     	modified:   newcodes/chaizhaoyang/vertical_diffusion.F90
+| | |    
+| | * commit 0e8a264808d88b971a0389ea196bbdfc2b8e39f6
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 23:53:05 2018 +0800
+| | | 
+| | |      Add namelist variables for xiejinbo's gw_drag to the configure files in order to automatically generate namelist file by czy20181120.
+| | |     	modified:   models/atm/cam/bld/build-namelist
+| | |     	modified:   models/atm/cam/bld/namelist_files/namelist_defaults_cam.xml
+| | |     	modified:   models/atm/cam/bld/namelist_files/namelist_definition.xml
+| | |    
+| | * commit 914d38610ad106536105a19fee53df23713a06ec
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 23:49:44 2018 +0800
+| | | 
+| | |     Add source files including xiejinbo's gravity wave drag scheme to models/atm/iap/src/physics by czy20181120.
+| | |     	new file:   models/atm/iap/src/physics/comsrf.F90
+| | |     	new file:   models/atm/iap/src/physics/filenames.F90
+| | |     	modified:   models/atm/iap/src/physics/gw_drag.F90
+| | |     	new file:   models/atm/iap/src/physics/gw_drag_xjb.F90
+| | |     	new file:   models/atm/iap/src/physics/hb_diff.F90
+| | |     	modified:   models/atm/iap/src/physics/initindx.F90
+| | |     	modified:   models/atm/iap/src/physics/physics_types.F90
+| | |     	modified:   models/atm/iap/src/physics/physpkg.F90
+| | |     	modified:   models/atm/iap/src/physics/runtime_opts.F90
+| | |     	new file:   models/atm/iap/src/physics/startup_initialconds.F90
+| | |     	modified:   models/atm/iap/src/physics/tphysac.F90
+| | |     	modified:   models/atm/iap/src/physics/vertical_diffusion.F90
+| | |    
+| | * commit 82ca9d1257f3d3882954dae3a1179db2626e66a5
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 23:45:53 2018 +0800
+| | | 
+| | |     Add xiejinbo's code gravity wave drag scheme, but not fully tested czy20181120.
+| | |     	new file:   newcodes/chaizhaoyang/comsrf.F90
+| | |     	new file:   newcodes/chaizhaoyang/filenames.F90
+| | |     	modified:   newcodes/chaizhaoyang/gw_drag.F90
+| | |     	new file:   newcodes/chaizhaoyang/gw_drag_xjb.F90
+| | |     	new file:   newcodes/chaizhaoyang/hb_diff.F90
+| | |     	modified:   newcodes/chaizhaoyang/initindx.F90
+| | |     	new file:   newcodes/chaizhaoyang/physics_types.F90
+| | |     	modified:   newcodes/chaizhaoyang/physpkg.F90
+| | |     	new file:   newcodes/chaizhaoyang/runtime_opts.F90
+| | |     	new file:   newcodes/chaizhaoyang/startup_initialconds.F90
+| | |     	modified:   newcodes/chaizhaoyang/tphysac.F90
+| | |     	new file:   newcodes/chaizhaoyang/vertical_diffusion.F90
+| | |    
+| | * commit c951c76c5f04229fc3e41091a7b376104ff3c94a
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 23:39:55 2018 +0800
+| | | 
+| | |     Add source files including waccm and cam gravity wave drag schemes to models/atm/iap/src/physics by czy20181120.
+| | |     	modified:   convect_deep.F90
+| | |     	new file:   gw_drag.F90
+| | |     	new file:   gw_drag_cam.F90
+| | |     	new file:   gw_drag_waccm.F90
+| | |     	new file:   initindx.F90
+| | |     	new file:   physpkg.F90
+| | |     	modified:   tphysac.F90
+| | |    
+| | * commit 7c0ef3db4272e8697c81c49f3a0fb36a422be05c
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 11:55:55 2018 +0800
+| | | 
+| | |     Add namelist variables for gw_drag to the configure files in order to
+| | |     automatically generate namelist file by czy20181120.
+| | |     	modified:   models/atm/cam/bld/build-namelist
+| | |     	modified:   models/atm/cam/bld/namelist_files/namelist_defaults_cam.xml
+| | |     	modified:   models/atm/cam/bld/namelist_files/namelist_definition.xml
+| | |    
+| | * commit 04c030d1da68d314f06cc29dfadc72d9238b94c3
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 11:37:44 2018 +0800
+| | | 
+| | |     Add waccm gw drag scheme by czy20181120.
+| | |     1. add gw_drag_scheme to namelist, which is an option;
+| | |     2. add gw_drag_cam and gw_drag_waccm module;
+| | |     3. add zmdt to convet_deep, which is used by gw_drag_waccm.
+| | |     4. NOTE: Use another folder 'newcodes/chaizhaoyang' rather than
+| | |     overwrite the original files, which is convenient to debug.
+| | |     	new file:   newcodes/chaizhaoyang/convect_deep.F90
+| | |     	new file:   newcodes/chaizhaoyang/gw_drag.F90
+| | |     	new file:   newcodes/chaizhaoyang/gw_drag_cam.F90
+| | |     	new file:   newcodes/chaizhaoyang/gw_drag_waccm.F90
+| | |     	new file:   newcodes/chaizhaoyang/initindx.F90
+| | |     	new file:   newcodes/chaizhaoyang/physpkg.F90
+| | |     	new file:   newcodes/chaizhaoyang/readme.txt
+| | |     	new file:   newcodes/chaizhaoyang/tphysac.F90
+| | |    
+| | * commit 51e54717248e4d3109ec30696e959026c784098a
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 11:21:34 2018 +0800
+| | | 
+| | |     Repair a bug in Makefile: delete ')' by czy20181120.
+| | |     	modified:   scripts/ccsm_utils/Build/Makefile
+| | |    
+| | * commit 5a9d0eee1542bbe84386bcb900aaa727696b9ced
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 11:20:07 2018 +0800
+| | | 
+| | |     Add .gitignore for convenience by czy20181120.
+| | |    
+| | * commit 2e5570c2229287f06bb9803076976665cbe7847f
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 11:17:27 2018 +0800
+| | | 
+| | |     Reset MPICC from 'icc -m64' to '@MPICC@' in Makefile.conf.in by
+| | |     czy20181120
+| | |     	modified:   models/utils/pio/Makefile.conf.in
+| | |    
+| | * commit b3c9d8c60d3bf906851b7a4da539629fb8fe4581
+| | | Author: czy.era <czy@era.com>
+| | | Date:   Wed Nov 21 11:13:49 2018 +0800
+| | | 
+| | |     Configure to port cas-esm to era by czy20181120.
+| | |     	new file:   scripts/ccsm_utils/Machines/Macros.era_czy
+| | |     	modified:   scripts/ccsm_utils/Machines/config_machines.xml
+| | |     	modified:   scripts/ccsm_utils/Machines/config_pes.xml
+| | |     	new file:   scripts/ccsm_utils/Machines/env_machopts.era_czy
+| | |     	new file:   scripts/ccsm_utils/Machines/mkbatch.era_czy
+| | |    
+| * | commit 45c09020e013bcdecc437cf170171ffb96aa732b
+| | | Author: Huiqun Hao <haohq@sccas.cn>
+| | | Date:   Thu Nov 22 17:34:25 2018 +0800
+| | | 
+| | |     added wangtianyi s code
+| | |    
+| * | commit 0eb479fccc74173dac82606295bb6732d5f0ca3a
+| | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | Date:   Thu Nov 22 03:14:39 2018 -0500
+| | | 
+| | |     zmh removed two programs new_cosz.F90 and shr softlink
+| | |    
+| * | commit 9e6a99a316e26ae287987579fb8f8bb66bae265e
+| | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | Date:   Thu Nov 22 03:05:34 2018 -0500
+| | | 
+| | |     zmh another addition
+| | |    
+| * | commit 42b28f97dbe25e5786fe587f685f490d478d62d8
+| | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | Date:   Thu Nov 22 02:52:32 2018 -0500
+| | | 
+| | |     Zhang Minghua added new_cosz_mod, updated WXC's cloud scheme
+| | |    
+| * | commit 0008c2c64ec178b277d3f4a9b89e1ef3559c886d
+| | | Author: Huiqun Hao <haohq@sccas.cn>
+| | | Date:   Thu Nov 22 15:42:09 2018 +0800
+| | | 
+| | |     added jinjiangbo s code
+| | |      
+| * |   commit fdfecc9c8efbe9ef161508d5c90c417ac8e90fcc
+| |\ \  Merge: a2102d8 343f897
+| | | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | | Date:   Tue Nov 20 05:27:11 2018 -0500
+| | | | 
+| | | |     Merge branch 'development' of git-server-iap:cas-esm into development
+| | | |     
+| | * | commit 343f8971cb381f05ec001cc355f8ceec993c3f32
+| | | | Author: Jinrong Jiang <jjr@sccas.cn>
+| | | | Date:   Tue Nov 20 14:54:18 2018 +0800
+| | | | 
+| | | |     add xiejinbo(XieGroup) s code /lnd/colm/bld/
+| | | |     
+| | * | commit 641048ad411796a543dfc0ea41c343afe6e031d9
+| | | | Author: Jinrong Jiang <jjr@sccas.cn>
+| | | | Date:   Tue Nov 20 14:50:11 2018 +0800
+| | | | 
+| | | |     add xiejinbo(XieGroup) s code lnd/colm/mainc/
+| | | |     
+| | * | commit 0723110d6d268785cff6f93b85f0a920e7404c5b
+| | | | Author: Jinrong Jiang <jjr@sccas.cn>
+| | | | Date:   Tue Nov 20 14:04:26 2018 +0800
+| | | | 
+| | | |     delete IAPDGVM
+| | | |     
+| * | | commit a2102d86378b5d8f35f17883fbd928f0f68d0468
+| | | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | | Date:   Tue Nov 20 05:12:11 2018 -0500
+| | | | 
+| | | |     Zhang Minghua fixed restart write file bug by tpert and qpert
+| | | |       
+| * | |   commit 9ab1aec08cec9cefc1b8091d6c1995974b3443eb
+| |\ \ \  Merge: b9808a0 63201a6
+| | |/ /  Author: Xin Xie <yhyoscar@gmail.com>
+| | | |   Date:   Tue Nov 20 01:02:00 2018 -0500
+| | | |   
+| | | |       Merge branch 'development' of git-server-iap:cas-esm into dev
+| | | |       
+| | | |       Conflicts:
+| | | |       	models/atm/cam/src/dynamics/iap/flexib.F90
+| | | |     
+| | * | commit 63201a605e78b61fbbc61d304c2a82470e1f1f6d
+| | | | Author: Jinrong Jiang <jjr@sccas.cn>
+| | | | Date:   Tue Nov 20 12:07:14 2018 +0800
+| | | | 
+| | | |     add jinjiangbo s code
+| | | |     
+| | * | commit e101f112977fd686ec9c77efe138baf11e0cee69
+| | | | Author: Jinrong Jiang <jjr@sccas.cn>
+| | | | Date:   Tue Nov 20 11:12:35 2018 +0800
+| | | | 
+| | | |     moved zhujiawen s code
+| | | |       
+| | * |   commit 58f49ef70a57a0a2f18f5f281e3cbcfc8010b7f0
+| | |\ \  Merge: 5af9577 bd59f6d
+| | | | | Author: Jinrong Jiang <jjr@sccas.cn>
+| | | | | Date:   Tue Nov 20 10:51:54 2018 +0800
+| | | | | 
+| | | | |     Merge branch 'zhujiawen' of git-server-iap:cas-esm into development
+| | | | |      
+| | | * | commit bd59f6d838da4eaeac97e67b018b7c5b1dd66db6
+| | | | | Author: Zhu Jia Wen <zjw@storm.somas.stonybrook.edu>
+| | | | | Date:   Sun Nov 18 03:57:01 2018 -0500
+| | | | | 
+| | | | |     revised some codes of CoLM that are associated with IAPDGVM.
+| | | | |     Further tests are necessary before merging them with CoLM and CAS_ESM. 11/18/2018
+| | | | |        
+| | * | |   commit 5af9577dd878ff5be6564152eac5f2e3749404cf
+| | |\ \ \  Merge: 2082b8d eabe380
+| | | | | | Author: Jinrong Jiang <jjr@sccas.cn>
+| | | | | | Date:   Tue Nov 20 10:41:50 2018 +0800
+| | | | | | 
+| | | | | |     Merge branch 'jiduoying' of git-server-iap:cas-esm into development
+| | | | | |       
+| | * | | | commit 2082b8d5aa6aa2682d075dea4ae93066ced38568
+| | | |_|/  Author: Jinrong Jiang <jjr@sccas.cn>
+| | |/| |   Date:   Tue Nov 20 10:37:00 2018 +0800
+| | | | |   
+| | | | |       merged wubaodong s branch
+| | | | |      
+| * | | | commit b9808a060acd589367f837b6a1ebbe2b2f34f1d4
+| |/ / /  Author: Xin Xie <yhyoscar@gmail.com>
+| | | |   Date:   Mon Nov 19 03:12:27 2018 -0500
+| | | |   
+| | | |       flag changed
+| | | |     
+| * | | commit 756d259216d0211ad0d881afc44e6696fa353edd
+| | | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | | Date:   Thu Nov 8 04:00:55 2018 -0500
+| | | | 
+| | | |     Zhang Minghua
+| | | |     1. added folders atm/iap/src/physics, atm/iap/src/dynamics, atm/iap/src/chemistry to combine codes
+| | | |     from zmh, wxc, czy. All switches to new modifications are off, czy's gw_drag.F90 for WACCM is not
+| | | |     included. fkc's chemistry folder is not finalized yet
+| | | |     2. added csm_share/shr/new_cosz.F90 and shr_orb_mod, but shr_orb_mod not activated
+| | | |     
+| * | | commit 756f2bf13db7b30dea390a68355618014754874f
+| | | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | | Date:   Thu Nov 8 03:48:02 2018 -0500
+| | | | 
+| | | |     Zhang Minghua added folder atm/iap/physics, atm/iap/dynamics (soft link), atm/iap/chemistry to
+| | | |     include all codes from zmh, wxc and czy, czy's WACCM gw_drag codes not included yet. All swithes
+| | | |     of new modifications are turned off
+| | | |     csh_share/shr added new_cosz, but shr_orb_mod.F90 not changed yet
+| | | |     
+| * | | commit 9792842e4d72b246cfec1ab0c3fed1ae8c532960
+| | | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | | Date:   Wed Oct 24 02:05:15 2018 -0400
+| | | | 
+| | | |     zmh reorganized folders of new parameterizations to dynamics, physics, and shr
+| | | |     
+| * | | commit bbdd73a3ea7354b254ecd505584e790dd9cba48e
+| | | | Author: Xin Xie <yhyoscar@gmail.com>
+| | | | Date:   Tue Sep 25 14:40:22 2018 -0400
+| | | | 
+| | | |     zmh modified dycore subroutines nlitti.F90 tend_lin2.F90 tend_adv2.F90 and controls in flexib.F90
+| | | |     The README_dycore file explains more.
+| | | |     
+| * | | commit 3d822a5030ecfa7e4c4024bfcbfc5120a89221e2
+| | |/  Author: git-admin <git-admin@esm973b.(none)>
+| |/|   Date:   Mon Sep 10 09:22:23 2018 +0800
+| | |   
+| | |       1.addition:  in directory /cam/advection/slt_iap/                                retrieved the code in advection/slt/, and put the amendment into slt_iap
+| | |       2.amendment: in file      /cam/bld/configure                                     amended path when dyn=iap
+| | |       3.amendment: in file      /scripts/ccsm_utils/Case.template/config_grid.xml      deleted grid of 64x128
+| | |       4.amendment: in file      /ice/cice/src/source/ice_transport_remap.F90           deleted comment of debug, retrieved cesm1.0.3 s code
+| | |       5.amendment: in file      /cam/src/control/hycoef.F90                            retrieved cesm1.0.3 s code
+| | |       6.amendment: in file      /cam/bld/namelist_files/namelist_defaults_cam.xml      amended forcing field data of 0.5 degree
+| | |       7.amendment: in file      /scripts/ccsm_utils/Case.template/config_compsets.xml  added compset of 0.5 and 0.23
+| | |       
+| | |       Compared with the original v1.2, the compsets of 0.5 and 0.23 are included.
+| | |       The existing compsets including 1.4 degree remain unchanged.
+| | |       Also, this edition supports Single Column Model(SCM).
+| | |    
+* | | commit bf3673eaa79798bdee5b3a23c5343014a9418766
+| |/  Author: Duoying Ji <duoyingji@gmail.com>
+|/|   Date:   Tue Nov 20 13:48:17 2018 +0800
+| |   
+| |       minor revision and cleanup
+| |   
+* | commit eabe380787f690cabd16ffeb36104f2d012d0090
+| | Author: Duoying Ji <duoyingji@gmail.com>
+| | Date:   Fri Nov 16 16:45:38 2018 +0800
+| | 
+| |     fixes for using specified vegetation data
+| |   
+* | commit 0abf860397f2f89064ece3fab97062de0561f148
+|/  Author: Duoying JI <duoyingji@gmail.com>
+|   Date:   Tue Nov 13 20:50:25 2018 +0800
+|   
+|       1) first stage of structural reformation for CoLM. 2) 15-layer soil column. 3) an initial multi-layer soil carbon scheme.
+|  
+* commit 22e28043000f38ba081da4d2a32a8ce2e15c0c98
+  Author: git-admin <git-admin@esm973b.(none)>
+  Date:   Mon Aug 27 21:40:57 2018 +0800
+  
+      The first commit of standard cas-esm v1.2
+      CO2 controlled by setting co2_flag & co2_readFlux_fuel & co2flux_fuel_file
+      in models/atm/cam/src/physics/cam/co2_cycle.F90

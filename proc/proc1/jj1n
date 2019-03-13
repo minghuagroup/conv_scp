@@ -1,0 +1,15 @@
+#!/bin/csh
+
+cp drv_in_nntest2 drv_in
+cp atm_in_nntest2 atm_in
+cp lnd_in_test2 lnd_in
+#mv ccsm.exe ccsm2.exe 
+
+nohup mpirun -nolocal -np 128 -host n1,n2,n3,n4 ./ccsm.exe >& runlogn &
+#nohup mpirun -nolocal -np 128 -host n1,n2,n3,n4 ./ccsm2.exe >& runlogn &
+#nohup mpirun -nolocal -np 128 -host n0,n10,n11,n12 ./ccsm.exe >& runlog &
+#nohup mpirun -nolocal -np 128 -host n10,n11,n12,n13 ./castest2.exe >& runlog2 &
+#nohup mpirun -nolocal -np 128 -host n14,n15,n16,n17 ./ccsm.exe >& runlog &
+#nohup mpirun -nolocal -np 128 -host n5,n6,n7,n8 ./ccsm.exe >& runlog &
+#nohup mpirun -nolocal -np 128 -host n0,n14,n15,n16 ./castest3.exe >& runlog3 &
+
