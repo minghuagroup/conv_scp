@@ -31,7 +31,7 @@ yuan bsub < run.bsub bjobs bkill
 git push git-server-iap:cas-esm.git development
 git pull -f git-server-iap:cas-esm.git development
 
-git reset --dard HEAD^^
+git reset --hard HEAD^^
 
 git log --graph --oneline --decorate
 git log -p --merge
@@ -107,6 +107,14 @@ qsub run_resubmit.qsub (or ./jj1r)
 [ edit resubmit_in for how many times, drv_xxx atm_xxx casename, runtype, stop_n, restart_n, then 
  run_resubmit.qsub]
 
+check points
+ atm_in  history name, save frequency, schemes, scheme options
+ drv_in  casename, runtype, stop_n, restart
+ .exe is fine
+ qsub run.qsub  casename
+ 
+ rpointer.* and resubmit_in, run_resubmit.qsub for resubmit runs
+
 The website is working now: http://storm.somas.stonybrook.edu:8080/minghua/
 The steps to setup the website are:
 1. Install the LAMP package.
@@ -120,3 +128,12 @@ The steps to setup the website are:
     >> cd /T1/mzhang/app/lampstack/apache2/htdocs/
     >> ln -sf /T1/mzhang/minghua ./
 
+du -s * | sort -r 
+df
+pgrep mpirun -lf
+
+module load grib-api
+grib_to_netcdf 123.grb -o 123.nc
+
+sed -i '/case_name/c\  case_name  = "zyx2"' drv_in  !change line
+sed -i 's/old-text/new-text/g' input.txt     !replace text
